@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ophyd.userapi.cli_api &mdash; NSLS-II Controls Docs 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap-theme.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="../../../_static/js/jquery-fix.js"></script>
+    <script type="text/javascript" src="../../../_static/bootstrap-3.2.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="NSLS-II Controls Docs 0.0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          NSLS-II Controls Docs</a>
+        <span class="navbar-text navbar-version pull-left"><b>0.0.1</b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ophyd/ophyd.html">Command line interface to Ophyd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../pyolog/pyolog.html">Simple Python Interface to The Olog</a></li>
+</ul>
+</ul>
+</li>
+              
+                <li class="dropdown">
+  <a role="button"
+     id="dLabelLocalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="#">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"
+      role="menu"
+      aria-labelledby="dLabelLocalToc"></ul>
+</li>
+              
+            
+            
+              
+                
+              
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      
+  <h1>Source code for ophyd.userapi.cli_api</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Command Line Interface to opyd objects</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">closing</span>
+<span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+
+<span class="kn">from</span> <span class="nn">IPython.utils.coloransi</span> <span class="kn">import</span> <span class="n">TermColors</span> <span class="k">as</span> <span class="n">tc</span>
+
+<span class="kn">from</span> <span class="nn">epics</span> <span class="kn">import</span> <span class="n">caget</span><span class="p">,</span> <span class="n">caput</span>
+
+<span class="kn">from</span> <span class="nn">..controls.positioner</span> <span class="kn">import</span> <span class="n">EpicsMotor</span><span class="p">,</span> <span class="n">Positioner</span><span class="p">,</span> <span class="n">PVPositioner</span>
+<span class="kn">from</span> <span class="nn">..session</span> <span class="kn">import</span> <span class="n">get_session_manager</span>
+
+<span class="n">session_mgr</span> <span class="o">=</span> <span class="n">get_session_manager</span><span class="p">()</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">logbook</span> <span class="o">=</span> <span class="n">session_mgr</span><span class="p">[</span><span class="s">&#39;olog_client&#39;</span><span class="p">]</span>
+<span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+    <span class="n">logbook</span> <span class="o">=</span> <span class="bp">None</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;mov&#39;</span><span class="p">,</span>
+           <span class="s">&#39;movr&#39;</span><span class="p">,</span>
+           <span class="s">&#39;set_pos&#39;</span><span class="p">,</span>
+           <span class="s">&#39;wh_pos&#39;</span><span class="p">,</span>
+           <span class="s">&#39;set_lm&#39;</span><span class="p">,</span>
+           <span class="s">&#39;log_pos&#39;</span>
+           <span class="p">]</span>
+
+<span class="c"># Global Defs of certain strings</span>
+
+<span class="n">FMT_LEN</span> <span class="o">=</span> <span class="mi">18</span>
+<span class="n">FMT_PREC</span> <span class="o">=</span> <span class="mi">6</span>
+
+
+<span class="k">def</span> <span class="nf">ensure</span><span class="p">(</span><span class="o">*</span><span class="n">ensure_args</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="nd">@functools.wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="c"># First check if we have an iterable first</span>
+            <span class="c"># on the first arg</span>
+            <span class="c"># if not then make these all lists</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;__iter__&quot;</span><span class="p">):</span>
+                    <span class="n">args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">])</span>
+            <span class="c"># Now do type checking ignoring None</span>
+            <span class="k">for</span> <span class="n">arg</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">ensure_args</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+                            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Incorect type in parameter list&quot;</span><span class="p">)</span>
+
+            <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">wrap</span>
+
+
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+<div class="viewcode-block" id="mov"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.mov">[docs]</a><span class="k">def</span> <span class="nf">mov</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move positioners to given positions</span>
+
+<span class="sd">    Move positioners using the move method of the Positioner class.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        positioner: Positioner or list</span>
+<span class="sd">            Positioners to move</span>
+<span class="sd">        position: float or list of float</span>
+<span class="sd">            Values to move positioners to.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Move a single positioner `slt1_xc` to 10::</span>
+
+<span class="sd">    &gt;&gt;&gt;mov(slt1_xc, 10)</span>
+
+<span class="sd">    Move positioner `slt1_xg` and `slt1_yg` to 2 and 3 respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;mov([slt1_xg, slt1_yg], [2, 3])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+
+    <span class="c"># Start Moving all Positioners in context manager to catch</span>
+    <span class="c"># Keyboard interrupts</span>
+
+    <span class="k">with</span> <span class="n">catch_keyboard_interrupt</span><span class="p">(</span><span class="n">positioner</span><span class="p">):</span>
+        <span class="n">stat</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span>
+                <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">)]</span>
+
+        <span class="c"># The loop below ensures that at least a couple prints</span>
+        <span class="c"># will happen</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">flag</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">LightGreen</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+                <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;</span><span class="se">\r</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="movr"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.movr">[docs]</a><span class="k">def</span> <span class="nf">movr</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move positioners relative to their current positon.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    mov : move positioners to an absolute position.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_start_val</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_start_val</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to read motor position for relative move&quot;</span><span class="p">)</span>
+
+    <span class="n">_new_val</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">_start_val</span><span class="p">,</span> <span class="n">position</span><span class="p">)]</span>
+    <span class="n">mov</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">_new_val</span><span class="p">)</span>
+
+</div>
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+<div class="viewcode-block" id="set_lm"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.set_lm">[docs]</a><span class="k">def</span> <span class="nf">set_lm</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">limits</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set the limits of the positioner</span>
+
+<span class="sd">    Sets the limits of the positioner or list of positioners. For EpicsMotors</span>
+<span class="sd">    the fields .HLM and .LLM are set to the high and low limits respectively.</span>
+<span class="sd">    For PVPositioners the .DRVH and .DRVL fields are set on the setopoint</span>
+<span class="sd">    record. If neither method works then an IOError is raised.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        positioner: positioner or list of positioners</span>
+<span class="sd">        limits: single or list of tuple of form (+ve, -ve) limits</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">        IOError</span>
+<span class="sd">            If the caput (EPICS put) fails then an IOError is raised.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Set the limits of motor `m1` to (10, -10)::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_lm(slt1_xc, (10, -10))</span>
+
+<span class="sd">    Set the limits of motors `m1` and `m2` to (2, -2) and (3, -3)</span>
+<span class="sd">    respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_lm([m1, m2], [[2,-2], [3, -3]])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+    <span class="n">high_fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">low_fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
+            <span class="n">high_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">_record</span> <span class="o">+</span> <span class="s">&#39;.HLM&#39;</span><span class="p">)</span>
+            <span class="n">low_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">_record</span> <span class="o">+</span> <span class="s">&#39;.LLM&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">PVPositioner</span><span class="p">):</span>
+            <span class="n">high_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">setpoint_pvname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;.DRVH&#39;</span><span class="p">)</span>
+            <span class="n">low_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">setpoint_pvname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s">&#39;.DRVL&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Positioners must be EpicsMotors or PVPositioners&quot;</span>
+                            <span class="s">&quot;to set the limits&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">lim</span><span class="p">,</span> <span class="n">high_field</span><span class="p">,</span> <span class="n">low_field</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span>
+                                             <span class="n">limits</span><span class="p">,</span>
+                                             <span class="n">high_fields</span><span class="p">,</span> <span class="n">low_fields</span><span class="p">):</span>
+        <span class="n">lim1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span>
+        <span class="n">lim2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">caput</span><span class="p">(</span><span class="n">high_field</span><span class="p">,</span> <span class="n">lim1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to set high limit for {}&quot;</span>
+                          <span class="s">&quot; writing to PV {}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">high_field</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s">&quot;Upper limit set to {:.{prec}g} for positioner {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+               <span class="n">lim1</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">caput</span><span class="p">(</span><span class="n">low_field</span><span class="p">,</span> <span class="n">lim2</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Unable to set low limit for {}&quot;</span>
+                          <span class="s">&quot; writing to PV {}.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">low_field</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s">&quot;Lower limit set to {:.{prec}g} for positioner {}</span><span class="se">\n</span><span class="s">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+               <span class="n">lim2</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">logbook</span><span class="p">:</span>
+        <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+</div>
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span>
+<div class="viewcode-block" id="set_pos"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.set_pos">[docs]</a><span class="k">def</span> <span class="nf">set_pos</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set the position of a positioner</span>
+
+<span class="sd">    Set the position of a positioner or positioners to the value position.</span>
+<span class="sd">    This function only works for EpicsMotors (Based on the EPICS Motor Record)</span>
+<span class="sd">    and uses the .OFF field to set the current position to the value passed to</span>
+<span class="sd">    the function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        positioner: Positioner or list of positioners.</span>
+<span class="sd">        position: float or list of floats.</span>
+<span class="sd">            New position of positioners</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            If positioner is not an instance of an EpicsMotor.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Set the position of motor m1 to 4::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_pos(m1, 4)</span>
+
+<span class="sd">    Set the position of motors m1 and m2 to 1 and 2 respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_pos([m1, m2], [1, 2])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Positioner {} must be an EpicsMotor&quot;</span>
+                            <span class="s">&quot;to set position.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="c"># Get the current offset</span>
+
+    <span class="n">offset_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_record</span> <span class="o">+</span> <span class="s">&quot;.OFF&quot;</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+    <span class="n">dial_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">_record</span> <span class="o">+</span> <span class="s">&quot;.DRBV&quot;</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+
+    <span class="n">old_offsets</span> <span class="o">=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">offset_pvs</span><span class="p">]</span>
+    <span class="n">dial</span> <span class="o">=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">dial_pvs</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">old_offsets</span> <span class="o">+</span> <span class="n">dial</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Could not read or invalid value for current&quot;</span>
+                             <span class="s">&quot;position of positioners&quot;</span><span class="p">)</span>
+
+    <span class="n">new_offsets</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">dial</span><span class="p">)]</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">old_o</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">new_offsets</span><span class="p">,</span> <span class="n">old_offsets</span><span class="p">,</span> <span class="n">positioner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">caput</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">_record</span> <span class="o">+</span> <span class="s">&#39;.OFF&#39;</span><span class="p">,</span> <span class="n">o</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;Motor {0} set to position {1} (Offset = {2} was {3})</span><span class="se">\n</span><span class="s">&#39;</span>\
+                   <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">o</span><span class="p">,</span> <span class="n">old_o</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;Unable to set position of positioner {0}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="n">lmsg</span> <span class="o">=</span> <span class="n">logbook_add_objects</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">dial_pvs</span> <span class="o">+</span> <span class="n">offset_pvs</span><span class="p">)</span>
+    <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span> <span class="o">+</span> <span class="n">lmsg</span><span class="p">)</span>
+
+</div>
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">)</span>
+<div class="viewcode-block" id="wh_pos"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.wh_pos">[docs]</a><span class="k">def</span> <span class="nf">wh_pos</span><span class="p">(</span><span class="n">positioners</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the current position of Positioners and print to screen.</span>
+
+<span class="sd">    Print to the screen the position of the positioners in a formated table.</span>
+<span class="sd">    If positioners is None then get all registered positioners from the</span>
+<span class="sd">    session manager.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        positioners : Positioner, list of Positioners or None</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    log_pos : Log positioner values to logbook</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    List all positioners::</span>
+
+<span class="sd">    &gt;&gt;&gt;wh_pos()</span>
+
+<span class="sd">    List positioners `m1`, `m2` and `m3`::</span>
+
+<span class="sd">    &gt;&gt;&gt;wh_pos([m1, m2, m3])</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()[</span><span class="n">d</span><span class="p">]</span>
+                       <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">())]</span>
+
+    <span class="n">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+
+</div>
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">)</span>
+<div class="viewcode-block" id="log_pos"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.log_pos">[docs]</a><span class="k">def</span> <span class="nf">log_pos</span><span class="p">(</span><span class="n">positioners</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the current position of Positioners and make a logbook entry.</span>
+
+<span class="sd">    Print to the screen the position of the positioners and make a logbook</span>
+<span class="sd">    text entry. If positioners is None then get all registered positioners</span>
+<span class="sd">    from the session manager. This routine also creates session information</span>
+<span class="sd">    in the logbook so positions can be recovered.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        positioners : Positioner, list of Positioners or None</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">        int</span>
+<span class="sd">            The ID of the logbook entry returned by the logbook.log method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()[</span><span class="n">d</span><span class="p">]</span>
+                       <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">())]</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+
+    <span class="k">with</span> <span class="n">closing</span><span class="p">(</span><span class="n">StringIO</span><span class="p">())</span> <span class="k">as</span> <span class="n">sio</span><span class="p">:</span>
+        <span class="n">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sio</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="n">sio</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="c"># Add the text representation of the positioners</span>
+
+    <span class="n">msg</span> <span class="o">+=</span> <span class="n">logbook_add_objects</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+
+    <span class="c"># Create the property for storing motor posisions</span>
+    <span class="n">pdict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">pdict</span><span class="p">[</span><span class="s">&#39;objects&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">pdict</span><span class="p">[</span><span class="s">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">({</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">})</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OphydPositioners&#39;</span><span class="p">,</span> <span class="n">pdict</span><span class="p">]</span>
+
+    <span class="c"># make the logbook entry</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="p">])</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;Logbook positions added as Logbook ID {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">id</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">id</span>
+
+</div>
+<span class="k">def</span> <span class="nf">log_pos_diff</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook&quot;&quot;&quot;</span>
+    <span class="n">values</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="c"># Cycle through positioners and compare position with old value</span>
+
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">objects</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">-</span> <span class="n">value</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Search the logbook and return positioners&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">logbook</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="bp">NotImplemented</span><span class="p">(</span><span class="s">&quot;No logbook is avaliable&quot;</span><span class="p">)</span>
+
+    <span class="n">entry</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Search of logbook was not unique, please refine&quot;</span>
+                         <span class="s">&quot;search&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">prop</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;properties&#39;</span><span class="p">][</span><span class="s">&#39;OphydPositioners&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="ne">KeyError</span><span class="p">(</span><span class="s">&#39;No property in log entry with positioner information&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s">&#39;objects&#39;</span><span class="p">])</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s">&#39;values&#39;</span><span class="p">])</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Unable to create objects from log entry&#39;</span><span class="p">)</span>
+
+    <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">val</span><span class="p">,</span> <span class="n">objects</span>
+
+
+<span class="k">def</span> <span class="nf">logbook_add_objects</span><span class="p">(</span><span class="n">objects</span><span class="p">,</span> <span class="n">extra_pvs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add to the logbook aditional information on ophyd objects.</span>
+
+<span class="sd">    :param objects: Objects to add to log entry.</span>
+<span class="sd">    :type objects: Ophyd objects</span>
+<span class="sd">    :param extra_pvs: Extra PVs to include in report</span>
+<span class="sd">    :type extra_pvs: List of strings</span>
+
+<span class="sd">    This routine takes objects and possible extra pvs and adds to the log</span>
+<span class="sd">    entry information which is not printed to stdout/stderr.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
+    <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;{:^43}|{:^22}|{:^50}</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;PV Name&#39;</span><span class="p">,</span> <span class="s">&#39;Name&#39;</span><span class="p">,</span> <span class="s">&#39;Value&#39;</span><span class="p">)</span>
+    <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;{:-^120}</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="c"># Make a list of all PVs and positioners</span>
+    <span class="n">pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">report</span><span class="p">[</span><span class="s">&#39;pv&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">]</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">extra_pvs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">pvs</span> <span class="o">+=</span> <span class="n">extra_pvs</span>
+        <span class="n">names</span> <span class="o">+=</span> <span class="p">[</span><span class="s">&#39;None&#39;</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extra_pvs</span><span class="p">]</span>
+        <span class="n">values</span> <span class="o">+=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extra_pvs</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pvs</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s">&#39;PV:{:&lt;40} {:&lt;22} {:&lt;50}</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">msg</span>
+
+
+<span class="k">def</span> <span class="nf">print_header</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">char</span><span class="o">=</span><span class="s">&#39;-&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;{:{char}^{len}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">char</span><span class="o">=</span><span class="n">char</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="nb">len</span><span class="p">),</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">print_string</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">FMT_LEN</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;{}{:&lt;{size}}{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">print_value</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;{:.{fmt}} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">egu</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">prec</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">print_value_aligned</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">FMT_LEN</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">fmt1</span> <span class="o">=</span> <span class="s">&#39;{{0:&gt;{0}}}.{{1:&lt;{1}}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="o">-</span><span class="n">prec</span><span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">prec</span><span class="p">)</span>
+    <span class="n">fmt2</span> <span class="o">=</span> <span class="s">&#39;{{:.{}f}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prec</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">fmt2</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
+    <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;{} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">egu</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="n">fmt1</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">blink</span><span class="p">(</span><span class="n">on</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">on</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x1b</span><span class="s">[?25h&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\x1b</span><span class="s">[?25l&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">catch_keyboard_interrupt</span><span class="p">(</span><span class="n">positioners</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Context manager to capture Keyboard Interrupt and stop motors</span>
+
+<span class="sd">    This context manager should be used when moving positioners via the cli</span>
+<span class="sd">    to capture the keyboardInterrupt and ensure that motors are stopped and</span>
+<span class="sd">    clean up the output to the screen.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">blink</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span> <span class="o">+</span> <span class="s">&quot;[!!] ABORTED &quot;</span>
+              <span class="s">&quot;: Commanding all positioners to stop.&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;{}[--] Stopping {}{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">LightRed</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">blink</span><span class="p">(</span><span class="bp">True</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Pretty Print the positioners to file&quot;&quot;&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">]</span>
+
+    <span class="c"># Print out header</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Positioner&#39;</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Value&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Low Limit&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;High Limit&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">high_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2015, Stuart B. Wilkins.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ophyd.userapi.scan_api &mdash; NSLS-II Controls Docs 0.0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap-theme.min.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/js/jquery-1.11.0.min.js"></script>
+    <script type="text/javascript" src="../../../_static/js/jquery-fix.js"></script>
+    <script type="text/javascript" src="../../../_static/bootstrap-3.2.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../../../_static/bootstrap-sphinx.js"></script>
+    <link rel="top" title="NSLS-II Controls Docs 0.0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+<meta charset='utf-8'>
+<meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+  </head>
+  <body>
+
+  <div id="navbar" class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <!-- .btn-navbar is used as the toggle for collapsed navbar content -->
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="../../../index.html">
+          NSLS-II Controls Docs</a>
+        <span class="navbar-text navbar-version pull-left"><b>0.0.1</b></span>
+      </div>
+
+        <div class="collapse navbar-collapse nav-collapse">
+          <ul class="nav navbar-nav">
+            
+            
+              <li class="dropdown globaltoc-container">
+  <a role="button"
+     id="dLabelGlobalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="../../../index.html">Site <b class="caret"></b></a>
+  <ul class="dropdown-menu globaltoc"
+      role="menu"
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../ophyd/ophyd.html">Command line interface to Ophyd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../pyolog/pyolog.html">Simple Python Interface to The Olog</a></li>
+</ul>
+</ul>
+</li>
+              
+                <li class="dropdown">
+  <a role="button"
+     id="dLabelLocalToc"
+     data-toggle="dropdown"
+     data-target="#"
+     href="#">Page <b class="caret"></b></a>
+  <ul class="dropdown-menu localtoc"
+      role="menu"
+      aria-labelledby="dLabelLocalToc"></ul>
+</li>
+              
+            
+            
+              
+                
+              
+            
+            
+            
+            
+              <li class="hidden-sm"></li>
+            
+          </ul>
+
+          
+            
+<form class="navbar-form navbar-right" action="../../../search.html" method="get">
+ <div class="form-group">
+  <input type="text" name="q" class="form-control" placeholder="Search" />
+ </div>
+  <input type="hidden" name="check_keywords" value="yes" />
+  <input type="hidden" name="area" value="default" />
+</form>
+          
+        </div>
+    </div>
+  </div>
+
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      
+  <h1>Source code for ophyd.userapi.scan_api</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span><span class="p">,</span> <span class="n">strftime</span>
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+
+<span class="kn">from</span> <span class="nn">IPython.utils.coloransi</span> <span class="kn">import</span> <span class="n">TermColors</span> <span class="k">as</span> <span class="n">tc</span>
+
+<span class="kn">from</span> <span class="nn">..runengine</span> <span class="kn">import</span> <span class="n">RunEngine</span>
+<span class="kn">from</span> <span class="nn">..session</span> <span class="kn">import</span> <span class="n">get_session_manager</span>
+
+<span class="n">session_manager</span> <span class="o">=</span> <span class="n">get_session_manager</span><span class="p">()</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">session_manager</span><span class="o">.</span><span class="n">_logger</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;AScan&#39;</span><span class="p">,</span> <span class="s">&#39;DScan&#39;</span><span class="p">,</span> <span class="s">&#39;Scan&#39;</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">Data</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for containing scan data&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initialize class with data</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        data : dict</span>
+<span class="sd">            Dictionary of data from scan</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="Scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan">[docs]</a><span class="k">class</span> <span class="nc">Scan</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">_shared_config</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;default_triggers&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                      <span class="s">&#39;default_detectors&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                      <span class="s">&#39;scan_data&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_eng</span> <span class="o">=</span> <span class="n">RunEngine</span><span class="p">(</span><span class="bp">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;scan_data&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;scan_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;scan_data&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">settle_time</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plotx</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ploty</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="o">=</span> <span class="n">session_manager</span><span class="p">[</span><span class="s">&#39;olog_client&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="o">=</span> <span class="bp">None</span>
+
+<div class="viewcode-block" id="Scan.check_paths"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.check_paths">[docs]</a>    <span class="k">def</span> <span class="nf">check_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check the paths against any limits of positioners&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pos</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Scan moves positioner {} </span><span class="se">\</span>
+<span class="s">                                     out of limits {},{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                     <span class="n">pos</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">high_limit</span><span class="p">))</span>
+</div>
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exec_type</span><span class="p">,</span> <span class="n">exec_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Scan context manager exited with </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exec_value</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">post_scan</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setup_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setup_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="Scan.format_plot"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.format_plot">[docs]</a>    <span class="k">def</span> <span class="nf">format_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Guess the positioners and detectors that the user cares about</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        plotx : str</span>
+<span class="sd">            The default positioners to set as the x axis</span>
+<span class="sd">        ploty : list</span>
+<span class="sd">            The list of positioners/detectors to plot on the y axis</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">pos_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">]</span>
+        <span class="n">det_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">det</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">]</span>
+        <span class="n">valid_names</span> <span class="o">=</span> <span class="n">pos_names</span> <span class="o">+</span> <span class="n">det_names</span>
+        <span class="c"># default value for the x axis</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">plotx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+            <span class="c"># if plotx is not a valid string, ignore it. if it is, make</span>
+            <span class="c"># sure that it is in the positioners/detectors that the</span>
+            <span class="c"># scan knows about</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plotx</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plotx</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">valid_names</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plotx</span><span class="p">:</span>
+                            <span class="n">plotx</span> <span class="o">=</span> <span class="n">name</span>
+                            <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plotx</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="n">ploty</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c"># checking validity of self._ploty</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">valid_names</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ploty</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ploty</span><span class="p">:</span>
+                    <span class="n">ploty</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">plotx</span><span class="p">,</span> <span class="n">ploty</span>
+</div>
+<div class="viewcode-block" id="Scan.run"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Run the scan&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span> <span class="o">=</span> <span class="n">session_manager</span><span class="o">.</span><span class="n">get_next_scan_id</span><span class="p">()</span>
+
+        <span class="c"># Run this in a context manager to capture</span>
+        <span class="c"># the KeyboardInterrupt</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_paths</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup_detectors</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup_triggers</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">):</span>
+                <span class="n">pos</span><span class="o">.</span><span class="n">set_trajectory</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+            <span class="c"># Create the dict to pass to the run-engine</span>
+
+            <span class="n">scan_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+            <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;detectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span>
+            <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span>
+            <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;positioners&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span>
+            <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;settle_time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">settle_time</span>
+            <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;custom&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">plotx</span><span class="p">,</span> <span class="n">ploty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_plot</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">plotx</span><span class="p">:</span>
+                <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;custom&#39;</span><span class="p">][</span><span class="s">&#39;plotx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">plotx</span>
+            <span class="k">if</span> <span class="n">ploty</span><span class="p">:</span>
+                <span class="n">scan_args</span><span class="p">[</span><span class="s">&#39;custom&#39;</span><span class="p">][</span><span class="s">&#39;ploty&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ploty</span>
+
+            <span class="c"># Run the scan!</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_eng</span><span class="o">.</span><span class="n">start_run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span><span class="p">,</span>
+                                           <span class="n">scan_args</span><span class="o">=</span><span class="n">scan_args</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Data</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Scan.data"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.data">[docs]</a>    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the data ringbuffer&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span>
+</div>
+<div class="viewcode-block" id="Scan.last_data"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.last_data">[docs]</a>    <span class="k">def</span> <span class="nf">last_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the last data set&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">None</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">default_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the default detectors&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_detectors&#39;</span><span class="p">]</span>
+
+    <span class="nd">@default_detectors.setter</span>
+<div class="viewcode-block" id="Scan.default_detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.default_detectors">[docs]</a>    <span class="k">def</span> <span class="nf">default_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detectors</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default detectors&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_detectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">detectors</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">default_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the default triggers&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_triggers&#39;</span><span class="p">]</span>
+
+    <span class="nd">@default_triggers.setter</span>
+<div class="viewcode-block" id="Scan.default_triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.default_triggers">[docs]</a>    <span class="k">def</span> <span class="nf">default_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default triggers&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">triggers</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the default triggers for this scan&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_triggers</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_triggers</span>
+
+    <span class="nd">@triggers.setter</span>
+<div class="viewcode-block" id="Scan.triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.triggers">[docs]</a>    <span class="k">def</span> <span class="nf">triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default triggers for this scan&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="o">=</span> <span class="n">triggers</span>
+</div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the default detectors for this scan&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_detectors</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_detectors</span>
+
+    <span class="nd">@detectors.setter</span>
+<div class="viewcode-block" id="Scan.detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.detectors">[docs]</a>    <span class="k">def</span> <span class="nf">detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detectors</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the default detectors for this scan&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="o">=</span> <span class="n">detectors</span>
+
+</div></div>
+<div class="viewcode-block" id="AScan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan">[docs]</a><span class="k">class</span> <span class="nc">AScan</span><span class="p">(</span><span class="n">Scan</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for a N-Dimensional Scan&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ScanND</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ScanND</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">make_log_entry</span><span class="p">()</span>
+
+<div class="viewcode-block" id="AScan.calc_linear_path"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.calc_linear_path">[docs]</a>    <span class="k">def</span> <span class="nf">calc_linear_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a linearaly spaced path&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AScan.calc_path"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.calc_path">[docs]</a>    <span class="k">def</span> <span class="nf">calc_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculate a single path given start, stop and npts for dim&quot;&quot;&quot;</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">npts</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_linear_path</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">[</span><span class="n">dim</span><span class="p">])</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="nb">len</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="o">-</span><span class="n">dim</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="p">[:</span><span class="n">dim</span><span class="p">]</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">prod</span><span class="p">())</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">y</span><span class="o">.</span><span class="n">prod</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">a</span>
+</div>
+<div class="viewcode-block" id="AScan.make_log_entry"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.make_log_entry">[docs]</a>    <span class="k">def</span> <span class="nf">make_log_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Format and make a log entry for the scan&quot;&quot;&quot;</span>
+        <span class="n">time_text</span> <span class="o">=</span> <span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%a, </span><span class="si">%d</span><span class="s"> %b %Y %H:%M:%S %Z&quot;</span><span class="p">)</span>
+
+        <span class="c"># Print header</span>
+
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Scan Command    : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span><span class="p">)]</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan ID         : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span><span class="p">))</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan started at : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_text</span><span class="p">))</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan Dimension  : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">))</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan Datapoints : {} ({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span><span class="p">,</span>
+                                                      <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span><span class="p">)))</span>
+
+        <span class="c"># Print positioners and start and stop values</span>
+
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30} {:&lt;20} {:&lt;20}:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;Positioners&#39;</span><span class="p">,</span>
+                                                  <span class="s">&#39;Min&#39;</span><span class="p">,</span> <span class="s">&#39;Max&#39;</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">):</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30} {:&lt;20.8f} {:&lt;20.8f}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                                                           <span class="nb">min</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+                                                           <span class="nb">max</span><span class="p">(</span><span class="n">path</span><span class="p">)))</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Triggers:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">trig</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trig</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Detectors:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">det</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{0:=^80}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;PV:{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">report</span><span class="p">[</span><span class="s">&#39;pv&#39;</span><span class="p">]))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;command&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;detectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;positioners&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;stop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;npts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npts</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="n">properties</span><span class="o">=</span><span class="p">[[</span><span class="s">&#39;OphydScan&#39;</span><span class="p">,</span> <span class="n">d</span><span class="p">]])</span>
+</div>
+<div class="viewcode-block" id="AScan.format_command_line"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.format_command_line">[docs]</a>    <span class="k">def</span> <span class="nf">format_command_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a string representation of the passed arguments&quot;&quot;&quot;</span>
+        <span class="n">cl_args</span> <span class="o">=</span> <span class="n">cmdline_to_str</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">rtn</span> <span class="o">=</span> <span class="s">&#39;{}()({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">cl_args</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">rtn</span>
+</div>
+<div class="viewcode-block" id="AScan.__call__"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Scan positioners along a regular path</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        positioners : Positioner or list of Positioners</span>
+<span class="sd">            The positioner objects to use in the scan</span>
+<span class="sd">        start : position or list of positions</span>
+<span class="sd">            The start position of the positioners</span>
+<span class="sd">        stop : position or list of positions</span>
+<span class="sd">            The stop position of the positioners</span>
+<span class="sd">        npts : int or list of int</span>
+<span class="sd">            The number of intervals in the scan</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        Scan motor m1 from -10 to 10 with 20 intervals::</span>
+
+<span class="sd">        &gt;&gt;&gt;scan(m1, -10, 10, 20)</span>
+
+<span class="sd">        Scan motor m1 and m2 in a linear path with 20 intervals with m1</span>
+<span class="sd">        starting at -10 and m2 starting at -5 and traveling to 10 and 5</span>
+<span class="sd">        respectively::</span>
+
+<span class="sd">        &gt;&gt;&gt;scan([m1, m2], [-10, -5], [10, 5], 20)</span>
+
+<span class="sd">        Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling</span>
+<span class="sd">        from -10 to 10 and m2 traveling from -5 to 5::</span>
+
+<span class="sd">        &gt;&gt;&gt;scan([m1, m2], [-10, -5], [10, 5], [20, 20])</span>
+
+<span class="sd">        Scan motors m1 and m2 in a linear path in the first dimension and</span>
+<span class="sd">        m3 as a linear path in the second dimension::</span>
+
+<span class="sd">        &gt;&gt;&gt;scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c"># This is an n-dimensional scan. We take the dims from</span>
+        <span class="c"># the length of npts.</span>
+
+        <span class="n">positioners</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
+        <span class="n">npts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ensure_iterator</span><span class="p">(</span><span class="n">npts</span><span class="p">))</span>
+        <span class="n">dimension</span> <span class="o">=</span> <span class="n">npts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span> <span class="o">=</span> <span class="n">stop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npts</span> <span class="o">=</span> <span class="n">npts</span>
+
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_command_line</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c"># Calculate number of points from intervals</span>
+
+        <span class="n">npts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">npts</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c"># Make the array to populate the ranges with</span>
+        <span class="n">edges</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">npts</span><span class="p">]</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">edges</span><span class="p">))]</span>
+
+        <span class="c"># This grid goes from 0 to 1 in all dimensions.</span>
+        <span class="c"># and can be used to scale start and stop points</span>
+
+        <span class="n">pos</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dimension</span><span class="p">):</span>
+            <span class="c"># For each dimension we work out the paths</span>
+            <span class="c"># each dimension can have a number of positioners</span>
+            <span class="n">iter_pos</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">positioners</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
+            <span class="n">begin</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">ensure_iterator</span><span class="p">(</span><span class="n">stop</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
+
+            <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">iter_pos</span><span class="p">,</span> <span class="n">begin</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+                <span class="n">pos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">b</span> <span class="o">+</span> <span class="p">((</span><span class="n">e</span><span class="o">-</span><span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
+                <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="n">paths</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span> <span class="o">=</span> <span class="n">npts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="n">dimension</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div></div>
+<div class="viewcode-block" id="DScan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan">[docs]</a><span class="k">class</span> <span class="nc">DScan</span><span class="p">(</span><span class="n">AScan</span><span class="p">):</span>
+<div class="viewcode-block" id="DScan.pre_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan.pre_scan">[docs]</a>    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Prescan store starting positions and change paths&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">+</span> <span class="n">start</span>
+                      <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span><span class="p">)]</span>
+</div>
+<div class="viewcode-block" id="DScan.post_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan.post_scan">[docs]</a>    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Post Scan Move to start positions&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+                  <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">start</span> <span class="ow">in</span>
+                  <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span><span class="p">)]</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span> <span class="o">+</span> <span class="s">&quot;Moving positioners back to start positions.......&quot;</span><span class="p">,</span>
+              <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+        <span class="k">while</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">stat</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">status</span><span class="p">):</span>
+            <span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span> <span class="o">+</span> <span class="s">&quot; Done.&quot;</span><span class="p">)</span>
+
+</div></div>
+<span class="k">def</span> <span class="nf">ensure_iterator</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Check if i is an iterator. If not return length-1 iterator&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&quot;__iter__&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&quot;__getitem__&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">i</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">objects_to_str</span><span class="p">(</span><span class="n">iterables</span><span class="p">,</span> <span class="n">iter_sep</span><span class="o">=</span><span class="s">&#39;, &#39;</span><span class="p">,</span> <span class="n">iter_start</span><span class="o">=</span><span class="s">&#39;(&#39;</span><span class="p">,</span>
+                   <span class="n">iter_stop</span><span class="o">=</span><span class="s">&#39;)&#39;</span><span class="p">):</span>
+
+    <span class="n">text</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c"># To see if we need start/stop chars then we see if we</span>
+    <span class="c"># have a length 1 iterator</span>
+
+    <span class="n">l</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">l</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">iterables</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">iterables</span><span class="p">:</span>
+        <span class="c"># Is the object i iterable:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">objects_to_str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">objects_to_str</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">iter_start</span><span class="o">=</span><span class="s">&#39;[&#39;</span><span class="p">,</span> <span class="n">iter_stop</span><span class="o">=</span><span class="s">&#39;]&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c"># Try to see if we have a name attribute</span>
+                <span class="n">text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="c"># Object does not have a name</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c"># We have a valid name, break the iteration</span>
+                <span class="k">break</span>
+
+            <span class="n">text</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+
+    <span class="n">text</span> <span class="o">=</span> <span class="n">iter_sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">l</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">iter_start</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">iter_stop</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">text</span>
+
+
+<span class="k">def</span> <span class="nf">cmdline_to_str</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Format a string based on the command line&quot;&quot;&quot;</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="p">[</span><span class="n">objects_to_str</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">iter_start</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">iter_stop</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;, &#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{}={}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">objects_to_str</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+    <span class="k">return</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+
+    </div>
+      
+  </div>
+</div>
+<footer class="footer">
+  <div class="container">
+    <p class="pull-right">
+      <a href="#">Back to top</a>
+      
+    </p>
+    <p>
+        &copy; Copyright 2015, Stuart B. Wilkins.<br/>
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.2.3.<br/>
+    </p>
+  </div>
+</footer>
+  </body>
+</html>

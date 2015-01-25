@@ -1,17 +1,19 @@
-.. NSLS-II Standards documentation master file, created by
+.. NSLS-II arch documentation master file, created by
    sphinx-quickstart on Sun Jan 18 10:00:09 2015.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to NSLS-II Standards's documentation!
-=============================================
+Welcome to NSLS-II Beamline Controls Doccumentation
+===================================================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   metadatastore-format   
+   arch/arch
+   ophyd/ophyd
+   pyolog/pyolog
 
 
 
