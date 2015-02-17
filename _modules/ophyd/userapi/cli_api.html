@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 
 
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap.min.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap-theme.min.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bnl-styles.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -67,6 +69,7 @@
   <ul class="dropdown-menu globaltoc"
       role="menu"
       aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../ophyd/ophyd.html">Command line interface to Ophyd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../pyolog/pyolog.html">Simple Python Interface to The Olog</a></li>
@@ -117,10 +120,7 @@
     <div class="col-md-12">
       
   <h1>Source code for ophyd.userapi.cli_api</h1><div class="highlight"><pre>
-<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Command Line Interface to opyd objects</span>
-
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">&quot;&quot;&quot;Command Line Interface to opyd objects&quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">time</span>
@@ -128,6 +128,7 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">closing</span>
 <span class="kn">from</span> <span class="nn">StringIO</span> <span class="kn">import</span> <span class="n">StringIO</span>
+<span class="kn">import</span> <span class="nn">collections</span>
 
 <span class="kn">from</span> <span class="nn">IPython.utils.coloransi</span> <span class="kn">import</span> <span class="n">TermColors</span> <span class="k">as</span> <span class="n">tc</span>
 
@@ -148,7 +149,8 @@
            <span class="s">&#39;set_pos&#39;</span><span class="p">,</span>
            <span class="s">&#39;wh_pos&#39;</span><span class="p">,</span>
            <span class="s">&#39;set_lm&#39;</span><span class="p">,</span>
-           <span class="s">&#39;log_pos&#39;</span>
+           <span class="s">&#39;log_pos&#39;</span><span class="p">,</span>
+           <span class="s">&#39;log_pos_diff&#39;</span>
            <span class="p">]</span>
 
 <span class="c"># Global Defs of certain strings</span>
@@ -168,11 +170,14 @@
                 <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&quot;__iter__&quot;</span><span class="p">):</span>
                     <span class="n">args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">])</span>
             <span class="c"># Now do type checking ignoring None</span>
-            <span class="k">for</span> <span class="n">arg</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">ensure_args</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">ensure_args</span><span class="p">)):</span>
                 <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span><span class="p">:</span>
                         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
-                            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Incorect type in parameter list&quot;</span><span class="p">)</span>
+                            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Incorect type in parameter list.</span><span class="se">\n</span><span class="s">&quot;</span>
+                                            <span class="s">&quot;Parameter at position {} &quot;</span>
+                                            <span class="s">&quot;is expected to be an instance of &quot;</span>
+                                            <span class="s">&quot;{}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">t</span><span class="p">))</span>
 
             <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">wrapper</span>
@@ -187,10 +192,10 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">        positioner: Positioner or list</span>
-<span class="sd">            Positioners to move</span>
-<span class="sd">        position: float or list of float</span>
-<span class="sd">            Values to move positioners to.</span>
+<span class="sd">    positioner : Positioner or list</span>
+<span class="sd">        Positioners to move</span>
+<span class="sd">    position : float or list of float</span>
+<span class="sd">        Values to move positioners to.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -201,7 +206,6 @@
 <span class="sd">    Move positioner `slt1_xg` and `slt1_yg` to 2 and 3 respectively::</span>
 
 <span class="sd">    &gt;&gt;&gt;mov([slt1_xg, slt1_yg], [2, 3])</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
@@ -213,6 +217,15 @@
     <span class="c"># Start Moving all Positioners in context manager to catch</span>
     <span class="c"># Keyboard interrupts</span>
 
+    <span class="c"># TODO : This should be a utility function</span>
+
+    <span class="n">pos_prec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s">&#39;precision&#39;</span><span class="p">):</span>
+            <span class="n">pos_prec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pos_prec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
     <span class="k">with</span> <span class="n">catch_keyboard_interrupt</span><span class="p">(</span><span class="n">positioner</span><span class="p">):</span>
         <span class="n">stat</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span>
                 <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">)]</span>
@@ -221,12 +234,14 @@
         <span class="c"># will happen</span>
         <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">done</span> <span class="o">=</span> <span class="bp">False</span>
+
         <span class="k">while</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">flag</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">):</span>
             <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">LightGreen</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
             <span class="k">print</span><span class="p">(</span><span class="s">&#39;   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
-                <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">)</span>
-            <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;</span><span class="se">\r</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">prec</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">pos_prec</span><span class="p">):</span>
+                <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">prec</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\033</span><span class="s">[2A&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
             <span class="n">done</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
@@ -235,13 +250,13 @@
     <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span> <span class="o">+</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
 
 </div>
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">Positioner</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
 <div class="viewcode-block" id="movr"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.movr">[docs]</a><span class="k">def</span> <span class="nf">movr</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Move positioners relative to their current positon.</span>
 
 <span class="sd">    See Also</span>
 <span class="sd">    --------</span>
 <span class="sd">    mov : move positioners to an absolute position.</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">_start_val</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
@@ -264,13 +279,13 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">        positioner: positioner or list of positioners</span>
-<span class="sd">        limits: single or list of tuple of form (+ve, -ve) limits</span>
+<span class="sd">    positioner : positioner or list of positioners</span>
+<span class="sd">    limits : single or list of tuple of form (+ve, -ve) limits</span>
 
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
-<span class="sd">        IOError</span>
-<span class="sd">            If the caput (EPICS put) fails then an IOError is raised.</span>
+<span class="sd">    IOError</span>
+<span class="sd">        If the caput (EPICS put) fails then an IOError is raised.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -282,7 +297,6 @@
 <span class="sd">    respectively::</span>
 
 <span class="sd">    &gt;&gt;&gt;set_lm([m1, m2], [[2,-2], [3, -3]])</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
@@ -334,14 +348,14 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">        positioner: Positioner or list of positioners.</span>
-<span class="sd">        position: float or list of floats.</span>
-<span class="sd">            New position of positioners</span>
+<span class="sd">    positioner : Positioner or list of positioners.</span>
+<span class="sd">    position : float or list of floats.</span>
+<span class="sd">        New position of positioners</span>
 
 <span class="sd">    Raises</span>
 <span class="sd">    ------</span>
-<span class="sd">        TypeError</span>
-<span class="sd">            If positioner is not an instance of an EpicsMotor.</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        If positioner is not an instance of an EpicsMotor.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -353,6 +367,8 @@
 
 <span class="sd">    &gt;&gt;&gt;set_pos([m1, m2], [1, 2])</span>
 
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If positioner is not an instance of an EpicsMotor.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
@@ -398,7 +414,7 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">        positioners : Positioner, list of Positioners or None</span>
+<span class="sd">    positioners : Positioner, list of Positioners or None</span>
 
 <span class="sd">    See Also</span>
 <span class="sd">    --------</span>
@@ -414,11 +430,10 @@
 <span class="sd">    List positioners `m1`, `m2` and `m3`::</span>
 
 <span class="sd">    &gt;&gt;&gt;wh_pos([m1, m2, m3])</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()[</span><span class="n">d</span><span class="p">]</span>
-                       <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">())]</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()</span>
+        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pos</span><span class="p">)]</span>
 
     <span class="n">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
 
@@ -442,8 +457,8 @@
 <span class="sd">            The ID of the logbook entry returned by the logbook.log method.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()[</span><span class="n">d</span><span class="p">]</span>
-                       <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">())]</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="n">session_mgr</span><span class="o">.</span><span class="n">get_positioners</span><span class="p">()</span>
+        <span class="n">positioners</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">pos</span><span class="p">)]</span>
 
     <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
 
@@ -461,25 +476,122 @@
     <span class="n">pdict</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">pdict</span><span class="p">[</span><span class="s">&#39;objects&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
     <span class="n">pdict</span><span class="p">[</span><span class="s">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">({</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">})</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;OphydPositioners&#39;</span><span class="p">,</span> <span class="n">pdict</span><span class="p">]</span>
 
     <span class="c"># make the logbook entry</span>
-    <span class="nb">id</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">[</span><span class="n">p</span><span class="p">])</span>
+    <span class="nb">id</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;OphydPositioners&#39;</span><span class="p">:</span> <span class="n">pdict</span><span class="p">},</span>
+                     <span class="n">ensure</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
 
     <span class="k">print</span><span class="p">(</span><span class="s">&#39;Logbook positions added as Logbook ID {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">id</span><span class="p">))</span>
     <span class="k">return</span> <span class="nb">id</span>
 
 </div>
-<span class="k">def</span> <span class="nf">log_pos_diff</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook&quot;&quot;&quot;</span>
-    <span class="n">values</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">log_pos_mov</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">positioners</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook</span>
+
+<span class="sd">    This function moves to positions recorded in the experimental logbook using</span>
+<span class="sd">    the :py:func:`log_pos` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : integer, optional</span>
+<span class="sd">        ID of logbook entry to search for and move positions to.</span>
+<span class="sd">    dry_run : bool, optional</span>
+<span class="sd">        If True, do not move motors, but execute a dry_run</span>
+<span class="sd">    positioners : list, optional</span>
+<span class="sd">        List of string names of positioners to compare and move. Other</span>
+<span class="sd">        positioners in the log entry will be ignored.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logpos</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+
+    <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">objects</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">stat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">objects</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+        <span class="n">newpos</span> <span class="o">=</span> <span class="n">logpos</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">oldpos</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">position</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dry_run</span><span class="p">:</span>
+                <span class="n">stat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">newpos</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">))</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;{}[!!] Unable to move positioner {}&#39;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;{}[**] Moving positioner {} to {}&#39;</span>
+                  <span class="s">&#39; from current position of {}{}`&#39;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span> <span class="n">value</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">newpos</span><span class="p">,</span>
+                          <span class="n">oldpos</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">{}Waiting for positioners to complete .....&#39;</span>
+          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">LightGreen</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">while</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">):</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39; Done{}</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="log_pos_diff"><a class="viewcode-back" href="../../../ophyd/cli_api.html#ophyd.userapi.cli_api.log_pos_diff">[docs]</a><span class="k">def</span> <span class="nf">log_pos_diff</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">positioners</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook</span>
+
+<span class="sd">    This function compares positions recorded in the experimental logbook</span>
+<span class="sd">    using the :py:func:`log_pos` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : integer</span>
+<span class="sd">        ID of logbook entry to search for and move positions to.</span>
+<span class="sd">    positioners : list</span>
+<span class="sd">        List of string names of positioners to compare. Other positioners</span>
+<span class="sd">        in the log entry will be ignored.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">oldpos</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
 
     <span class="c"># Cycle through positioners and compare position with old value</span>
+    <span class="c"># If we have an error, print a warning</span>
 
+    <span class="n">diff</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">objects</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">objects</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
-        <span class="k">print</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">-</span> <span class="n">value</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">diff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">position</span> <span class="o">-</span> <span class="n">oldpos</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+            <span class="n">pos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;{}[!!] Unable to compare positioner {}{}&#39;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
 
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Positioner&#39;</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Value&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;Difference&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
 
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">diff</span><span class="p">):</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">)</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">3</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+</div>
 <span class="k">def</span> <span class="nf">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Search the logbook and return positioners&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">logbook</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
@@ -492,13 +604,13 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">prop</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;properties&#39;</span><span class="p">][</span><span class="s">&#39;OphydPositioners&#39;</span><span class="p">]</span>
     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-        <span class="ne">KeyError</span><span class="p">(</span><span class="s">&#39;No property in log entry with positioner information&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s">&#39;No property in log entry with positioner information&#39;</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">obj</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s">&#39;objects&#39;</span><span class="p">])</span>
         <span class="n">val</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s">&#39;values&#39;</span><span class="p">])</span>
     <span class="k">except</span><span class="p">:</span>
-        <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Unable to create objects from log entry&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&#39;Unable to create objects from log entry&#39;</span><span class="p">)</span>
 
     <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">}</span>
     <span class="k">return</span> <span class="n">val</span><span class="p">,</span> <span class="n">objects</span>
@@ -507,14 +619,15 @@
 <span class="k">def</span> <span class="nf">logbook_add_objects</span><span class="p">(</span><span class="n">objects</span><span class="p">,</span> <span class="n">extra_pvs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Add to the logbook aditional information on ophyd objects.</span>
 
-<span class="sd">    :param objects: Objects to add to log entry.</span>
-<span class="sd">    :type objects: Ophyd objects</span>
-<span class="sd">    :param extra_pvs: Extra PVs to include in report</span>
-<span class="sd">    :type extra_pvs: List of strings</span>
+<span class="sd">    This routine takes objects and possible extra pvs and adds to the log entry</span>
+<span class="sd">    information which is not printed to stdout/stderr.</span>
 
-<span class="sd">    This routine takes objects and possible extra pvs and adds to the log</span>
-<span class="sd">    entry information which is not printed to stdout/stderr.</span>
-
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    objects : Ophyd objects</span>
+<span class="sd">        Objects to add to log entry.</span>
+<span class="sd">    extra_pvs : List of strings</span>
+<span class="sd">        Extra PVs to include in report</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">msg</span> <span class="o">=</span> <span class="s">&#39;&#39;</span>
@@ -546,21 +659,9 @@
 
 <span class="k">def</span> <span class="nf">print_value</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;{:.{fmt}} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">egu</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">prec</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;{: .{fmt}f} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">egu</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">prec</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">print_value_aligned</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">FMT_LEN</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="n">fmt1</span> <span class="o">=</span> <span class="s">&#39;{{0:&gt;{0}}}.{{1:&lt;{1}}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">size</span><span class="o">-</span><span class="n">prec</span><span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">prec</span><span class="p">)</span>
-    <span class="n">fmt2</span> <span class="o">=</span> <span class="s">&#39;{{:.{}f}}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">prec</span><span class="p">)</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">fmt2</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s">&#39;0&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;.&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s">&#39;0&#39;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;0&#39;</span>
-    <span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="s">&#39;{} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">egu</span><span class="p">)</span>
-    <span class="n">print_string</span><span class="p">(</span><span class="n">fmt1</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">s</span><span class="p">[:</span><span class="mi">2</span><span class="p">])),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">blink</span><span class="p">(</span><span class="n">on</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
@@ -577,7 +678,6 @@
 <span class="sd">    This context manager should be used when moving positioners via the cli</span>
 <span class="sd">    to capture the keyboardInterrupt and ensure that motors are stopped and</span>
 <span class="sd">    clean up the output to the screen.</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">blink</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
@@ -613,9 +713,17 @@
 
     <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
         <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
-        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
-        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
-        <span class="n">print_value_aligned</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">high_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s">&#39;precision&#39;</span><span class="p">):</span>
+                <span class="n">prec</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">precision</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">prec</span> <span class="o">=</span> <span class="n">FMT_PREC</span>
+            <span class="n">print_value</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">prec</span><span class="p">,</span>
+                        <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">print_string</span><span class="p">(</span><span class="s">&#39;INVALID&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; | &#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">high_limit</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s">&#39; |</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
 
     <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="mi">4</span><span class="o">*</span><span class="p">(</span><span class="n">FMT_LEN</span><span class="o">+</span><span class="mi">3</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>
     <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="nb">file</span><span class="p">)</span>

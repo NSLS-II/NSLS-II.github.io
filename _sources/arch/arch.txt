@@ -7,6 +7,6 @@ Architecture components
    :maxdepth: 2
    :glob:
 
+   overview
    metadatastore-format
    filestore-format
-

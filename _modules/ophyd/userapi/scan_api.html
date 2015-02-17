@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 
 
@@ -12,6 +13,7 @@
     <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap.min.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/bootstrap-3.2.0/css/bootstrap-theme.min.css" type="text/css" />
     <link rel="stylesheet" href="../../../_static/bootstrap-sphinx.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/bnl-styles.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -67,6 +69,7 @@
   <ul class="dropdown-menu globaltoc"
       role="menu"
       aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../ophyd/ophyd.html">Command line interface to Ophyd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../pyolog/pyolog.html">Simple Python Interface to The Olog</a></li>
@@ -119,43 +122,147 @@
   <h1>Source code for ophyd.userapi.scan_api</h1><div class="highlight"><pre>
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span><span class="p">,</span> <span class="n">strftime</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
 <span class="kn">import</span> <span class="nn">six</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">string</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
 
 <span class="kn">from</span> <span class="nn">IPython.utils.coloransi</span> <span class="kn">import</span> <span class="n">TermColors</span> <span class="k">as</span> <span class="n">tc</span>
 
 <span class="kn">from</span> <span class="nn">..runengine</span> <span class="kn">import</span> <span class="n">RunEngine</span>
 <span class="kn">from</span> <span class="nn">..session</span> <span class="kn">import</span> <span class="n">get_session_manager</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="n">LimitError</span>
 
 <span class="n">session_manager</span> <span class="o">=</span> <span class="n">get_session_manager</span><span class="p">()</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">session_manager</span><span class="o">.</span><span class="n">_logger</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;AScan&#39;</span><span class="p">,</span> <span class="s">&#39;DScan&#39;</span><span class="p">,</span> <span class="s">&#39;Scan&#39;</span><span class="p">]</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;AScan&#39;</span><span class="p">,</span> <span class="s">&#39;DScan&#39;</span><span class="p">,</span> <span class="s">&#39;Scan&#39;</span><span class="p">,</span> <span class="s">&#39;Data&#39;</span><span class="p">,</span> <span class="s">&#39;Count&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">estimate</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a dictionary of the vital stats of a &#39;peak&#39;&quot;&quot;&quot;</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="c"># Center of peak</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;avg_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;x_at_ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">y</span><span class="o">.</span><span class="n">argmin</span><span class="p">()]</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;x_at_ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">y</span><span class="o">.</span><span class="n">argmax</span><span class="p">()]</span>
+    <span class="c"># Calculate CEN from derivative</span>
+    <span class="n">zero_cross</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">y</span> <span class="o">-</span>
+                 <span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span><span class="p">)))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">zero_cross</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s">&#39;cen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">zero_cross</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">stats</span><span class="p">[</span><span class="s">&#39;ymin&#39;</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">zero_cross</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s">&#39;cen&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">zero_cross</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="k">if</span> <span class="n">zero_cross</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">fwhm</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">zero_cross</span><span class="p">]</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">fwhm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s">&#39;fwhm_left&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fwhm</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">zero_cross</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s">&#39;fwhm_right&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fwhm</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">zero_cross</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+    <span class="c"># Center of mass</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s">&#39;center_of_mass&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">y</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">stats</span>
+
+
+<span class="k">class</span> <span class="nc">OphydList</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Subclass of List for Ophyd Objects to allow easy removal&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">pass</span>
 
 
 <span class="k">class</span> <span class="nc">Data</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Class for containing scan data&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for containing scan data</span>
+
+<span class="sd">    This is a small object for containing data from a scan as objects. The</span>
+<span class="sd">    data can be set on initialization or using the :py:meth:`data_dict`</span>
+<span class="sd">    proprty. Data which has a length greater than 1 is stored as numpy</span>
+<span class="sd">    arrays.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    data : dict</span>
+<span class="sd">        Dictionary of data from scan</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Initialize class with data</span>
 
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-
-<span class="sd">        data : dict</span>
-<span class="sd">            Dictionary of data from scan</span>
-
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
-            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="k">def</span> <span class="nf">_estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xname</span><span class="p">,</span> <span class="n">yname</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Estimate peak parameters&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_dict</span> <span class="o">=</span> <span class="n">estimate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="p">[</span><span class="n">xname</span><span class="p">],</span>
+                                       <span class="bp">self</span><span class="o">.</span><span class="n">data_dict</span><span class="p">[</span><span class="n">yname</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">estimate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xname</span><span class="p">,</span> <span class="n">yname</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_estimate</span><span class="p">(</span><span class="n">xname</span><span class="p">,</span> <span class="n">yname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_dict</span>
+
+    <span class="k">def</span> <span class="nf">cen</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xname</span><span class="p">,</span> <span class="n">yname</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calculate the center from FWHM&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_estimate</span><span class="p">(</span><span class="n">xname</span><span class="p">,</span> <span class="n">yname</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_dict</span><span class="p">[</span><span class="s">&#39;cen&#39;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">data_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Dictionary of data objects&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_dict</span>
+
+    <span class="nd">@data_dict.setter</span>
+    <span class="k">def</span> <span class="nf">data_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the data dictionary&quot;&quot;&quot;</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">ch</span> <span class="k">if</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">(</span><span class="n">string</span><span class="o">.</span><span class="n">ascii_letters</span> <span class="o">+</span> <span class="n">string</span><span class="o">.</span><span class="n">digits</span><span class="p">)</span>
+                        <span class="k">else</span> <span class="s">&#39;_&#39;</span>
+                        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_data_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">values</span><span class="p">)}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan">[docs]</a><span class="k">class</span> <span class="nc">Scan</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for configuring and running a scan</span>
+
+<span class="sd">    This class performs setup and calls the Ophyd RunEngine to start a scan</span>
+<span class="sd">    (run). It cah be inhereted to overload the configuration or add additional</span>
+<span class="sd">    steps in the scan. When the scan is run using the :py:meth:`run` method the</span>
+<span class="sd">    class enters a context manager (itsself) which runs :py:meth:`pre_scan` on</span>
+<span class="sd">    entry, and runs :py:meth:`post_scan` on exit. Because of the use of the</span>
+<span class="sd">    context manager, :py:meth:&#39;post_scan&#39; will run even if an exception is</span>
+<span class="sd">    thrown in the :py:class:`RunEngine`. Within the context manager the</span>
+<span class="sd">    following steps are taken:</span>
+
+<span class="sd">    * :py:meth:`check_paths`</span>
+<span class="sd">    * :py:meth:`setup_detectors`</span>
+<span class="sd">    * :py:meth:`setup_triggers`</span>
+
+<span class="sd">    After configuring the detectors and triggers the trajectory is loaded</span>
+<span class="sd">    into the positioners using the :py:meth:`set_trajectory` method.</span>
+<span class="sd">    Finally the :py:class:`RunEngine` is initialised from the scans config</span>
+<span class="sd">    and executed using the :py:meth:`start_run()` method.</span>
+
+<span class="sd">    The data which is collected in the run, returned by the run-engine is</span>
+<span class="sd">    appended to a ringbuffer and can be accessed through the :py:meth:`data`</span>
+<span class="sd">    method.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    TODO</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_shared_config</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;default_triggers&#39;</span><span class="p">:</span> <span class="p">[],</span>
                       <span class="s">&#39;default_detectors&#39;</span><span class="p">:</span> <span class="p">[],</span>
-                      <span class="s">&#39;scan_data&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">}</span>
+                      <span class="s">&#39;user_detectors&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                      <span class="s">&#39;user_triggers&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                      <span class="s">&#39;scan_data&#39;</span><span class="p">:</span> <span class="bp">None</span><span class="p">,</span> <span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Scan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -166,8 +273,6 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;scan_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;scan_data&#39;</span><span class="p">]</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">=</span> <span class="bp">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">settle_time</span> <span class="o">=</span> <span class="bp">None</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
@@ -181,37 +286,77 @@
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="o">=</span> <span class="bp">None</span>
 
+<div class="viewcode-block" id="Scan.__call__"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Start a run</span>
+
+<span class="sd">        This is a convinience function and calls :py:meth:`run` with the</span>
+<span class="sd">        parameters passed to this function. This is equivalent to::</span>
+
+<span class="sd">        &gt;&gt;&gt;scan.run(*args, **kwargs)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
 <div class="viewcode-block" id="Scan.check_paths"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.check_paths">[docs]</a>    <span class="k">def</span> <span class="nf">check_paths</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Check the paths against any limits of positioners&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Check the positioner paths</span>
+
+<span class="sd">        This routine checks the path of the positioners against limits by</span>
+<span class="sd">        using the :py:meth:`check_value` method.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            Raised in the case that a positioner will be moved outside its</span>
+<span class="sd">            limits.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">pos</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">pos</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">LimitError</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&#39;Scan moves positioner {} </span><span class="se">\</span>
 <span class="s">                                     out of limits {},{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                                      <span class="n">pos</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">high_limit</span><span class="p">))</span>
 </div>
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Scan.__enter__"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.__enter__">[docs]</a>    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Entry point for context manager&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exec_type</span><span class="p">,</span> <span class="n">exec_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="Scan.__exit__"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.__exit__">[docs]</a>    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exec_type</span><span class="p">,</span> <span class="n">exec_value</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Exit point for context manager&quot;&quot;&quot;</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Scan context manager exited with </span><span class="si">%s</span><span class="s">&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">exec_value</span><span class="p">))</span>
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_tb</span><span class="p">(</span><span class="n">tb</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">post_scan</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="Scan.pre_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.pre_scan">[docs]</a>    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Routine run before scan starts&quot;&quot;&quot;</span>
         <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="Scan.post_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.post_scan">[docs]</a>    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Routine run after scan has completed&quot;&quot;&quot;</span>
         <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Scan.setup_detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.setup_detectors">[docs]</a>    <span class="k">def</span> <span class="nf">setup_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detectors</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Routine run to setup detectors before scan starts</span>
 
-    <span class="k">def</span> <span class="nf">setup_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        detectors : list of Ophyd Objects</span>
+<span class="sd">            List of the detectors to configure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Scan.setup_triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.setup_triggers">[docs]</a>    <span class="k">def</span> <span class="nf">setup_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Routine run to setup triggers before scan starts</span>
 
-    <span class="k">def</span> <span class="nf">setup_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        triggers : list of OphydObjects</span>
+<span class="sd">            List of the triggers to configure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
-
+</div>
 <div class="viewcode-block" id="Scan.format_plot"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.format_plot">[docs]</a>    <span class="k">def</span> <span class="nf">format_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        Guess the positioners and detectors that the user cares about</span>
+        <span class="sd">&quot;&quot;&quot;Guess the positioners and detectors that the user cares about</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -219,7 +364,8 @@
 <span class="sd">            The default positioners to set as the x axis</span>
 <span class="sd">        ploty : list</span>
 <span class="sd">            The list of positioners/detectors to plot on the y axis</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
         <span class="n">pos_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">]</span>
         <span class="n">det_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">det</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">]</span>
         <span class="n">valid_names</span> <span class="o">=</span> <span class="n">pos_names</span> <span class="o">+</span> <span class="n">det_names</span>
@@ -247,7 +393,11 @@
         <span class="k">return</span> <span class="n">plotx</span><span class="p">,</span> <span class="n">ploty</span>
 </div>
 <div class="viewcode-block" id="Scan.run"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.run">[docs]</a>    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Run the scan&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Run the scan</span>
+
+<span class="sd">        The main loop of the scan. This routine runs the scan and calls the</span>
+<span class="sd">        ophyd runengine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span> <span class="o">=</span> <span class="n">session_manager</span><span class="o">.</span><span class="n">get_next_scan_id</span><span class="p">()</span>
 
         <span class="c"># Run this in a context manager to capture</span>
@@ -255,8 +405,8 @@
 
         <span class="k">with</span> <span class="bp">self</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">check_paths</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">setup_detectors</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">setup_triggers</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup_detectors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">setup_triggers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">):</span>
                 <span class="n">pos</span><span class="o">.</span><span class="n">set_trajectory</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
@@ -283,18 +433,35 @@
 </div>
     <span class="nd">@property</span>
 <div class="viewcode-block" id="Scan.data"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.data">[docs]</a>    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the data ringbuffer&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Return the data ringbuffer</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :py:class:`collections.deque` object containing :py:class:`Data` objects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span>
 </div>
+    <span class="nd">@property</span>
 <div class="viewcode-block" id="Scan.last_data"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.last_data">[docs]</a>    <span class="k">def</span> <span class="nf">last_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Returns the last data set&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Returns the last data set</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :py:class:`Data` object</span>
+<span class="sd">            Returns the last data. Equivalent to `Scan.data[-1]`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_buffer</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">return</span> <span class="bp">None</span>
 </div>
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">default_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the default detectors&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Return the default detectors</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_detectors&#39;</span><span class="p">]</span>
 
     <span class="nd">@default_detectors.setter</span>
@@ -304,7 +471,12 @@
 </div>
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">default_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the default triggers&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Return the default triggers</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_triggers&#39;</span><span class="p">]</span>
 
     <span class="nd">@default_triggers.setter</span>
@@ -313,67 +485,106 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;default_triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">triggers</span>
 </div>
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the default triggers for this scan&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_triggers</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_triggers</span>
+    <span class="k">def</span> <span class="nf">user_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the user detectors</span>
 
-    <span class="nd">@triggers.setter</span>
-<div class="viewcode-block" id="Scan.triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.triggers">[docs]</a>    <span class="k">def</span> <span class="nf">triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the default triggers for this scan&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_triggers</span> <span class="o">=</span> <span class="n">triggers</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_detectors&#39;</span><span class="p">]</span>
+
+    <span class="nd">@user_detectors.setter</span>
+<div class="viewcode-block" id="Scan.user_detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.user_detectors">[docs]</a>    <span class="k">def</span> <span class="nf">user_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detectors</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the user detectors&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_detectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">detectors</span>
 </div>
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return the default detectors for this scan&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_detectors</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_detectors</span>
+    <span class="k">def</span> <span class="nf">user_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the user triggers</span>
 
-    <span class="nd">@detectors.setter</span>
-<div class="viewcode-block" id="Scan.detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.detectors">[docs]</a>    <span class="k">def</span> <span class="nf">detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">detectors</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Set the default detectors for this scan&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_detectors</span> <span class="o">=</span> <span class="n">detectors</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_triggers&#39;</span><span class="p">]</span>
+
+    <span class="nd">@user_triggers.setter</span>
+<div class="viewcode-block" id="Scan.user_triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.user_triggers">[docs]</a>    <span class="k">def</span> <span class="nf">user_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">triggers</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Set the user triggers&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">triggers</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Scan.triggers"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.triggers">[docs]</a>    <span class="k">def</span> <span class="nf">triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the triggers for this scan</span>
+
+<span class="sd">        The triggers of the scan is a concatenation of the list of triggers</span>
+<span class="sd">        for this scan instance and the default triggers which is a singleton.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_triggers&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_triggers</span>
+</div>
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Scan.detectors"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.Scan.detectors">[docs]</a>    <span class="k">def</span> <span class="nf">detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the detectors for this scan</span>
+
+<span class="sd">        The detectors of the scan is a concatenation of the list of detectors</span>
+<span class="sd">        for this scan instance and the default detectors which is a singleton.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of OphydObjects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shared_config</span><span class="p">[</span><span class="s">&#39;user_detectors&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_detectors</span>
 
 </div></div>
 <div class="viewcode-block" id="AScan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan">[docs]</a><span class="k">class</span> <span class="nc">AScan</span><span class="p">(</span><span class="n">Scan</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Class for a N-Dimensional Scan&quot;&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;Class for running N-Dimensional Scan</span>
+
+<span class="sd">    This class performs setup and runs N-dimensional scans.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Scan motor m1 from -10 to 10 with 20 intervals::</span>
+
+<span class="sd">    &gt;&gt;&gt;scan(m1, -10, 10, 20)</span>
+
+<span class="sd">    Scan motor m1 and m2 in a linear path with 20 intervals with m1</span>
+<span class="sd">    starting at -10 and m2 starting at -5 and traveling to 10 and 5</span>
+<span class="sd">    respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;scan([[m1, m2]], [[-10, -5]], [[10, 5]], 20)</span>
+
+<span class="sd">    Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling</span>
+<span class="sd">    from -10 to 10 and m2 traveling from -5 to 5::</span>
+
+<span class="sd">    &gt;&gt;&gt;scan([[m1], [m2]], [[-10], [-5]], [[10], [5]], [20, 20])</span>
+
+<span class="sd">    Scan motors m1 and m2 in a linear path in the first dimension and</span>
+<span class="sd">    m3 as a linear path in the second dimension::</span>
+
+<span class="sd">    &gt;&gt;&gt;scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">ScanND</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="bp">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span> <span class="o">=</span> <span class="bp">None</span>
 
     <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">ScanND</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">make_log_entry</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">AScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_make_log_entry</span><span class="p">()</span>
 
-<div class="viewcode-block" id="AScan.calc_linear_path"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.calc_linear_path">[docs]</a>    <span class="k">def</span> <span class="nf">calc_linear_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Return a linearaly spaced path&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">)</span>
-</div>
-<div class="viewcode-block" id="AScan.calc_path"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.calc_path">[docs]</a>    <span class="k">def</span> <span class="nf">calc_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="n">dim</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Calculate a single path given start, stop and npts for dim&quot;&quot;&quot;</span>
-        <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">npts</span><span class="p">)</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calc_linear_path</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">[</span><span class="n">dim</span><span class="p">])</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">N</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">][:</span><span class="nb">len</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="o">-</span><span class="n">dim</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">y</span> <span class="o">=</span> <span class="n">N</span><span class="p">[:</span><span class="n">dim</span><span class="p">]</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">prod</span><span class="p">())</span>
-        <span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">y</span><span class="o">.</span><span class="n">prod</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">a</span>
-</div>
-<div class="viewcode-block" id="AScan.make_log_entry"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.make_log_entry">[docs]</a>    <span class="k">def</span> <span class="nf">make_log_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_make_log_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Format and make a log entry for the scan&quot;&quot;&quot;</span>
-        <span class="n">time_text</span> <span class="o">=</span> <span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%a, </span><span class="si">%d</span><span class="s"> %b %Y %H:%M:%S %Z&quot;</span><span class="p">)</span>
 
         <span class="c"># Print header</span>
 
         <span class="n">msg</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;Scan Command    : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span><span class="p">)]</span>
         <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan ID         : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span><span class="p">))</span>
-        <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan started at : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">time_text</span><span class="p">))</span>
         <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan Dimension  : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dimension</span><span class="p">))</span>
         <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan Datapoints : {} ({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span><span class="p">,</span>
                                                       <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span><span class="p">)))</span>
@@ -399,6 +610,7 @@
             <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">det</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
 
         <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
         <span class="n">msg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{0:=^80}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">))</span>
 
         <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
@@ -417,16 +629,20 @@
         <span class="n">d</span><span class="p">[</span><span class="s">&#39;stop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
         <span class="n">d</span><span class="p">[</span><span class="s">&#39;npts&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npts</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="n">properties</span><span class="o">=</span><span class="p">[[</span><span class="s">&#39;OphydScan&#39;</span><span class="p">,</span> <span class="n">d</span><span class="p">]])</span>
-</div>
-<div class="viewcode-block" id="AScan.format_command_line"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.format_command_line">[docs]</a>    <span class="k">def</span> <span class="nf">format_command_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;OphydScan&#39;</span><span class="p">:</span> <span class="n">d</span><span class="p">},</span>
+                             <span class="n">ensure</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                             <span class="n">logbooks</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;Data Acquisition&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">_format_command_line</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Return a string representation of the passed arguments&quot;&quot;&quot;</span>
         <span class="n">cl_args</span> <span class="o">=</span> <span class="n">cmdline_to_str</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="n">rtn</span> <span class="o">=</span> <span class="s">&#39;{}()({})&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">cl_args</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">rtn</span>
-</div>
+
 <div class="viewcode-block" id="AScan.__call__"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Scan positioners along a regular path</span>
+
+<span class="sd">        This method will Setup the scan and run the RunEngine (perform a scan)</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -438,29 +654,26 @@
 <span class="sd">            The stop position of the positioners</span>
 <span class="sd">        npts : int or list of int</span>
 <span class="sd">            The number of intervals in the scan</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_scan</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</div>
+<div class="viewcode-block" id="AScan.setup_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.AScan.setup_scan">[docs]</a>    <span class="k">def</span> <span class="nf">setup_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup scan along a regular path.</span>
 
-<span class="sd">        Examples</span>
-<span class="sd">        --------</span>
-<span class="sd">        Scan motor m1 from -10 to 10 with 20 intervals::</span>
+<span class="sd">        This method will Setup the scan only. The scan can be executed using</span>
+<span class="sd">        :py:meth:`run` method.</span>
 
-<span class="sd">        &gt;&gt;&gt;scan(m1, -10, 10, 20)</span>
-
-<span class="sd">        Scan motor m1 and m2 in a linear path with 20 intervals with m1</span>
-<span class="sd">        starting at -10 and m2 starting at -5 and traveling to 10 and 5</span>
-<span class="sd">        respectively::</span>
-
-<span class="sd">        &gt;&gt;&gt;scan([m1, m2], [-10, -5], [10, 5], 20)</span>
-
-<span class="sd">        Scan motors m1 and m2 in a mesh of 20 x 20 intervals with m1 traveling</span>
-<span class="sd">        from -10 to 10 and m2 traveling from -5 to 5::</span>
-
-<span class="sd">        &gt;&gt;&gt;scan([m1, m2], [-10, -5], [10, 5], [20, 20])</span>
-
-<span class="sd">        Scan motors m1 and m2 in a linear path in the first dimension and</span>
-<span class="sd">        m3 as a linear path in the second dimension::</span>
-
-<span class="sd">        &gt;&gt;&gt;scan([[m1, m2], m3], [[-10, -5], -2], [[10, 5], 2], [20, 20])</span>
-
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        positioners : Positioner or list of Positioners</span>
+<span class="sd">            The positioner objects to use in the scan</span>
+<span class="sd">        start : position or list of positions</span>
+<span class="sd">            The start position of the positioners</span>
+<span class="sd">        stop : position or list of positions</span>
+<span class="sd">            The stop position of the positioners</span>
+<span class="sd">        npts : int or list of int</span>
+<span class="sd">            The number of intervals in the scan</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c"># This is an n-dimensional scan. We take the dims from</span>
@@ -477,7 +690,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">npts</span> <span class="o">=</span> <span class="n">npts</span>
 
         <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">npts</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">format_command_line</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_command_line</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="c"># Calculate number of points from intervals</span>
 
@@ -509,19 +722,28 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">datapoints</span> <span class="o">=</span> <span class="n">npts</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dimension</span> <span class="o">=</span> <span class="n">dimension</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </div></div>
 <div class="viewcode-block" id="DScan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan">[docs]</a><span class="k">class</span> <span class="nc">DScan</span><span class="p">(</span><span class="n">AScan</span><span class="p">):</span>
 <div class="viewcode-block" id="DScan.pre_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan.pre_scan">[docs]</a>    <span class="k">def</span> <span class="nf">pre_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Prescan store starting positions and change paths&quot;&quot;&quot;</span>
+        <span class="sd">&quot;&quot;&quot;Prescan store starting positions and change paths</span>
+
+<span class="sd">        This prescan routine stores the current position of the positioners</span>
+<span class="sd">        upon execution and then sets the paths to the difference between the</span>
+<span class="sd">        current position and the scan range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">DScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">+</span> <span class="n">start</span>
                       <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span><span class="p">)]</span>
 </div>
 <div class="viewcode-block" id="DScan.post_scan"><a class="viewcode-back" href="../../../ophyd/scan_api.html#ophyd.userapi.scan_api.DScan.post_scan">[docs]</a>    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Post Scan Move to start positions&quot;&quot;&quot;</span>
-        <span class="nb">super</span><span class="p">(</span><span class="n">DScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">pre_scan</span><span class="p">()</span>
+        <span class="sd">&quot;&quot;&quot;Post Scan Move to start positions</span>
+
+<span class="sd">        This post scan routine returns the positioners to their origional</span>
+<span class="sd">        starting position (as recorded by :py:meth:`pre_scan`) once the scan</span>
+<span class="sd">        has finished.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">DScan</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">post_scan</span><span class="p">()</span>
         <span class="n">status</span> <span class="o">=</span> <span class="p">[</span><span class="n">pos</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
                   <span class="k">for</span> <span class="n">pos</span><span class="p">,</span> <span class="n">start</span> <span class="ow">in</span>
                   <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">positioners</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_positions</span><span class="p">)]</span>
@@ -536,6 +758,77 @@
         <span class="k">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span> <span class="o">+</span> <span class="s">&quot; Done.&quot;</span><span class="p">)</span>
 
 </div></div>
+<span class="k">class</span> <span class="nc">Count</span><span class="p">(</span><span class="n">Scan</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Trigger and collect a single measurement</span>
+
+<span class="sd">    This class serves as a mechanism to trigger and collect a single</span>
+<span class="sd">    measurement. This is often termed a *count*. This class inherits</span>
+<span class="sd">    from the :py:class:`Scan` class and therefore formats and records a</span>
+<span class="sd">    single *run* of one datapoint.</span>
+
+<span class="sd">    A log entry is created if the logbook is setup which records the</span>
+<span class="sd">    result of the scan.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">post_scan</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Post-scan print data</span>
+
+<span class="sd">        This post-scan routine prints the scan results to the screen and</span>
+<span class="sd">        if the logbook is setup prints the results to the screen</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Count</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">post_scan</span><span class="p">()</span>
+
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fmt_count</span><span class="p">()</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="c"># Make a logbook entry</span>
+
+        <span class="n">lmsg</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Scan ID         : {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span><span class="p">))</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Triggers:&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">trig</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">:</span>
+            <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">trig</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{0:=^80}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">triggers</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">lmsg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;PV:{}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">report</span><span class="p">[</span><span class="s">&#39;pv&#39;</span><span class="p">]))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_id</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;triggers&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">triggers</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;detectors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="s">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_data</span><span class="o">.</span><span class="n">data_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lmsg</span><span class="p">),</span> <span class="n">ensure</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                             <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;OphydCount&#39;</span><span class="p">:</span> <span class="n">d</span><span class="p">},</span>
+                             <span class="n">logbooks</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;Data Aquisition&#39;</span><span class="p">])</span>
+
+    <span class="k">def</span> <span class="nf">_fmt_count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Format the count results</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        string</span>
+<span class="sd">            String of a tabular representation of the counts from the</span>
+<span class="sd">            detectors</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rtn</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rtn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;28} | {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;Detector&#39;</span><span class="p">,</span> <span class="s">&#39;Value&#39;</span><span class="p">))</span>
+        <span class="n">rtn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{0:=^60}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">))</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_data</span><span class="o">.</span><span class="n">data_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="n">rtn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;{:&lt;30} {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+        <span class="n">rtn</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rtn</span><span class="p">)</span>
+
+
 <span class="k">def</span> <span class="nf">ensure_iterator</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Check if i is an iterator. If not return length-1 iterator&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&quot;__iter__&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s">&quot;__getitem__&quot;</span><span class="p">):</span>
