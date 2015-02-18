@@ -15,6 +15,7 @@ Contents:
    arch/arch
    ophyd/ophyd
    pyolog/pyolog
+   broker/basics
 
 
 
