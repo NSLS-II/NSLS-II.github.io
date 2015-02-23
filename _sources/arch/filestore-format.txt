@@ -1,6 +1,8 @@
-***************************
-Format of fileStore Entries
-***************************
+.. _filestore-format:
+
+****************************
+Format of File Store Entries
+****************************
 
 Introduction
 ============
