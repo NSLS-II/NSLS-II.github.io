@@ -64,9 +64,9 @@ Write a Handler
 ---------------
 
 A Handler is a class with two required methods,
-an `__init__` that accesses a file and a `__call__` that returns nuggets of
+an ``__init__`` that accesses a file and a ``__call__`` that returns nuggets of
 data from that file. In our case, since we want to access individual lines of
-the file, `__call__` will return a line's worth of data.
+the file, ``__call__`` will return a line's worth of data.
 
 .. ipython:: python
 
@@ -141,3 +141,176 @@ with ``example.csv``, and it knows to call it with the argument ``line_no=2``.
    :suppress:
 
    !rm example.csv
+
+Example 2: Retrieving Datasets from an HDF5 File
+================================================
+
+Suppose 5x5 images are stored as Datasets in an HDF5 file.
+``'A'``, ``'B'``, ``'C'``.
+
+.. ipython:: python
+   :suppress:
+
+   import h5py
+   f = h5py.File('example.h5')
+   for key in list('ABC'):
+       f.create_dataset(key, data=np.random.randint(0, 10, (5, 5)))
+   f.close()
+
+Write a Handler
+---------------
+
+.. ipython:: python
+
+   import h5py
+
+   class HDF5DatasetHandler(object):
+       def __init__(self, filename):
+           self.file = h5py.File(filename)
+       def __call__(self, key):
+           return self.file[key].value
+
+Make a Record of the Data
+-------------------------
+
+.. ipython:: python
+
+   from filestore.api import insert_resource, insert_datum
+   resource_id = insert_resource('hdf5-by-dataset', 'example.h5')
+   insert_datum(resource_id, 'some_id10', {'key': 'A'})
+   insert_datum(resource_id, 'some_id11', {'key': 'B'})
+   insert_datum(resource_id, 'some_id12', {'key': 'C'})
+
+Retrieve the Data
+-----------------
+
+.. ipython:: python
+
+   from filestore.api import register_handler, retrieve
+   register_handler('hdf5-by-dataset', HDF5DatasetHandler)
+   retrieve('some_id11')
+
+.. ipython:: python
+   :suppress:
+
+   !rm example.h5
+
+Example 3: Retrieving Portions of Datasets from an HDF5 File
+============================================================
+
+Suppose several 5x5 images are stored as a single Nx5x5 Dataset in an HDF5
+file. The Dataset is named ``'my-dataset-name``.
+
+.. ipython:: python
+   :suppress:
+
+   import h5py
+   f = h5py.File('example.h5')
+   f.create_dataset('my-dataset-name',
+                    data=np.random.randint(0, 10, (5, 5, 3)))
+   f.close()
+
+Write a Handler
+---------------
+
+.. ipython:: python
+
+   import h5py
+
+   class HDF5DatasetSliceHandler(object):
+       def __init__(self, filename, dataset_name):
+           f = h5py.File(filename)
+           self.data = f[dataset_name].value
+       def __call__(self, frame_no):
+           return self.data[frame_no, :, :]
+
+Make a Record of the Data
+-------------------------
+
+Each 5x5 frame get a separate record.
+
+Notice that, in this example, ``__init__`` requires more than just the
+filename. Additional arguments, in this case ``dataset_name``, are passed
+in a dictionary.
+
+.. ipython:: python
+
+   from filestore.api import insert_resource, insert_datum
+   resource_id = insert_resource('hdf5-slice-single-dataset', 'example.h5',
+                                 dict(dataset_name='my-dataset-name'))
+   insert_datum(resource_id, 'some_id20', {'frame_no': 0})
+   insert_datum(resource_id, 'some_id21', {'frame_no': 1})
+   insert_datum(resource_id, 'some_id22', {'frame_no': 2})
+
+Retrieve the Data
+-----------------
+
+.. ipython:: python
+
+   from filestore.api import register_handler, retrieve
+   register_handler('hdf5-slice-single-dataset', HDF5DatasetSliceHandler)
+   retrieve('some_id21')
+
+.. ipython:: python
+   :suppress:
+
+   !rm example.h5
+
+Example 4: Retrieving the Moon Phase
+====================================
+
+This example illustrates the general power of File Store, beyond reading
+simple files. Any "resource," include a web-based data source, can be
+accessed with a Handler.
+
+Write a Handler
+---------------
+
+When we retrieve data from this handler, it builds a URL that requests the
+weather forcast (or historical record) from the web service forecast.io. 
+From this data it extracts the phase of the moon at a given time.
+
+.. ipython:: python
+
+   import requests
+   import json
+   url = "https://api.forecast.io/forecast/{api_key}/{lat},{long},{time}"
+   api_key = "1378698e5711b504f22b32eb1a40d23a"
+   class MoonPhaseHandler(object):
+       def __init__(self, _):
+           "This handler does not require a filename."
+           pass
+       def __call__(self, time):
+           text = requests.get(url.format(api_key=api_key, lat=0, long=0,
+                                          time=int(time))).text
+           data = json.loads(text)
+           return data['daily']['data'][0]['moonPhase']
+
+Make a Record of the Data
+-------------------------
+
+Notably, in this case, we are making a record of data that we haven't seen yet.
+The data itself will only be obtained for the first time when it retrieved.
+
+.. ipython:: python
+
+   from filestore.api import insert_resource, insert_datum
+   resource_id = insert_resource('moon', None)
+
+Let's register a piece of data giving today's moon phase.
+
+.. ipython:: python
+
+   import time
+   now = time.time()
+   insert_datum(resource_id, 'some_id31', {'time': now})
+
+Retrieve Data
+-------------
+
+
+.. ipython:: python
+
+   from filestore.api import register_handler, retrieve
+   register_handler('moon', MoonPhaseHandler)
+   retrieve('some_id31')

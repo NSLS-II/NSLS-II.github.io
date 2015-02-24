@@ -94,6 +94,24 @@
 <li><a class="reference internal" href="#the-payoff-retrieving-data-is-dead-simple">The Payoff: Retrieving Data Is Dead Simple</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#example-2-retrieving-datasets-from-an-hdf5-file">Example 2: Retrieving Datasets from an HDF5 File</a><ul>
+<li><a class="reference internal" href="#id1">Write a Handler</a></li>
+<li><a class="reference internal" href="#id2">Make a Record of the Data</a></li>
+<li><a class="reference internal" href="#retrieve-the-data">Retrieve the Data</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#example-3-retrieving-portions-of-datasets-from-an-hdf5-file">Example 3: Retrieving Portions of Datasets from an HDF5 File</a><ul>
+<li><a class="reference internal" href="#id3">Write a Handler</a></li>
+<li><a class="reference internal" href="#id4">Make a Record of the Data</a></li>
+<li><a class="reference internal" href="#id5">Retrieve the Data</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#example-4-retrieving-the-moon-phase">Example 4: Retrieving the Moon Phase</a><ul>
+<li><a class="reference internal" href="#id6">Write a Handler</a></li>
+<li><a class="reference internal" href="#id7">Make a Record of the Data</a></li>
+<li><a class="reference internal" href="#retrieve-data">Retrieve Data</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -188,9 +206,9 @@ volume.</p>
 <div class="section" id="write-a-handler">
 <h3>Write a Handler<a class="headerlink" href="#write-a-handler" title="Permalink to this headline">¶</a></h3>
 <p>A Handler is a class with two required methods,
-an <cite>__init__</cite> that accesses a file and a <cite>__call__</cite> that returns nuggets of
+an <tt class="docutils literal"><span class="pre">__init__</span></tt> that accesses a file and a <tt class="docutils literal"><span class="pre">__call__</span></tt> that returns nuggets of
 data from that file. In our case, since we want to access individual lines of
-the file, <cite>__call__</cite> will return a line&#8217;s worth of data.</p>
+the file, <tt class="docutils literal"><span class="pre">__call__</span></tt> will return a line&#8217;s worth of data.</p>
 <div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [2]: </span><span class="k">class</span> <span class="nc">CSVLineHandler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
 <span class="gp">   ...: </span>     <span class="s">&quot;Read data stored as lines in a text file.&quot;</span>
 <span class="gp">   ...: </span>     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
@@ -261,6 +279,177 @@ so.</p>
 </div>
 <p>File Store now knows to use the <tt class="docutils literal"><span class="pre">CSVLineHandler</span></tt> class, it knows to instantiate it
 with <tt class="docutils literal"><span class="pre">example.csv</span></tt>, and it knows to call it with the argument <tt class="docutils literal"><span class="pre">line_no=2</span></tt>.</p>
+</div>
+</div>
+<div class="section" id="example-2-retrieving-datasets-from-an-hdf5-file">
+<h2>Example 2: Retrieving Datasets from an HDF5 File<a class="headerlink" href="#example-2-retrieving-datasets-from-an-hdf5-file" title="Permalink to this headline">¶</a></h2>
+<p>Suppose 5x5 images are stored as Datasets in an HDF5 file.
+<tt class="docutils literal"><span class="pre">'A'</span></tt>, <tt class="docutils literal"><span class="pre">'B'</span></tt>, <tt class="docutils literal"><span class="pre">'C'</span></tt>.</p>
+<div class="section" id="id1">
+<h3>Write a Handler<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [14]: </span><span class="kn">import</span> <span class="nn">h5py</span>
+
+<span class="gp">In [15]: </span><span class="k">class</span> <span class="nc">HDF5DatasetHandler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="bp">self</span><span class="o">.</span><span class="n">file</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">file</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+<span class="gp">   ....: </span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id2">
+<h3>Make a Record of the Data<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [16]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">insert_resource</span><span class="p">,</span> <span class="n">insert_datum</span>
+
+<span class="gp">In [17]: </span><span class="n">resource_id</span> <span class="o">=</span> <span class="n">insert_resource</span><span class="p">(</span><span class="s">&#39;hdf5-by-dataset&#39;</span><span class="p">,</span> <span class="s">&#39;example.h5&#39;</span><span class="p">)</span>
+
+<span class="gp">In [18]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id10&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;key&#39;</span><span class="p">:</span> <span class="s">&#39;A&#39;</span><span class="p">})</span>
+<span class="gh">Out[18]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+
+<span class="gp">In [19]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id11&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;key&#39;</span><span class="p">:</span> <span class="s">&#39;B&#39;</span><span class="p">})</span>
+<span class="gh">Out[19]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+
+<span class="gp">In [20]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id12&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;key&#39;</span><span class="p">:</span> <span class="s">&#39;C&#39;</span><span class="p">})</span>
+<span class="gh">Out[20]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="retrieve-the-data">
+<h3>Retrieve the Data<a class="headerlink" href="#retrieve-the-data" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [21]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">register_handler</span><span class="p">,</span> <span class="n">retrieve</span>
+
+<span class="gp">In [22]: </span><span class="n">register_handler</span><span class="p">(</span><span class="s">&#39;hdf5-by-dataset&#39;</span><span class="p">,</span> <span class="n">HDF5DatasetHandler</span><span class="p">)</span>
+
+<span class="gp">In [23]: </span><span class="n">retrieve</span><span class="p">(</span><span class="s">&#39;some_id11&#39;</span><span class="p">)</span>
+<span class="gh">Out[23]: </span><span class="go"></span>
+<span class="go">array([[7, 4, 1, 5, 6],</span>
+<span class="go">       [5, 7, 9, 2, 2],</span>
+<span class="go">       [8, 6, 0, 1, 7],</span>
+<span class="go">       [5, 9, 9, 6, 4],</span>
+<span class="go">       [9, 9, 7, 6, 2]])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="example-3-retrieving-portions-of-datasets-from-an-hdf5-file">
+<h2>Example 3: Retrieving Portions of Datasets from an HDF5 File<a class="headerlink" href="#example-3-retrieving-portions-of-datasets-from-an-hdf5-file" title="Permalink to this headline">¶</a></h2>
+<p>Suppose several 5x5 images are stored as a single Nx5x5 Dataset in an HDF5
+file. The Dataset is named <tt class="docutils literal"><span class="pre">'my-dataset-name</span></tt>.</p>
+<div class="section" id="id3">
+<h3>Write a Handler<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [24]: </span><span class="kn">import</span> <span class="nn">h5py</span>
+
+<span class="gp">In [25]: </span><span class="k">class</span> <span class="nc">HDF5DatasetSliceHandler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">dataset_name</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="n">f</span> <span class="o">=</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="gp">   ....: </span>        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">f</span><span class="p">[</span><span class="n">dataset_name</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame_no</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">frame_no</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+<span class="gp">   ....: </span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>Make a Record of the Data<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>Each 5x5 frame get a separate record.</p>
+<p>Notice that, in this example, <tt class="docutils literal"><span class="pre">__init__</span></tt> requires more than just the
+filename. Additional arguments, in this case <tt class="docutils literal"><span class="pre">dataset_name</span></tt>, are passed
+in a dictionary.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [26]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">insert_resource</span><span class="p">,</span> <span class="n">insert_datum</span>
+
+<span class="gp">In [27]: </span><span class="n">resource_id</span> <span class="o">=</span> <span class="n">insert_resource</span><span class="p">(</span><span class="s">&#39;hdf5-slice-single-dataset&#39;</span><span class="p">,</span> <span class="s">&#39;example.h5&#39;</span><span class="p">,</span>
+<span class="gp">   ....: </span>                              <span class="nb">dict</span><span class="p">(</span><span class="n">dataset_name</span><span class="o">=</span><span class="s">&#39;my-dataset-name&#39;</span><span class="p">))</span>
+<span class="gp">   ....: </span>
+
+<span class="gp">In [28]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id20&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;frame_no&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">})</span>
+<span class="gh">Out[28]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+
+<span class="gp">In [29]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id21&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;frame_no&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">})</span>
+<span class="gh">Out[29]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+
+<span class="gp">In [30]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id22&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;frame_no&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">})</span>
+<span class="gh">Out[30]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id5">
+<h3>Retrieve the Data<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [31]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">register_handler</span><span class="p">,</span> <span class="n">retrieve</span>
+
+<span class="gp">In [32]: </span><span class="n">register_handler</span><span class="p">(</span><span class="s">&#39;hdf5-slice-single-dataset&#39;</span><span class="p">,</span> <span class="n">HDF5DatasetSliceHandler</span><span class="p">)</span>
+
+<span class="gp">In [33]: </span><span class="n">retrieve</span><span class="p">(</span><span class="s">&#39;some_id21&#39;</span><span class="p">)</span>
+<span class="gh">Out[33]: </span><span class="go"></span>
+<span class="go">array([[1, 0, 0],</span>
+<span class="go">       [7, 4, 3],</span>
+<span class="go">       [8, 8, 3],</span>
+<span class="go">       [0, 5, 0],</span>
+<span class="go">       [2, 3, 1]])</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="example-4-retrieving-the-moon-phase">
+<h2>Example 4: Retrieving the Moon Phase<a class="headerlink" href="#example-4-retrieving-the-moon-phase" title="Permalink to this headline">¶</a></h2>
+<p>This example illustrates the general power of File Store, beyond reading
+simple files. Any &#8220;resource,&#8221; include a web-based data source, can be
+accessed with a Handler.</p>
+<div class="section" id="id6">
+<h3>Write a Handler<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>When we retrieve data from this handler, it builds a URL that requests the
+weather forcast (or historical record) from the web service forecast.io.
+From this data it extracts the phase of the moon at a given time.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [34]: </span><span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="gp">In [35]: </span><span class="kn">import</span> <span class="nn">json</span>
+
+<span class="gp">In [36]: </span><span class="n">url</span> <span class="o">=</span> <span class="s">&quot;https://api.forecast.io/forecast/{api_key}/{lat},{long},{time}&quot;</span>
+
+<span class="gp">In [37]: </span><span class="n">api_key</span> <span class="o">=</span> <span class="s">&quot;1378698e5711b504f22b32eb1a40d23a&quot;</span>
+
+<span class="gp">In [38]: </span><span class="k">class</span> <span class="nc">MoonPhaseHandler</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="s">&quot;This handler does not require a filename.&quot;</span>
+<span class="gp">   ....: </span>        <span class="k">pass</span>
+<span class="gp">   ....: </span>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
+<span class="gp">   ....: </span>        <span class="n">text</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">api_key</span><span class="p">,</span> <span class="n">lat</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">long</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="gp">   ....: </span>                                       <span class="n">time</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="p">)))</span><span class="o">.</span><span class="n">text</span>
+<span class="gp">   ....: </span>        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="gp">   ....: </span>        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="s">&#39;daily&#39;</span><span class="p">][</span><span class="s">&#39;data&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s">&#39;moonPhase&#39;</span><span class="p">]</span>
+<span class="gp">   ....: </span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="id7">
+<h3>Make a Record of the Data<a class="headerlink" href="#id7" title="Permalink to this headline">¶</a></h3>
+<p>Notably, in this case, we are making a record of data that we haven&#8217;t seen yet.
+The data itself will only be obtained for the first time when it retrieved.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [39]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">insert_resource</span><span class="p">,</span> <span class="n">insert_datum</span>
+
+<span class="gp">In [40]: </span><span class="n">resource_id</span> <span class="o">=</span> <span class="n">insert_resource</span><span class="p">(</span><span class="s">&#39;moon&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let&#8217;s register a piece of data giving today&#8217;s moon phase.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [41]: </span><span class="kn">import</span> <span class="nn">time</span>
+
+<span class="gp">In [42]: </span><span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<span class="gp">In [43]: </span><span class="n">insert_datum</span><span class="p">(</span><span class="n">resource_id</span><span class="p">,</span> <span class="s">&#39;some_id31&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s">&#39;time&#39;</span><span class="p">:</span> <span class="n">now</span><span class="p">})</span>
+<span class="gh">Out[43]: </span><span class="go">&lt;Datum: Datum object&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="retrieve-data">
+<h3>Retrieve Data<a class="headerlink" href="#retrieve-data" title="Permalink to this headline">¶</a></h3>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [44]: </span><span class="kn">from</span> <span class="nn">filestore.api</span> <span class="kn">import</span> <span class="n">register_handler</span><span class="p">,</span> <span class="n">retrieve</span>
+
+<span class="gp">In [45]: </span><span class="n">register_handler</span><span class="p">(</span><span class="s">&#39;moon&#39;</span><span class="p">,</span> <span class="n">MoonPhaseHandler</span><span class="p">)</span>
+
+<span class="gp">In [46]: </span><span class="n">retrieve</span><span class="p">(</span><span class="s">&#39;some_id31&#39;</span><span class="p">)</span>
+<span class="gh">Out[46]: </span><span class="go">0.21</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
