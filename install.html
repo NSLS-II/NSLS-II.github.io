@@ -33,8 +33,8 @@
     <script type="text/javascript" src="_static/bootstrap-3.2.0/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="_static/bootstrap-sphinx.js"></script>
     <link rel="top" title="NSLS-II Controls Docs 0.0.1 documentation" href="index.html" />
-    <link rel="next" title="NSLS-II Beamline Controls Architecture" href="arch/arch.html" />
-    <link rel="prev" title="NSLS-II Beamline Controls Documentation" href="index.html" />
+    <link rel="next" title="Introduction to File Store" href="filestore/index.html" />
+    <link rel="prev" title="DataBroker Basics" href="broker/basics.html" />
 <meta charset='utf-8'>
 <meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'>
 <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1'>
@@ -69,12 +69,20 @@
      href="index.html">Site <b class="caret"></b></a>
   <ul class="dropdown-menu globaltoc"
       role="menu"
-      aria-labelledby="dLabelGlobalToc"><ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ophyd/ophyd.html">Command line interface to Ophyd</a></li>
+      aria-labelledby="dLabelGlobalToc"><ul>
+<li class="toctree-l1"><a class="reference internal" href="ophyd/cli_api.html">Command line interface to Ophyd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ophyd/scan_api.html">Step Scan Interface to Ophyd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="pyolog/pyolog.html">Simple Python Interface to The Olog</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="broker/basics.html">DataBroker Basics</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Installation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="filestore/index.html">Introduction to File Store</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arch/arch.html">NSLS-II Beamline Controls Architecture</a></li>
 </ul>
 </ul>
 </li>
@@ -88,7 +96,10 @@
   <ul class="dropdown-menu localtoc"
       role="menu"
       aria-labelledby="dLabelLocalToc"><ul>
-<li><a class="reference internal" href="#">Installation</a></li>
+<li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#installation-procedure">Installation Procedure</a></li>
+</ul>
+</li>
 </ul>
 </ul>
 </li>
@@ -98,11 +109,11 @@
               
                 
   <li>
-    <a href="index.html" title="Previous Chapter: NSLS-II Beamline Controls Documentation"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; NSLS-II Beamline...</span>
+    <a href="broker/basics.html" title="Previous Chapter: DataBroker Basics"><span class="glyphicon glyphicon-chevron-left visible-sm"></span><span class="hidden-sm hidden-tablet">&laquo; DataBroker Basic...</span>
     </a>
   </li>
   <li>
-    <a href="arch/arch.html" title="Next Chapter: NSLS-II Beamline Controls Architecture"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">NSLS-II Beamline... &raquo;</span>
+    <a href="filestore/index.html" title="Next Chapter: Introduction to File Store"><span class="glyphicon glyphicon-chevron-right visible-sm"></span><span class="hidden-sm hidden-tablet">Introduction to ... &raquo;</span>
     </a>
   </li>
               
@@ -138,9 +149,14 @@
       
   <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
-<p>We distribute the beamline control and analysis software</p>
-<p>The internal binstar server can be accessed via a web browser at <a class="reference external" href="https://conda.nsls2.bnl.gov">https://conda.nsls2.bnl.gov</a>
-from the wired campus network or controls network.</p>
+<p>We distribute binary packages from an internal server using the <em>conda</em>
+package manager, developed for and by the scientific Python community. The
+internal server can be accessed via a web browser at
+<a class="reference external" href="https://conda.nsls2.bnl.gov">https://conda.nsls2.bnl.gov</a> from the wired campus network or controls network.</p>
+<p>For users outside Brookhaven National Lab, the packages can be built from
+source.</p>
+<div class="section" id="installation-procedure">
+<h2>Installation Procedure<a class="headerlink" href="#installation-procedure" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic">
 <li><p class="first">If needed, fix proxy settings so you can see the internet</p>
 <div class="highlight-bash"><div class="highlight"><pre><span class="nb">echo</span> <span class="s1">&#39;export https_proxy=https://proxy:8888&#39;</span> &gt;&gt; ~/.bashrc
@@ -153,7 +169,7 @@ from the wired campus network or controls network.</p>
 <div class="highlight-bash"><div class="highlight"><pre>wget http://repo.continuum.io/miniconda/Miniconda-3.8.3-Linux-x86_64.sh -O miniconda.sh
 chmod +x miniconda.sh
 ./miniconda.sh -b -p ~/mc
-<span class="nb">echo</span> <span class="s1">&#39;export PATH=~/mc/bin:$PATH&#39;</span> &gt;&gt; ~/.bashrc
+<span class="nb">echo</span> <span class="s2">&quot;export PATH=`pwd`/mc/bin:\$PATH&quot;</span> &gt;&gt; ~/.bashrc
 <span class="nb">source</span> ~/.bashrc
 </pre></div>
 </div>
@@ -161,19 +177,21 @@ chmod +x miniconda.sh
 <li><p class="first">Configure channels</p>
 <div class="highlight-bash"><div class="highlight"><pre>conda install binstar
 binstar config --set url https://conda.nsls2.bnl.gov/api
-conda config --add channels Nikea beamline
+conda config --add channels Nikea
+conda config --add channels BEAMLINE
+conda config --add create_default_packages pip
 conda update --all
 </pre></div>
 </div>
-<p>Where <tt class="docutils literal"><span class="pre">beamline</span></tt> is the name of the beam-line organization you want to install source
-for (see table at bottom)</p>
+<p>Where <tt class="docutils literal"><span class="pre">BEAMLINE</span></tt> is the name of the beam-line organization you want to
+install source for (in uppercase &#8211; see the table at bottom)</p>
 </li>
 <li><p class="first">Install the collection or analysis stacks create a new environment</p>
 <div class="highlight-bash"><div class="highlight"><pre>conda create -n env_name package_name
 </pre></div>
 </div>
-<p>For example, to install the data-collection stack for SRX (assuming that you have
-SRX in your channels)</p>
+<p>For example, to install the data-collection stack for SRX (assuming that
+you have SRX in your channels)</p>
 <div class="highlight-bash"><div class="highlight"><pre>conda create -n SRX srx_collection
 </pre></div>
 </div>
@@ -223,8 +241,27 @@ SRX in your channels)</p>
 <td>xpd_collection</td>
 <td>&nbsp;</td>
 </tr>
+<tr class="row-odd"><td>HXN (03id)</td>
+<td>HXN</td>
+<td><a class="reference external" href="https://conda.nsls2.bnl.gov/HXN">https://conda.nsls2.bnl.gov/HXN</a></td>
+<td>hxn_collection</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>CHX (11id)</td>
+<td>CHX</td>
+<td><a class="reference external" href="https://conda.nsls2.bnl.gov/CHX">https://conda.nsls2.bnl.gov/CHX</a></td>
+<td>chx_collection</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>IXS (10id)</td>
+<td>IXS</td>
+<td><a class="reference external" href="https://conda.nsls2.bnl.gov/IXS">https://conda.nsls2.bnl.gov/IXS</a></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
 </tbody>
 </table>
+</div>
 </div>
 
 
