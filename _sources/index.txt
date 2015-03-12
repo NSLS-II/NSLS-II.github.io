@@ -20,6 +20,7 @@ Python package with a syntax that will be familiar to users of SPEC.
 .. toctree::
    :maxdepth: 2
 
+   quick-start
    ophyd/cli_api
    ophyd/scan_api
    pyolog/pyolog

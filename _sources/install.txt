@@ -21,11 +21,11 @@ Installation Procedure
     echo 'export http_proxy=http://proxy:8888' >> ~/.bashrc
     source ~/.bashrc
 
-#. install miniconda ::
+#. Install miniconda. At NSLS-II, we do the following in the directory `/nfs/BEAMLINE`.::
 
     wget http://repo.continuum.io/miniconda/Miniconda-3.8.3-Linux-x86_64.sh -O miniconda.sh
     chmod +x miniconda.sh
-    ./miniconda.sh -b -p ~/mc
+    ./miniconda.sh -b -p ./mc
     echo "export PATH=`pwd`/mc/bin:\$PATH" >> ~/.bashrc
     source ~/.bashrc
 
@@ -46,9 +46,9 @@ Installation Procedure
      conda create -n env_name package_name
 
    For example, to install the data-collection stack for SRX (assuming that
-   you have SRX in your channels) ::
+   you have SRX in your channels) into an environment named ``ophyd``::
 
-     conda create -n SRX srx_collection
+     conda create -n ophyd srx_collection
 
    See table at bottom for list of available packages
 
