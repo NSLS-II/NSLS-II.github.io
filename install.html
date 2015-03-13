@@ -99,6 +99,8 @@
       aria-labelledby="dLabelLocalToc"><ul>
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#installation-procedure">Installation Procedure</a></li>
+<li><a class="reference internal" href="#package-sources">Package sources</a></li>
+<li><a class="reference internal" href="#upgrade">Upgrade</a></li>
 </ul>
 </li>
 </ul>
@@ -166,7 +168,28 @@ source.</p>
 </pre></div>
 </div>
 </li>
-<li><p class="first">Install miniconda. At NSLS-II, we do the following in the directory <cite>/nfs/BEAMLINE</cite>.:</p>
+<li><p class="first">Set up all of the configuration files.  In the home directory the
+following files are used</p>
+<div class="highlight-bash"><div class="highlight"><pre>pyOlog.conf
+.condarc
+.config/
+  filestore/
+    connection.yml
+  metadatastore/
+    connection.yml
+  binstar/
+ipython-ophyd/
+  profile-ophyd/
+  profile-beamline/
+.bashrc
+</pre></div>
+</div>
+<p>If the beamline does not have nfs home directories, then these
+files should be stored on the nfs share (<tt class="file docutils literal"><span class="pre">/nfs/bealmineid/</span></tt>)
+and sym-linked into the home directory (possibly not for
+<tt class="file docutils literal"><span class="pre">.bashrc</span></tt>).</p>
+</li>
+<li><p class="first">install miniconda</p>
 <div class="highlight-bash"><div class="highlight"><pre>wget http://repo.continuum.io/miniconda/Miniconda-3.8.3-Linux-x86_64.sh -O miniconda.sh
 chmod +x miniconda.sh
 ./miniconda.sh -b -p ./mc
@@ -174,6 +197,11 @@ chmod +x miniconda.sh
 <span class="nb">source</span> ~/.bashrc
 </pre></div>
 </div>
+<p>If the beam line does not have nfs home directories then this
+should be done in the <tt class="file docutils literal"><span class="pre">/nfs/beamline</span></tt> directory.  This does
+not need to be sym-linked as the path logic ind <tt class="file docutils literal"><span class="pre">.bashrc</span></tt>
+will take care of finding the correct version of conda which will
+take care of finding the correct environments.</p>
 </li>
 <li><p class="first">Configure channels</p>
 <div class="highlight-bash"><div class="highlight"><pre>conda install binstar
@@ -209,6 +237,9 @@ you have SRX in your channels) into an environment named <tt class="docutils lit
 </div>
 </li>
 </ol>
+</div>
+<div class="section" id="package-sources">
+<h2>Package sources<a class="headerlink" href="#package-sources" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
 <col width="11%" />
@@ -257,11 +288,41 @@ you have SRX in your channels) into an environment named <tt class="docutils lit
 <tr class="row-odd"><td>IXS (10id)</td>
 <td>IXS</td>
 <td><a class="reference external" href="https://conda.nsls2.bnl.gov/IXS">https://conda.nsls2.bnl.gov/IXS</a></td>
-<td>&nbsp;</td>
+<td>ixs_collection</td>
 <td>&nbsp;</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="upgrade">
+<h2>Upgrade<a class="headerlink" href="#upgrade" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic">
+<li><p class="first">Arrange with beamline scientist to schedule upgrade</p>
+</li>
+<li><p class="first">Copy the conda packages to the organization</p>
+</li>
+<li><p class="first">Remove the <tt class="file docutils literal"><span class="pre">ophyd-backup</span></tt> environment</p>
+</li>
+<li><p class="first">Copy the current <tt class="file docutils literal"><span class="pre">ophyd</span></tt>  environment to <tt class="file docutils literal"><span class="pre">ophyd-backup</span></tt></p>
+<div class="highlight-bash"><div class="highlight"><pre>conda create -n ophyd-backup --clone ophyd
+</pre></div>
+</div>
+</li>
+<li><p class="first">Activate and update the <tt class="file docutils literal"><span class="pre">ophyd</span></tt> environment:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nb">source </span>activate ophyd
+conda update --all
+</pre></div>
+</div>
+</li>
+<li><p class="first">To capture a snap shot of the current code state</p>
+<div class="highlight-bash"><div class="highlight"><pre>conda list --export &gt; installed_packages.txt
+</pre></div>
+</div>
+<p>This can (should?) be logged to OLog</p>
+</li>
+<li><p class="first">Create entry in OLog to record the upgrade</p>
+</li>
+</ol>
 </div>
 </div>
 
