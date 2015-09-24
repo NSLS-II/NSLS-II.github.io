@@ -1,5 +1,5 @@
-NSLS-II Beamline Controls Architecture
-======================================
+Collection Software Architecture
+================================
 
 Architecture components
 
