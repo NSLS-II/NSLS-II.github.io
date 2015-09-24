@@ -10,9 +10,9 @@ Option 1: At the Beamline
 -------------------------
 
 #. Log in to your controls account. If this is your first time, execute this
-   command to add a line to your ``.bashrc`` file.
+   command to add a line to your ``.bashrc`` file.::
 
-    echo "export PATH=/opt/conda/bin:$PATH" >> ~/.bashrc
+    echo "export PATH=/opt/conda/bin:\$PATH" >> ~/.bashrc
     source ~/.bashrc
 
 #. Activate the ``analysis`` conda environment.::
