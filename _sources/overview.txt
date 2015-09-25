@@ -85,6 +85,15 @@ memory (RAM).
 
 `Full Documentation <https://nsls-ii.github.io/dataportal>`_
 
+scikit-xray
++++++++++++
+
+scikit-xray is a multi-facility collaboration, aiming to provide Python
+software for X-ray data analysis, integrating with other, well-established
+scientfiic Python projects like scipy and scikit-image.
+
+`Full Documentation <https://scikit-xray.github.io/scikit-xray>`_
+
 Ophyd
 +++++
 
@@ -101,7 +110,6 @@ still in the experimental stage and could be replaced in the future. There
 is currently no documentation.*
 
 
-
 Album
 +++++
 
@@ -109,15 +117,6 @@ Album is a Python-based web app for quickly viewing data from the DataBroker.
 It is readonly --- it is not for rich exploration or analysis. *Album is
 still in the experimental stage and could be replaced in the future. There
 is currently no documentation.*
-
-scikit-xray
-+++++++++++
-
-scikit-xray is a multi-facility collaboration, aiming to provide Python
-software for X-ray data analysis, integrating with other, well-established
-scientfiic Python projects like scipy and scikit-image.
-
-`Full Documentation <https://scikit-xray.github.io/scikit-xray>`_
 
 Core Software
 -------------
@@ -134,6 +133,8 @@ development and scaling. It support rich search capability and flexible
 document specification, which is ideal for scientific workflows.
 At NSLS-II, we store all experiment metadata and "small" data
 (i.e., not images) in MongoDB.
+
+`MongoDB Homepage <https://www.mongodb.org/>`_
 
 metadatastore
 ++++++++++++++
