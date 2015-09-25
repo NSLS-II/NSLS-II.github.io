@@ -75,14 +75,6 @@ live data-viewing and -processing tools.
 
 `Full Documentation <https://nsls-ii.github.io/bluesky>`_
 
-Ophyd
-+++++
-
-Ophyd is a Python package with a zoo of Python objects that represent and
-communicate with hardware through EPICS.
-
-`Full Documentation <https://nsls-ii.github.io/ophyd>`_
-
 Data Broker
 +++++++++++
 
@@ -92,6 +84,13 @@ however the data is store, Data Broker provides it to the user as data in
 memory (RAM).
 
 `Full Documentation <https://nsls-ii.github.io/dataportal>`_
+
+Ophyd
++++++
+
+Ophyd is a Python package with a zoo of Python objects that represent and
+communicate with hardware through EPICS. *Documentation for ophyd is
+still a work in progress.*
 
 Suitcase
 ++++++++
