@@ -1,0 +1,1889 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Format of Metadatastore Entries &mdash; NSLS-II Software Documentation 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="NSLS-II Software Documentation 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> NSLS-II Software Documentation</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture-overview.html">Event-Based Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../collection-quick-start.html">Data Collection Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../analysis-quick-start.html">Data Analysis Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../analysis-quick-start.html#option-1-at-the-beamline">Option 1: At the Beamline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../analysis-quick-start.html#option-2-remotely">Option 2: Remotely</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#books-we-like">Books We Like</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#scientific-python-packages-we-use">Scientific Python Packages We Use</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#good-scientific-software-habits">Good Scientific Software Habits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../technologies.html">Core Technologies</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#python">Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#ipython">IPython</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#jupyter-formerly-ipython-notebooks">Jupyter (formerly, IPython notebooks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#conda">Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#mongodb">MongoDB</a></li>
+</ul>
+</li>
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">NSLS-II Software Documentation</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>Format of Metadatastore Entries</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/arch/metadatastore-format.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="format-of-metadatastore-entries">
+<h1>Format of Metadatastore Entries<a class="headerlink" href="#format-of-metadatastore-entries" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
+<p>The metadatastore is based on the concept of documents which are either
+events, or descriptions of events.  An <tt class="docutils literal"><span class="pre">event</span></tt> is a quantum of data
+stored in the metadata store and represents an <em>action</em> at a given time. For
+example: &#8220;<em>measurement of 8 scaler chanels</em>&#8221;, &#8220;<em>trigger detectors</em>&#8221; or
+&#8220;<em>start run</em>&#8221;.</p>
+<p>Expanding the notion of <strong>events</strong>, these can also be used for derived data.
+For example, an event could be the result of a data analysis or reduction
+routine which was run at a certain time.</p>
+<p>The document schemas in this document are written using <tt class="docutils literal"><span class="pre">jsonschema</span></tt>.  The
+full spec <a class="reference external" href="http://json-schema.org/">http://json-schema.org/</a> is basically un-readable.  A more readable
+introduction <a class="reference external" href="https://spacetelescope.github.io/understanding-json-schema/index.html">https://spacetelescope.github.io/understanding-json-schema/index.html</a>.</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<p class="last">Expand this section</p>
+</div>
+</div>
+<div class="section" id="time">
+<h2>Time<a class="headerlink" href="#time" title="Permalink to this headline">¶</a></h2>
+<p>One of the cornerstones of this data acquisition and analysis method is the use
+of <em>time</em> as the method by which data can be aligned and correlated. A single
+<tt class="docutils literal"><span class="pre">event</span></tt> should have happened at a certain quantum of time with the
+determination of what a time <em>quantum</em> is left to the details of the
+experiment. Time however, can be horrendously messy. Throughout this
+section we use two terms, <tt class="docutils literal"><span class="pre">timestamp</span></tt> and <tt class="docutils literal"><span class="pre">time</span></tt>. These mean</p>
+<dl class="docutils">
+<dt>time</dt>
+<dd>The date/time as found by the client when an <tt class="docutils literal"><span class="pre">event</span></tt> is
+created.  This could be a date-time format as determined by the underlying
+storage method (for example a database).</dd>
+<dt>timestamp</dt>
+<dd>A (usually <em>float</em>) representation of the hardware time when a
+certain value was obtained. Wherever possible this should be read from
+hardware. For example, this could be the <em>EPICS</em> timestamp from when the
+record processed which provides the value.</dd>
+</dl>
+<p>We use the literal <tt class="docutils literal"><span class="pre">&lt;time&gt;</span></tt> to indicate a client side date/time and
+<tt class="docutils literal"><span class="pre">&lt;timestamp&gt;</span></tt> to represent the numerical timestamp.</p>
+<div class="admonition-todo admonition" id="index-1">
+<p class="first admonition-title">Todo</p>
+<p class="last">Add dictionary of reserved keys such as <tt class="docutils literal"><span class="pre">timestamp</span></tt>, <tt class="docutils literal"><span class="pre">id</span></tt>
+Expand for data collection, using event model</p>
+</div>
+</div>
+<div class="section" id="documents">
+<h2>Documents<a class="headerlink" href="#documents" title="Permalink to this headline">¶</a></h2>
+<p class="xfig">
+/Users/dallan/Documents/Repos/docs/source/arch/mds.fig</p>
+</div>
+<div class="section" id="events-view-of-the-world">
+<h2>Events view of the world<a class="headerlink" href="#events-view-of-the-world" title="Permalink to this headline">¶</a></h2>
+<p>Events are the smallest quantum of data stored in the metadatastore. They group
+values which are associated with temporally bundled data. The definition of
+&#8220;temporally identical&#8221; is determined by the DAQ system. For example, the 32
+channels in a scaler can be considered to be temporally identical because they
+are hardware synchronized. Inclusion of a CCD image (with a reference to the
+file store) can be included if this event is triggered at the same time, either
+by software or hardware.  Each <tt class="docutils literal"><span class="pre">event</span></tt> contains the data values and a client
+side timestamp of when the even was created. The same logic is applied to
+<tt class="docutils literal"><span class="pre">trigger</span> <span class="pre">events</span></tt>. These are grouped with temporally identical triggers (again
+determined by the DAQ philosophy).</p>
+</div>
+<div class="section" id="event-descriptor-document">
+<h2>Event Descriptor Document<a class="headerlink" href="#event-descriptor-document" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="schema">
+<h3>Schema<a class="headerlink" href="#schema" title="Permalink to this headline">¶</a></h3>
+<p class="jsonschema-comment">Proposed</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;definitions&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Describes the objects in the data property of Event documents&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;dtype&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The type of the data in the event.&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">],</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;external&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Where the data is stored if it is stored external to the events.&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:?&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;shape&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;destription&quot;</span><span class="p">:</span> <span class="s2">&quot;The shape of the data.  Null and empty list mean scalar data.&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">},</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;array&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;null&quot;</span>
+                    <span class="p">]</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The source (ex piece of hardware) of the data.&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;source&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;dtype&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;shape&quot;</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;data_key&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Document to describe the data captured in the associated event documents&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Globally unique ID to the begin_run document this descriptor is associtaed with.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;keys&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/definitions/data_key&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The describes the data to be in the event Documents&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;keys&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Creation time of the document as unix epoch time.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Globally unique ID for this event descriptor.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;keys&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;event_descriptor&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'>event_descriptor</dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd>Document to describe the data captured in the associated event documents</dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>uid</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Globally unique ID for this event descriptor.</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>begin_run_event</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Globally unique ID to the begin_run document this descriptor is associtaed with.</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Creation time of the document as unix epoch time.</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>keys</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>The describes the data to be in the event Documents</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><p class="jsonschema-comment">as documented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;definitions&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;external&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:?&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;source&quot;</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;keys&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/definitions/data_key&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;keys&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;begin_run_event&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd></dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>uid</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>begin_run_event</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>keys</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><p class="jsonschema-comment">As currently (1c2246d) implemented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;definitions&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data_key&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;external&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:?&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;pattern&quot;</span><span class="p">:</span> <span class="s2">&quot;^[A-Z]+:&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;source&quot;</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;data_keys&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/definitions/data_key&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;event_type&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;id&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;keys&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;begin_run_event&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd></dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>data_keys</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>id</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>event_type</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>begin_run_event</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- as documented</span>
+<span class="gi">+++ Proposed</span>
+<span class="gu">@@ -1,44 +1,78 @@</span>
+ {
+     &quot;definitions&quot;: {
+         &quot;data_key&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Describes the objects in the data property of Event documents&quot;,</span>
+             &quot;properties&quot;: {
+<span class="gi">+                &quot;dtype&quot;: {</span>
+<span class="gi">+                    &quot;description&quot;: &quot;The type of the data in the event.&quot;,</span>
+<span class="gi">+                    &quot;enum&quot;: [</span>
+<span class="gi">+                        &quot;string&quot;,</span>
+<span class="gi">+                        &quot;number&quot;,</span>
+<span class="gi">+                        &quot;array&quot;,</span>
+<span class="gi">+                        &quot;boolean&quot;,</span>
+<span class="gi">+                        &quot;integer&quot;</span>
+<span class="gi">+                    ],</span>
+<span class="gi">+                    &quot;type&quot;: &quot;string&quot;</span>
+<span class="gi">+                },</span>
+                 &quot;external&quot;: {
+<span class="gi">+                    &quot;description&quot;: &quot;Where the data is stored if it is stored external to the events.&quot;,</span>
+                     &quot;pattern&quot;: &quot;^[A-Z]+:?&quot;,
+                     &quot;type&quot;: &quot;string&quot;
+                 },
+<span class="gi">+                &quot;shape&quot;: {</span>
+<span class="gi">+                    &quot;destription&quot;: &quot;The shape of the data.  Null and empty list mean scalar data.&quot;,</span>
+<span class="gi">+                    &quot;items&quot;: {</span>
+<span class="gi">+                        &quot;type&quot;: &quot;integer&quot;</span>
+<span class="gi">+                    },</span>
+<span class="gi">+                    &quot;type&quot;: [</span>
+<span class="gi">+                        &quot;array&quot;,</span>
+<span class="gi">+                        &quot;null&quot;</span>
+<span class="gi">+                    ]</span>
+<span class="gi">+                },</span>
+                 &quot;source&quot;: {
+<span class="gi">+                    &quot;description&quot;: &quot;The source (ex piece of hardware) of the data.&quot;,</span>
+                     &quot;pattern&quot;: &quot;^[A-Z]+:&quot;,
+                     &quot;type&quot;: &quot;string&quot;
+                 }
+             },
+             &quot;required&quot;: [
+<span class="gd">-                &quot;source&quot;</span>
+<span class="gi">+                &quot;source&quot;,</span>
+<span class="gi">+                &quot;dtype&quot;,</span>
+<span class="gi">+                &quot;shape&quot;</span>
+             ],
+<span class="gi">+            &quot;title&quot;: &quot;data_key&quot;,</span>
+             &quot;type&quot;: &quot;object&quot;
+         }
+     },
+<span class="gi">+    &quot;description&quot;: &quot;Document to describe the data captured in the associated event documents&quot;,</span>
+     &quot;properties&quot;: {
+         &quot;begin_run_event&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID to the begin_run document this descriptor is associtaed with.&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+         &quot;keys&quot;: {
+             &quot;additionalProperties&quot;: {
+                 &quot;$ref&quot;: &quot;#/definitions/data_key&quot;
+             },
+<span class="gi">+            &quot;description&quot;: &quot;The describes the data to be in the event Documents&quot;,</span>
+<span class="gi">+            &quot;title&quot;: &quot;keys&quot;,</span>
+             &quot;type&quot;: &quot;object&quot;
+         },
+         &quot;time&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Creation time of the document as unix epoch time.&quot;,</span>
+             &quot;type&quot;: &quot;number&quot;
+         },
+         &quot;uid&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID for this event descriptor.&quot;,</span>
+<span class="gi">+            &quot;title&quot;: &quot;uid&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         }
+     },
+     &quot;required&quot;: [
+         &quot;uid&quot;,
+         &quot;keys&quot;,
+<span class="gd">-        &quot;time&quot;,</span>
+<span class="gd">-        &quot;begin_run_event&quot;</span>
+<span class="gi">+        &quot;time&quot;</span>
+     ],
+<span class="gi">+    &quot;title&quot;: &quot;event_descriptor&quot;,</span>
+     &quot;type&quot;: &quot;object&quot;
+ }
+</pre></div>
+</div>
+<div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- As currently (1c2246d) implemented</span>
+<span class="gi">+++ Proposed</span>
+<span class="gu">@@ -1,47 +1,78 @@</span>
+ {
+     &quot;definitions&quot;: {
+         &quot;data_key&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Describes the objects in the data property of Event documents&quot;,</span>
+             &quot;properties&quot;: {
+<span class="gi">+                &quot;dtype&quot;: {</span>
+<span class="gi">+                    &quot;description&quot;: &quot;The type of the data in the event.&quot;,</span>
+<span class="gi">+                    &quot;enum&quot;: [</span>
+<span class="gi">+                        &quot;string&quot;,</span>
+<span class="gi">+                        &quot;number&quot;,</span>
+<span class="gi">+                        &quot;array&quot;,</span>
+<span class="gi">+                        &quot;boolean&quot;,</span>
+<span class="gi">+                        &quot;integer&quot;</span>
+<span class="gi">+                    ],</span>
+<span class="gi">+                    &quot;type&quot;: &quot;string&quot;</span>
+<span class="gi">+                },</span>
+                 &quot;external&quot;: {
+<span class="gi">+                    &quot;description&quot;: &quot;Where the data is stored if it is stored external to the events.&quot;,</span>
+                     &quot;pattern&quot;: &quot;^[A-Z]+:?&quot;,
+                     &quot;type&quot;: &quot;string&quot;
+                 },
+<span class="gi">+                &quot;shape&quot;: {</span>
+<span class="gi">+                    &quot;destription&quot;: &quot;The shape of the data.  Null and empty list mean scalar data.&quot;,</span>
+<span class="gi">+                    &quot;items&quot;: {</span>
+<span class="gi">+                        &quot;type&quot;: &quot;integer&quot;</span>
+<span class="gi">+                    },</span>
+<span class="gi">+                    &quot;type&quot;: [</span>
+<span class="gi">+                        &quot;array&quot;,</span>
+<span class="gi">+                        &quot;null&quot;</span>
+<span class="gi">+                    ]</span>
+<span class="gi">+                },</span>
+                 &quot;source&quot;: {
+<span class="gi">+                    &quot;description&quot;: &quot;The source (ex piece of hardware) of the data.&quot;,</span>
+                     &quot;pattern&quot;: &quot;^[A-Z]+:&quot;,
+                     &quot;type&quot;: &quot;string&quot;
+                 }
+             },
+             &quot;required&quot;: [
+<span class="gd">-                &quot;source&quot;</span>
+<span class="gi">+                &quot;source&quot;,</span>
+<span class="gi">+                &quot;dtype&quot;,</span>
+<span class="gi">+                &quot;shape&quot;</span>
+             ],
+<span class="gi">+            &quot;title&quot;: &quot;data_key&quot;,</span>
+             &quot;type&quot;: &quot;object&quot;
+         }
+     },
+<span class="gi">+    &quot;description&quot;: &quot;Document to describe the data captured in the associated event documents&quot;,</span>
+     &quot;properties&quot;: {
+         &quot;begin_run_event&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID to the begin_run document this descriptor is associtaed with.&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gd">-        &quot;data_keys&quot;: {</span>
+<span class="gi">+        &quot;keys&quot;: {</span>
+             &quot;additionalProperties&quot;: {
+                 &quot;$ref&quot;: &quot;#/definitions/data_key&quot;
+             },
+<span class="gi">+            &quot;description&quot;: &quot;The describes the data to be in the event Documents&quot;,</span>
+<span class="gi">+            &quot;title&quot;: &quot;keys&quot;,</span>
+             &quot;type&quot;: &quot;object&quot;
+         },
+<span class="gd">-        &quot;event_type&quot;: {</span>
+<span class="gi">+        &quot;time&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Creation time of the document as unix epoch time.&quot;,</span>
+<span class="gi">+            &quot;type&quot;: &quot;number&quot;</span>
+<span class="gi">+        },</span>
+<span class="gi">+        &quot;uid&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID for this event descriptor.&quot;,</span>
+<span class="gi">+            &quot;title&quot;: &quot;uid&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+<span class="gd">-        },</span>
+<span class="gd">-        &quot;id&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;string&quot;</span>
+<span class="gd">-        },</span>
+<span class="gd">-        &quot;time&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;number&quot;</span>
+         }
+     },
+     &quot;required&quot;: [
+<span class="gd">-        &quot;id&quot;,</span>
+<span class="gi">+        &quot;uid&quot;,</span>
+         &quot;keys&quot;,
+<span class="gd">-        &quot;time&quot;,</span>
+<span class="gd">-        &quot;begin_run_event&quot;</span>
+<span class="gi">+        &quot;time&quot;</span>
+     ],
+<span class="gi">+    &quot;title&quot;: &quot;event_descriptor&quot;,</span>
+     &quot;type&quot;: &quot;object&quot;
+ }
+</pre></div>
+</div>
+<div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- As currently (1c2246d) implemented</span>
+<span class="gi">+++ as documented</span>
+<span class="gu">@@ -21,24 +21,21 @@</span>
+         &quot;begin_run_event&quot;: {
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gd">-        &quot;data_keys&quot;: {</span>
+<span class="gi">+        &quot;keys&quot;: {</span>
+             &quot;additionalProperties&quot;: {
+                 &quot;$ref&quot;: &quot;#/definitions/data_key&quot;
+             },
+             &quot;type&quot;: &quot;object&quot;
+         },
+<span class="gd">-        &quot;event_type&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;string&quot;</span>
+<span class="gd">-        },</span>
+<span class="gd">-        &quot;id&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;string&quot;</span>
+<span class="gd">-        },</span>
+         &quot;time&quot;: {
+             &quot;type&quot;: &quot;number&quot;
+<span class="gi">+        },</span>
+<span class="gi">+        &quot;uid&quot;: {</span>
+<span class="gi">+            &quot;type&quot;: &quot;string&quot;</span>
+         }
+     },
+     &quot;required&quot;: [
+<span class="gd">-        &quot;id&quot;,</span>
+<span class="gi">+        &quot;uid&quot;,</span>
+         &quot;keys&quot;,
+         &quot;time&quot;,
+         &quot;begin_run_event&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="definitions">
+<h3>Definitions<a class="headerlink" href="#definitions" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="data-key">
+<h4>data_key<a class="headerlink" href="#data-key" title="Permalink to this headline">¶</a></h4>
+<p>{&#8220;source&#8221;: &#8220;NAMESPACE:NAME&#8221;, &#8220;external&#8221;: &#8220;NAMESPACE:NAME&#8221;}</p>
+<dl class="docutils">
+<dt>source</dt>
+<dd>The reference to the physical piece of hardware that produced this data</dd>
+<dt>external, optional</dt>
+<dd>The reference to the location where the data is being stored.
+If this key is not present, then the data is stored inside the data
+field of the corresponding <tt class="docutils literal"><span class="pre">Event</span></tt> document.
+If this key is present, then the <tt class="docutils literal"><span class="pre">value</span></tt> field of the <tt class="docutils literal"><span class="pre">data</span></tt>
+dictionary inside the <tt class="docutils literal"><span class="pre">Event</span></tt> document is interpreted as a unique
+key that can be used to retrieve corresponding data from the
+service described by the value of the <tt class="docutils literal"><span class="pre">external</span></tt> key</dd>
+</dl>
+<p>The values of both =source= and =external= are (=namespace=, =name=) pairs.
+The name is obligatory for source and optional for external</p>
+<dl class="docutils">
+<dt>NAMESPACE</dt>
+<dd>Things like <tt class="docutils literal"><span class="pre">PV</span></tt> or <tt class="docutils literal"><span class="pre">FileStore</span></tt>.</dd>
+<dt>NAME</dt>
+<dd>Thing in the name space.</dd>
+</dl>
+</div>
+</div>
+<div class="section" id="example">
+<h3>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h3>
+<p>Event descriptors are used to describe an array of events which can form an
+event stream of a collection of events. For example a run forms
+event_descriptors at run start to define the data collected. For the example
+above <tt class="docutils literal"><span class="pre">event</span></tt> is described by the <tt class="docutils literal"><span class="pre">event_descriptor</span></tt></p>
+<div class="highlight-ipython"><div class="highlight"><pre><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">json</span>
+
+<span class="gp">In [2]: </span><span class="kn">import</span> <span class="nn">jsonschema</span>
+
+<span class="gp">In [3]: </span><span class="n">ev_desc</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">   ...: </span>    <span class="s">&quot;uid&quot;</span><span class="p">:</span> <span class="s">&quot;f05338e0-ed07-4e15-8d7b-06a60dcebaff&quot;</span><span class="p">,</span>
+<span class="gp">   ...: </span>    <span class="s">&quot;keys&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan1&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S1&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan2&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S2&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan3&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S3&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan4&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S4&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan5&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S5&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan6&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S6&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan7&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S7&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;chan8&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;PV:XF:23ID1-ES{Sclr:1}.S8&quot;</span><span class="p">,</span> <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;number&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="bp">None</span><span class="p">},</span>
+<span class="gp">   ...: </span>        <span class="s">&quot;pimte&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s">&quot;source&quot;</span><span class="p">:</span> <span class="s">&quot;CCD:name_of_detector&quot;</span><span class="p">,</span> <span class="s">&quot;external&quot;</span><span class="p">:</span> <span class="s">&quot;FILESTORE&quot;</span><span class="p">,</span>
+<span class="gp">   ...: </span>                  <span class="s">&quot;dtype&quot;</span><span class="p">:</span> <span class="s">&quot;array&quot;</span><span class="p">,</span> <span class="s">&quot;shape&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1254</span><span class="p">,</span> <span class="mi">2014</span><span class="p">]}</span>
+<span class="gp">   ...: </span>    <span class="p">},</span>
+<span class="gp">   ...: </span>    <span class="s">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="s">&quot;2dc386b5-cfee-4906-98e9-1a8322581a92&quot;</span><span class="p">,</span>
+<span class="gp">   ...: </span>    <span class="s">&quot;time&quot;</span><span class="p">:</span> <span class="mf">1422940263.7583334</span><span class="p">,</span>
+<span class="gp">   ...: </span><span class="p">}</span>
+<span class="gp">   ...: </span>
+
+<span class="gp">In [4]: </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;source/arch/ev_desc_prop.json&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+<span class="gp">   ...: </span>    <span class="n">schema_prop</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fin</span><span class="p">)</span>
+<span class="gp">   ...: </span>
+
+<span class="gp">In [5]: </span><span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">ev_desc</span><span class="p">,</span> <span class="n">schema_prop</span><span class="p">)</span> <span class="ow">is</span> <span class="bp">None</span>
+<span class="gh">Out[5]: </span><span class="go">True</span>
+</pre></div>
+</div>
+<p>Note that <tt class="docutils literal"><span class="pre">validate</span></tt> returns <tt class="docutils literal"><span class="pre">None</span></tt> for documents that pass and raises
+exceptions for those that do not.</p>
+</div>
+<div class="section" id="discussion-points">
+<h3>Discussion points<a class="headerlink" href="#discussion-points" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Should <tt class="docutils literal"><span class="pre">begin_run_event</span></tt> be a mandatory?</li>
+</ul>
+</div>
+</div>
+<div class="section" id="event-documents">
+<h2>Event Documents<a class="headerlink" href="#event-documents" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Schema<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p class="jsonschema-comment">As documented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+    <span class="nt">&quot;definitions&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data_field&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalItems&quot;</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Schema for entries in the event data property&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;items&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The measured value or UID to look up external data&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;number&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;boolean&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;integer&quot;</span>
+                    <span class="p">]</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The hardware time stamp of this measurement. [s] from unix epoch&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;minItems&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;data_field&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;array&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Document to record a quanta of collected data&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/definitions/data_field&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The actual measument data&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;descriptor&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;UID to point back to Descriptor for this event stream&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;seq_num&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Sequence number to identify the location of this Event in the Event stream&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The event time.  This maybe different than the timestamps on each of the data entries&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Globally unique identifier for this Event&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;data&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;descriptor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;seq_num&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;title&quot;</span><span class="p">:</span> <span class="s2">&quot;event&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'>event</dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd>Document to record a quanta of collected data</dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>seq_num</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Sequence number to identify the location of this Event in the Event stream</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>integer</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>uid</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Globally unique identifier for this Event</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>data</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>The actual measument data</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>The event time.  This maybe different than the timestamps on each of the data entries</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>descriptor</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>UID to point back to Descriptor for this event stream</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><p class="jsonschema-comment">As implemented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;definitions&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;timestamp&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+                <span class="p">},</span>
+                <span class="nt">&quot;value&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;number&quot;</span>
+                    <span class="p">]</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;value&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;timestamp&quot;</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;additionalProperties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;$ref&quot;</span><span class="p">:</span> <span class="s2">&quot;#/definitions/data&quot;</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;descriptor&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;seq_no&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time_as_datetime&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;data&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;descriptor&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;seq_no&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd></dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>time_as_datetime</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>data</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>descriptor</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>seq_no</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- As implemented</span>
+<span class="gi">+++ As documented</span>
+<span class="gu">@@ -1,49 +1,64 @@</span>
+ {
+<span class="gi">+    &quot;additionalProperties&quot;: false,</span>
+     &quot;definitions&quot;: {
+<span class="gd">-        &quot;data&quot;: {</span>
+<span class="gd">-            &quot;properties&quot;: {</span>
+<span class="gd">-                &quot;timestamp&quot;: {</span>
+<span class="gd">-                    &quot;type&quot;: &quot;number&quot;</span>
+<span class="gd">-                },</span>
+<span class="gd">-                &quot;value&quot;: {</span>
+<span class="gi">+        &quot;data_field&quot;: {</span>
+<span class="gi">+            &quot;additionalItems&quot;: false,</span>
+<span class="gi">+            &quot;description&quot;: &quot;Schema for entries in the event data property&quot;,</span>
+<span class="gi">+            &quot;items&quot;: [</span>
+<span class="gi">+                {</span>
+<span class="gi">+                    &quot;description&quot;: &quot;The measured value or UID to look up external data&quot;,</span>
+<span class="gi">+                    &quot;title&quot;: &quot;value&quot;,</span>
+                     &quot;type&quot;: [
+                         &quot;string&quot;,
+<span class="gd">-                        &quot;number&quot;</span>
+<span class="gi">+                        &quot;number&quot;,</span>
+<span class="gi">+                        &quot;boolean&quot;,</span>
+<span class="gi">+                        &quot;integer&quot;</span>
+                     ]
+<span class="gi">+                },</span>
+<span class="gi">+                {</span>
+<span class="gi">+                    &quot;description&quot;: &quot;The hardware time stamp of this measurement. [s] from unix epoch&quot;,</span>
+<span class="gi">+                    &quot;title&quot;: &quot;timestamp&quot;,</span>
+<span class="gi">+                    &quot;type&quot;: &quot;number&quot;</span>
+                 }
+<span class="gd">-            },</span>
+<span class="gd">-            &quot;required&quot;: [</span>
+<span class="gd">-                &quot;value&quot;,</span>
+<span class="gd">-                &quot;timestamp&quot;</span>
+             ],
+<span class="gd">-            &quot;type&quot;: &quot;object&quot;</span>
+<span class="gi">+            &quot;minItems&quot;: 2,</span>
+<span class="gi">+            &quot;title&quot;: &quot;data_field&quot;,</span>
+<span class="gi">+            &quot;type&quot;: &quot;array&quot;</span>
+         }
+     },
+<span class="gi">+    &quot;description&quot;: &quot;Document to record a quanta of collected data&quot;,</span>
+     &quot;properties&quot;: {
+         &quot;data&quot;: {
+             &quot;additionalProperties&quot;: {
+<span class="gd">-                &quot;$ref&quot;: &quot;#/definitions/data&quot;</span>
+<span class="gi">+                &quot;$ref&quot;: &quot;#/definitions/data_field&quot;</span>
+             },
+<span class="gi">+            &quot;description&quot;: &quot;The actual measument data&quot;,</span>
+             &quot;type&quot;: &quot;object&quot;
+         },
+         &quot;descriptor&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;UID to point back to Descriptor for this event stream&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gd">-        &quot;seq_no&quot;: {</span>
+<span class="gi">+        &quot;seq_num&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Sequence number to identify the location of this Event in the Event stream&quot;,</span>
+<span class="gi">+            &quot;type&quot;: &quot;integer&quot;</span>
+<span class="gi">+        },</span>
+<span class="gi">+        &quot;time&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;The event time.  This maybe different than the timestamps on each of the data entries&quot;,</span>
+             &quot;type&quot;: &quot;number&quot;
+         },
+<span class="gd">-        &quot;time&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;number&quot;</span>
+<span class="gd">-        },</span>
+<span class="gd">-        &quot;time_as_datetime&quot;: {</span>
+<span class="gi">+        &quot;uid&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique identifier for this Event&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         }
+     },
+     &quot;required&quot;: [
+<span class="gi">+        &quot;uid&quot;,</span>
+         &quot;data&quot;,
+         &quot;time&quot;,
+         &quot;descriptor&quot;,
+<span class="gd">-        &quot;seq_no&quot;</span>
+<span class="gi">+        &quot;seq_num&quot;</span>
+     ],
+<span class="gi">+    &quot;title&quot;: &quot;event&quot;,</span>
+     &quot;type&quot;: &quot;object&quot;
+ }
+</pre></div>
+</div>
+<p>The field <tt class="docutils literal"><span class="pre">seq_num</span></tt> is used to order the events in the order in which they were
+created.</p>
+</div>
+<div class="section" id="id2">
+<h3>Example<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p>Measure events contain the data measured at a certain instance in time or
+explicit point in a sequence. For example:</p>
+<div class="highlight-json"><div class="highlight"><pre>{
+    &quot;uid&quot;: &quot;4609e51f-cf38-4c2a-a6ea-483edc461e43&quot;,
+    &quot;seq_num&quot;: 42,
+    &quot;descriptor&quot;: &quot;f05338e0-ed07-4e15-8d7b-06a60dcebaff&quot;,
+    &quot;data&quot;: {
+        &quot;chan1&quot;: [3.14, 1422940467.3101866],
+        &quot;chan2&quot;: [3.14, 1422940467.3101866],
+        &quot;chan3&quot;: [3.14, 1422940467.3101866],
+        &quot;chan4&quot;: [3.14, 1422940467.3101866],
+        &quot;chan5&quot;: [3.14, 1422940467.3101866],
+        &quot;chan6&quot;: [3.14, 1422940467.3101866],
+        &quot;chan7&quot;: [3.14, 1422940467.3101866],
+        &quot;chan8&quot;: [3.14, 1422940467.3101866],
+        &quot;pimte&quot;: [&quot;8cad7f02-c3e1-4e76-a823-94a2a7d23f6b&quot;,
+                  &quot;timestamp&quot;: 1422940481.8930786]
+    },
+    &quot;time&quot;: 1422940508.3491018,
+}
+</pre></div>
+</div>
+<p>Where the keys <tt class="docutils literal"><span class="pre">uid</span></tt>, <tt class="docutils literal"><span class="pre">ev_desc</span></tt>, <tt class="docutils literal"><span class="pre">time</span></tt> and <tt class="docutils literal"><span class="pre">timestamp</span></tt> refer to
+the unique id, a link to the event descriptor the time and the EPICS timestamp
+respectively.</p>
+</div>
+</div>
+<div class="section" id="start-run-events">
+<h2>Start Run Events<a class="headerlink" href="#start-run-events" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id3">
+<h3>Schema<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h3>
+<p class="jsonschema-comment">As documented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Document created at the start of run.  Provides a seach target and later documents link to it&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;beamline_config&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Meta-data regrading how the beamline is configured.  Maybe UID into another collection&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;string&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;beamline_id&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The beamline ID&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;group&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Unix group to associate this data with&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;integer&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;owner&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Unix owner to associate this data with&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;string&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;integer&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;project&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Name of project that this run is part of&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;sample&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Information about the sample, may be a UID to another collection&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;object&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;string&quot;</span>
+            <span class="p">]</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;scan_id&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Scan ID number, not globally unique&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;integer&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Time the run started.  Unix epoch time&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Globally unique ID for tihs run&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;group&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;owner&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;beamline_config&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;beamline_id&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd>Document created at the start of run.  Provides a seach target and later documents link to it</dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>beamline_id</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>The beamline ID</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Time the run started.  Unix epoch time</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>group</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Unix group to associate this data with</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>['string', 'integer']</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>uid</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Globally unique ID for tihs run</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>beamline_config</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Meta-data regrading how the beamline is configured.  Maybe UID into another collection</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>['object', 'string']</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>scan_id</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Scan ID number, not globally unique</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>integer</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>sample</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Information about the sample, may be a UID to another collection</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>['object', 'string']</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>owner</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Unix owner to associate this data with</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>['string', 'integer']</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>project</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Name of project that this run is part of</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><p class="jsonschema-comment">As implemented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;beamline_config&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;beamline_id&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;custom&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;owner&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;scan_id&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time_as_datetime&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;owner&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;beamline_id&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd></dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>beamline_id</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>custom</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time_as_datetime</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>beamline_config</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>scan_id</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>owner</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- As implemented</span>
+<span class="gi">+++ As documented</span>
+<span class="gu">@@ -1,30 +1,61 @@</span>
+ {
+<span class="gi">+    &quot;description&quot;: &quot;Document created at the start of run.  Provides a seach target and later documents link to it&quot;,</span>
+     &quot;properties&quot;: {
+         &quot;beamline_config&quot;: {
+<span class="gd">-            &quot;type&quot;: &quot;object&quot;</span>
+<span class="gi">+            &quot;description&quot;: &quot;Meta-data regrading how the beamline is configured.  Maybe UID into another collection&quot;,</span>
+<span class="gi">+            &quot;type&quot;: [</span>
+<span class="gi">+                &quot;object&quot;,</span>
+<span class="gi">+                &quot;string&quot;</span>
+<span class="gi">+            ]</span>
+         },
+         &quot;beamline_id&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;The beamline ID&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gd">-        &quot;custom&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;object&quot;</span>
+<span class="gi">+        &quot;group&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Unix group to associate this data with&quot;,</span>
+<span class="gi">+            &quot;type&quot;: [</span>
+<span class="gi">+                &quot;string&quot;,</span>
+<span class="gi">+                &quot;integer&quot;</span>
+<span class="gi">+            ]</span>
+         },
+         &quot;owner&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Unix owner to associate this data with&quot;,</span>
+<span class="gi">+            &quot;type&quot;: [</span>
+<span class="gi">+                &quot;string&quot;,</span>
+<span class="gi">+                &quot;integer&quot;</span>
+<span class="gi">+            ]</span>
+<span class="gi">+        },</span>
+<span class="gi">+        &quot;project&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Name of project that this run is part of&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gi">+        &quot;sample&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Information about the sample, may be a UID to another collection&quot;,</span>
+<span class="gi">+            &quot;type&quot;: [</span>
+<span class="gi">+                &quot;object&quot;,</span>
+<span class="gi">+                &quot;string&quot;</span>
+<span class="gi">+            ]</span>
+<span class="gi">+        },</span>
+         &quot;scan_id&quot;: {
+<span class="gd">-            &quot;type&quot;: &quot;string&quot;</span>
+<span class="gi">+            &quot;description&quot;: &quot;Scan ID number, not globally unique&quot;,</span>
+<span class="gi">+            &quot;type&quot;: &quot;integer&quot;</span>
+         },
+         &quot;time&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Time the run started.  Unix epoch time&quot;,</span>
+             &quot;type&quot;: &quot;number&quot;
+         },
+<span class="gd">-        &quot;time_as_datetime&quot;: {</span>
+<span class="gi">+        &quot;uid&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID for tihs run&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         }
+     },
+     &quot;required&quot;: [
+<span class="gi">+        &quot;uid&quot;,</span>
+         &quot;time&quot;,
+<span class="gi">+        &quot;group&quot;,</span>
+         &quot;owner&quot;,
+<span class="gi">+        &quot;beamline_config&quot;,</span>
+         &quot;beamline_id&quot;
+     ],
+     &quot;type&quot;: &quot;object&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="id4">
+<h3>Example<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h3>
+<p>The beginning of a data collection run creates an event which contains
+sufficient metadata and information to describe the data collection. For
+example, this is where beamline config information is located. The start run
+event also serves as a searchable entity which links all data associated by an
+event. For example:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="s2">&quot;2dc386b5-cfee-4906-98e9-1a8322581a92&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;scan_id&quot;</span><span class="p">:</span> <span class="s2">&quot;ascan_52&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;beamline_id&quot;</span><span class="p">:</span> <span class="s2">&quot;CSX&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;sample&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="s2">&quot;0a785292-05c5-4c1b-bd9a-f2dd5b0580c8&quot;</span><span class="p">,</span>
+        <span class="nt">&quot;id&quot;</span><span class="p">:</span> <span class="mi">9</span><span class="p">,</span>
+        <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;A small piece of cheese&quot;</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;project&quot;</span><span class="p">:</span> <span class="s2">&quot;Cheese_shop&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;beamline_config&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;diffractometer&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;geometry&quot;</span><span class="p">:</span> <span class="s2">&quot;swiss&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;xtal_lattice&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="nt">&quot;a&quot;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">,</span>
+                <span class="nt">&quot;b&quot;</span><span class="p">:</span> <span class="mf">2.2</span><span class="p">,</span>
+                <span class="nt">&quot;c&quot;</span><span class="p">:</span> <span class="mf">3.3</span><span class="p">,</span>
+                <span class="nt">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">4.4</span><span class="p">,</span>
+                <span class="nt">&quot;beta&quot;</span><span class="p">:</span> <span class="mf">5.5</span><span class="p">,</span>
+                <span class="nt">&quot;gamma&quot;</span><span class="p">:</span> <span class="mf">6.6</span>
+            <span class="p">},</span>
+            <span class="nt">&quot;UB&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="mf">1422940625.2198992</span><span class="p">,</span>
+    <span class="nt">&quot;owner&quot;</span><span class="p">:</span> <span class="s2">&quot;jcleese&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;group&quot;</span><span class="p">:</span> <span class="s2">&quot;monty&quot;</span>
+
+
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="end-run-events">
+<h2>End Run Events<a class="headerlink" href="#end-run-events" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id5">
+<h3>Schema<a class="headerlink" href="#id5" title="Permalink to this headline">¶</a></h3>
+<p class="jsonschema-comment">As Documented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Document for the end of a run indicating the success/fail state of the run and the end time&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Reference back to the begin run document that this document is paired with.&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;completion_state&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;State of the run when it ended&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;enum&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;abort&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;fail&quot;</span>
+            <span class="p">],</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;reason&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Long-form description of why the run ended&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;The time the run ended. Unix epoch&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;description&quot;</span><span class="p">:</span> <span class="s2">&quot;Globally unique ID for tihs run&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;uid&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;begin_run_event&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;completion_state&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd>Document for the end of a run indicating the success/fail state of the run and the end time</dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>reason</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Long-form description of why the run ended</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>uid</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Globally unique ID for tihs run</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>begin_run_event</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>Reference back to the begin run document that this document is paired with.</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>The time the run ended. Unix epoch</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>completion_state</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd>State of the run when it ended</dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><p class="jsonschema-comment">As implemented</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;custom&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;reason&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;number&quot;</span>
+        <span class="p">},</span>
+        <span class="nt">&quot;time_as_datetime&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;string&quot;</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="nt">&quot;required&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;begin_run_event&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time&quot;</span>
+    <span class="p">],</span>
+    <span class="nt">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;object&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+<dl class='jsonschematable'>
+   <dt class='jss_title h4'></dt>
+   <dd>
+
+     <dl class='jsonschematable'>
+       <dt class='jss_desc text-primary'>Description:</dt>
+       <dd></dd>
+       <dt class='jss_type text-primary'>Type:</dt>
+       <dd>object</dd><dt class='jss_prop text-primary'>Properties:</dt><dd>
+       <dl>
+           
+       <dt class='jss_title h4'>reason</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time_as_datetime</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>begin_run_event</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>string</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>time</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>number</dd></dl>
+       </dd>
+       <dt class='jss_title h4'>custom</dt>
+       <dd>
+    
+         <dl class='jsonschematable'>
+           <dt class='jss_desc text-primary'>Description:</dt>
+           <dd></dd>
+           <dt class='jss_type text-primary'>Type:</dt>
+           <dd>object</dd></dl>
+       </dd>
+       </dl>
+       </dd></dl>
+   </dd>
+</dl><div class="highlight-diff"><div class="highlight"><pre><span class="gd">--- As implemented</span>
+<span class="gi">+++ As Documented</span>
+<span class="gu">@@ -1,24 +1,37 @@</span>
+ {
+<span class="gi">+    &quot;description&quot;: &quot;Document for the end of a run indicating the success/fail state of the run and the end time&quot;,</span>
+     &quot;properties&quot;: {
+         &quot;begin_run_event&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Reference back to the begin run document that this document is paired with.&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+<span class="gd">-        &quot;custom&quot;: {</span>
+<span class="gd">-            &quot;type&quot;: &quot;object&quot;</span>
+<span class="gi">+        &quot;completion_state&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;State of the run when it ended&quot;,</span>
+<span class="gi">+            &quot;enum&quot;: [</span>
+<span class="gi">+                &quot;success&quot;,</span>
+<span class="gi">+                &quot;abort&quot;,</span>
+<span class="gi">+                &quot;fail&quot;</span>
+<span class="gi">+            ],</span>
+<span class="gi">+            &quot;type&quot;: &quot;string&quot;</span>
+         },
+         &quot;reason&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;Long-form description of why the run ended&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         },
+         &quot;time&quot;: {
+<span class="gi">+            &quot;description&quot;: &quot;The time the run ended. Unix epoch&quot;,</span>
+             &quot;type&quot;: &quot;number&quot;
+         },
+<span class="gd">-        &quot;time_as_datetime&quot;: {</span>
+<span class="gi">+        &quot;uid&quot;: {</span>
+<span class="gi">+            &quot;description&quot;: &quot;Globally unique ID for tihs run&quot;,</span>
+             &quot;type&quot;: &quot;string&quot;
+         }
+     },
+     &quot;required&quot;: [
+<span class="gi">+        &quot;uid&quot;,</span>
+         &quot;begin_run_event&quot;,
+<span class="gd">-        &quot;time&quot;</span>
+<span class="gi">+        &quot;time&quot;,</span>
+<span class="gi">+        &quot;completion_state&quot;</span>
+     ],
+     &quot;type&quot;: &quot;object&quot;
+ }
+</pre></div>
+</div>
+</div>
+<div class="section" id="id6">
+<h3>Example<a class="headerlink" href="#id6" title="Permalink to this headline">¶</a></h3>
+<p>With the corresponding end run event as:</p>
+<div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
+    <span class="nt">&quot;uid&quot;</span><span class="p">:</span> <span class="s2">&quot;60bac4c7-e2d3-4c4b-a553-3790a8add866&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;begin_run_event&quot;</span><span class="p">:</span> <span class="s2">&quot;2dc386b5-cfee-4906-98e9-1a8322581a92&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;This shop does not contain any cheese&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;completion_state&quot;</span><span class="p">:</span> <span class="s2">&quot;fail&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;time&quot;</span><span class="p">:</span> <span class="mf">1422940679.72617</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The field <tt class="docutils literal"><span class="pre">reason</span></tt> can be used to describe why a run ended e.g. was it aborted or
+was there an exception during data collection. The field <tt class="docutils literal"><span class="pre">begin_run_event</span></tt> is a
+pointer to the start document.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015 Brookhaven National Lab.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

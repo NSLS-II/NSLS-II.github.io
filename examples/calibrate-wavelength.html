@@ -1,0 +1,235 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Bragg Edge Wavelength Calibration &mdash; NSLS-II Software Documentation 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="NSLS-II Software Documentation 0.0.1 documentation" href="../index.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="../index.html" class="fa fa-home"> NSLS-II Software Documentation</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture-overview.html">Event-Based Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../collection-quick-start.html">Data Collection Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../analysis-quick-start.html">Data Analysis Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../analysis-quick-start.html#option-1-at-the-beamline">Option 1: At the Beamline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../analysis-quick-start.html#option-2-remotely">Option 2: Remotely</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#books-we-like">Books We Like</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#scientific-python-packages-we-use">Scientific Python Packages We Use</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources.html#good-scientific-software-habits">Good Scientific Software Habits</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../technologies.html">Core Technologies</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#python">Python</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#ipython">IPython</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#jupyter-formerly-ipython-notebooks">Jupyter (formerly, IPython notebooks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#conda">Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../technologies.html#mongodb">MongoDB</a></li>
+</ul>
+</li>
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">NSLS-II Software Documentation</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+    <li>Bragg Edge Wavelength Calibration</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="../_sources/examples/calibrate-wavelength.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="bragg-edge-wavelength-calibration">
+<h1>Bragg Edge Wavelength Calibration<a class="headerlink" href="#bragg-edge-wavelength-calibration" title="Permalink to this headline">¶</a></h1>
+<ol class="arabic simple">
+<li>Scan around the beam center.</li>
+<li>Detect the first Bragg peak on each side. It will correspond to a dip
+in the transmitted intensity.</li>
+<li>Locate the theta position of the two peaks and compute the peak-to-peak
+distance.</li>
+<li>Return the wavelength.</li>
+</ol>
+<div class="highlight-python"><div class="highlight"><pre>from bluesky.scientific_callbacks import PeakStats
+from lmfit.models import GaussianModel
+import numpy as np
+
+
+def verify_wavelength(d_spacing, nominal_energy=30):
+    NM_PER_EV = 1.24
+    MARGIN = 0.2
+    SPACING = 0.2  # degrees
+
+    # Find the beam center by scanning around zero and finding the peak.
+    mov(tth_cal, 0)
+    ds = DeltaScan([em_ch1], tth_cal, -range, range, 20)
+    ps = PeakStats(&#39;tth_cal&#39;, &#39;em_ch1&#39;)
+    ds.subs =  ps
+    gs.RE(ds)
+    print(&#39;Center of beam found to be {0}&#39;.format(ps.cen))
+    mov(tth_cal, ps.cen)
+
+    # Scan around the beam center in small increments.
+    nominal_λ = NM_PER_EV / nominal_energy
+    nominal_θ = np.arcsin(nominal_λ / 2 / d_spacing)
+    ds.start = - (1 + MARGIN) * nominal_θ
+    ds.stop = (1 + MARGIN) * nominal_θ
+    ds.num = 2 * (1 + MARGIN) * nominal_θ / np.deg2rad(SPACING)
+
+    # Fit to two Gaussians.
+    last_scan = db[-1]
+    data = get_table(last_scan, [&#39;em_ch1&#39;])
+    model = GaussianModel(prefix=&quot;peak1&quot;) + GaussianModel(prefix=&quot;peak2&quot;)
+    result = model.fit(data[&#39;em_ch1&#39;])
+
+    # Show the plot so that users are aware if the
+    # nonlinear fitting process misses badly.
+
+    # Compute the distance between the two Gaussians&#39; centers.
+    two_dθ = result.values[&#39;peak1_sigma&#39;] - result.values[&#39;peak2_sigma&#39;]
+
+    # Compute the wavelength in nanometers and return that value.
+    λ = 2 * d_spacing * np.sin(two_dθ / 2)
+    return λ
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015 Brookhaven National Lab.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
