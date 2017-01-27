@@ -1,0 +1,611 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.mca &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.mca</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.mca</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">from</span> <span class="nn">.status</span> <span class="k">import</span> <span class="n">DeviceStatus</span>
+<span class="kn">from</span> <span class="nn">.signal</span> <span class="k">import</span> <span class="p">(</span><span class="n">Signal</span><span class="p">,</span> <span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">C</span><span class="p">,</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDC</span><span class="p">,</span>
+                     <span class="n">Staged</span><span class="p">,</span> <span class="n">BlueskyInterface</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.areadetector</span> <span class="k">import</span> <span class="n">EpicsSignalWithRBV</span> <span class="k">as</span> <span class="n">SignalWithRBV</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ROI</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+
+    <span class="c1"># &#39;name&#39; is not an allowed attribute</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NM&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">net_count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;N&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">preset_count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">is_preset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;IP&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">bkgnd_chans</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BG&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">hi_chan</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;HI&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">lo_chan</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;LO&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">configuration_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="n">read_attrs</span><span class="p">,</span>
+                         <span class="n">configuration_attrs</span><span class="o">=</span><span class="n">configuration_attrs</span><span class="p">,</span>
+                         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">add_rois</span><span class="p">(</span><span class="n">range_</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Add one or more ROIs to an MCA instance</span>
+
+<span class="sd">       Parameters:</span>
+<span class="sd">       -----------</span>
+<span class="sd">       range_ : sequence of ints</span>
+<span class="sd">           Must be be in the set [0,31]</span>
+
+<span class="sd">       By default, an EpicsMCA is initialized with all 32 rois.</span>
+<span class="sd">       These provide the following Components as EpicsSignals (N=[0,31]):</span>
+<span class="sd">       EpicsMCA.rois.roiN.(label,count,net_count,preset_cnt, is_preset,</span>
+<span class="sd">       bkgnd_chans, hi_chan, lo_chan)</span>
+<span class="sd">       &#39;&#39;&#39;</span>
+    <span class="n">defn</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">range_</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">roi</span> <span class="o">&lt;</span> <span class="mi">32</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;roi must be in the set [0,31]&#39;</span><span class="p">)</span>
+
+        <span class="n">attr</span> <span class="o">=</span> <span class="s1">&#39;roi</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">roi</span><span class="p">)</span>
+        <span class="n">defn</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ROI</span><span class="p">,</span> <span class="s1">&#39;.R</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">roi</span><span class="p">),</span> <span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">defn</span>
+
+
+<div class="viewcode-block" id="EpicsMCARecord"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.mca.EpicsMCARecord">[docs]</a><span class="k">class</span> <span class="nc">EpicsMCARecord</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;SynApps MCA Record interface&#39;&#39;&#39;</span>
+    <span class="n">stop_signal</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.STOP&#39;</span><span class="p">)</span>
+    <span class="n">preset_real_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.PRTM&#39;</span><span class="p">)</span>
+    <span class="n">preset_live_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.PLTM&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_real_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.ERTM&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_live_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.ELTM&#39;</span><span class="p">)</span>
+
+    <span class="n">spectrum</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.VAL&#39;</span><span class="p">)</span>
+    <span class="n">background</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.BG&#39;</span><span class="p">)</span>
+    <span class="n">mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.MODE&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">rois</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">add_rois</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">32</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">configuration_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">read_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">read_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;spectrum&#39;</span><span class="p">,</span> <span class="s1">&#39;preset_real_time&#39;</span><span class="p">,</span> <span class="s1">&#39;elapsed_real_time&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">configuration_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configuration_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;preset_real_time&#39;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="n">read_attrs</span><span class="p">,</span>
+                         <span class="n">configuration_attrs</span><span class="o">=</span><span class="n">configuration_attrs</span><span class="p">,</span>
+                         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># could arguably be made a configuration_attr instead...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;PHA&#39;</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_signal</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">EpicsMCA</span><span class="p">(</span><span class="n">EpicsMCARecord</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;mca records with extras from mca.db&#39;&#39;&#39;</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Start&#39;</span><span class="p">)</span>
+    <span class="n">stop_signal</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Stop&#39;</span><span class="p">)</span>
+    <span class="n">erase</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Erase&#39;</span><span class="p">)</span>
+    <span class="n">erase_start</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EraseStart&#39;</span><span class="p">,</span> <span class="n">trigger_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">check_acquiring</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CheckACQG&#39;</span><span class="p">)</span>
+    <span class="n">client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ClientWait&#39;</span><span class="p">)</span>
+    <span class="n">enable_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EnableWait&#39;</span><span class="p">)</span>
+    <span class="n">read</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Read&#39;</span><span class="p">)</span>
+    <span class="n">set_client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetClientWait&#39;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Status&#39;</span><span class="p">)</span>
+    <span class="n">when_acq_stops</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;WhenAcqStops&#39;</span><span class="p">)</span>
+    <span class="n">why1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Why1&#39;</span><span class="p">)</span>
+    <span class="n">why2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Why2&#39;</span><span class="p">)</span>
+    <span class="n">why3</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Why3&#39;</span><span class="p">)</span>
+    <span class="n">why4</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Why4&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsMCAReadNotify</span><span class="p">(</span><span class="n">EpicsMCARecord</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;mca record with extras from mcaReadNotify.db&#39;&#39;&#39;</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Start&#39;</span><span class="p">)</span>
+    <span class="n">stop_signal</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Stop&#39;</span><span class="p">)</span>
+    <span class="n">erase</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Erase&#39;</span><span class="p">)</span>
+    <span class="n">erase_start</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EraseStart&#39;</span><span class="p">,</span> <span class="n">trigger_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">check_acquiring</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CheckACQG&#39;</span><span class="p">)</span>
+    <span class="n">client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ClientWait&#39;</span><span class="p">)</span>
+    <span class="n">enable_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EnableWait&#39;</span><span class="p">)</span>
+    <span class="n">read</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Read&#39;</span><span class="p">)</span>
+    <span class="n">set_client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetClientWait&#39;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Status&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsMCACallback</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Callback-related signals for MCA devices&#39;&#39;&#39;</span>
+    <span class="n">read_callback</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadCallback&#39;</span><span class="p">)</span>
+    <span class="n">read_data_once</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadDataOnce&#39;</span><span class="p">)</span>
+    <span class="n">read_status_once</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadStatusOnce&#39;</span><span class="p">)</span>
+    <span class="n">collect_data</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CollectData&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EpicsDXP"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.mca.EpicsDXP">[docs]</a><span class="k">class</span> <span class="nc">EpicsDXP</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;All high-level DXP parameters for each channel&#39;&#39;&#39;</span>
+    <span class="n">preset_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetMode&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">live_time_output</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LiveTimeOutput&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">elapsed_live_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ElapsedLiveTime&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_real_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ElapsedRealTime&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_trigger_live_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ElapsedTriggerLiveTime&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Trigger Filter PVs</span>
+    <span class="n">trigger_peaking_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerPeakingTime&#39;</span><span class="p">)</span>
+    <span class="n">trigger_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerThreshold&#39;</span><span class="p">)</span>
+    <span class="n">trigger_gap_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerGapTime&#39;</span><span class="p">)</span>
+    <span class="n">trigger_output</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerOutput&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">max_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MaxWidth&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Energy Filter PVs</span>
+    <span class="n">peaking_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PeakingTime&#39;</span><span class="p">)</span>
+    <span class="n">energy_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnergyThreshold&#39;</span><span class="p">)</span>
+    <span class="n">gap_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;GapTime&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Baseline PVs</span>
+    <span class="n">baseline_cut_percent</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BaselineCutPercent&#39;</span><span class="p">)</span>
+    <span class="n">baseline_cut_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BaselineCutEnable&#39;</span><span class="p">)</span>
+    <span class="n">baseline_filter_length</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BaselineFilterLength&#39;</span><span class="p">)</span>
+    <span class="n">baseline_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BaselineThreshold&#39;</span><span class="p">)</span>
+    <span class="n">baseline_energy_array</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BaselineEnergyArray&#39;</span><span class="p">)</span>
+    <span class="n">baseline_histogram</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BaselineHistogram&#39;</span><span class="p">)</span>
+    <span class="n">baseline_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BaselineThreshold&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Misc PVs</span>
+    <span class="n">preamp_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PreampGain&#39;</span><span class="p">)</span>
+    <span class="n">detector_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DetectorPolarity&#39;</span><span class="p">)</span>
+    <span class="n">reset_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ResetDelay&#39;</span><span class="p">)</span>
+    <span class="n">decay_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DecayTime&#39;</span><span class="p">)</span>
+    <span class="n">max_energy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MaxEnergy&#39;</span><span class="p">)</span>
+    <span class="n">adc_percent_rule</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADCPercentRule&#39;</span><span class="p">)</span>
+    <span class="n">max_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MaxWidth&#39;</span><span class="p">)</span>
+
+    <span class="c1"># read-only diagnostics</span>
+    <span class="n">triggers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Triggers&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Events&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">overflows</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Overflows&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">underflows</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Underflows&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">input_count_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;InputCountRate&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">output_count_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;OutputCountRate&#39;</span><span class="p">,</span> <span class="n">lazy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">mca_bin_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MCABinWidth_RBV&#39;</span><span class="p">)</span>
+    <span class="n">calibration_energy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;CalibrationEnergy_RBV&#39;</span><span class="p">)</span>
+    <span class="n">current_pixel</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CurrentPixel&#39;</span><span class="p">)</span>
+    <span class="n">dynamic_range</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DynamicRange_RBV&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Preset options</span>
+    <span class="n">preset_events</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PresetEvents&#39;</span><span class="p">)</span>
+    <span class="n">preset_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PresetMode&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">preset_triggers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PresetTriggers&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Trace options</span>
+    <span class="n">trace_data</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TraceData&#39;</span><span class="p">)</span>
+    <span class="n">trace_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TraceMode&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">trace_time_array</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TraceTimeArray&#39;</span><span class="p">)</span>
+    <span class="n">trace_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TraceTime&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">EpicsDXPLowLevelParameter</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">param_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">)</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Val&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsDXPLowLevel</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">num_low_level_params</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NumLLParams&#39;</span><span class="p">)</span>
+    <span class="n">read_low_level_params</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadLLParams&#39;</span><span class="p">)</span>
+
+    <span class="n">parameter_prefix</span> <span class="o">=</span> <span class="s1">&#39;LL</span><span class="si">{}</span><span class="s1">&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameter_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">get_low_level_parameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get a DXP low level parameter</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        index : int</span>
+<span class="sd">            In the range of [0, 229]</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        param : EpicsDXPLowLevelParameter</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parameter_cache</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_prefix</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">_param</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="n">EpicsDXPLowLevelParameter</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parameter_cache</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span>
+        <span class="k">return</span> <span class="n">param</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsDXPMapping</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">apply</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Apply&#39;</span><span class="p">)</span>
+    <span class="n">auto_apply</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoApply&#39;</span><span class="p">)</span>
+    <span class="n">auto_pixels_per_buffer</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoPixelsPerBuffer&#39;</span><span class="p">)</span>
+    <span class="n">buffer_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;BufferSize_RBV&#39;</span><span class="p">)</span>
+    <span class="n">collect_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;CollectMode&#39;</span><span class="p">)</span>
+    <span class="n">ignore_gate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;IgnoreGate&#39;</span><span class="p">)</span>
+    <span class="n">input_logic_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;InputLogicPolarity&#39;</span><span class="p">)</span>
+    <span class="n">list_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ListMode&#39;</span><span class="p">)</span>
+    <span class="n">mbytes_read</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MBytesRead_RBV&#39;</span><span class="p">)</span>
+    <span class="n">next_pixel</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NextPixel&#39;</span><span class="p">)</span>
+    <span class="n">pixel_advance_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PixelAdvanceMode&#39;</span><span class="p">)</span>
+    <span class="n">pixels_per_buffer</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PixelsPerBuffer&#39;</span><span class="p">)</span>
+    <span class="n">pixels_per_run</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PixelsPerRun&#39;</span><span class="p">)</span>
+    <span class="n">read_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ReadRate_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sync_count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncCount&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsDXPBaseSystem</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">channel_advance</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ChannelAdvance&#39;</span><span class="p">)</span>
+    <span class="n">client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ClientWait&#39;</span><span class="p">)</span>
+    <span class="n">dwell</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Dwell&#39;</span><span class="p">)</span>
+    <span class="n">max_scas</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MaxSCAs&#39;</span><span class="p">)</span>
+    <span class="n">num_scas</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumSCAs&#39;</span><span class="p">)</span>
+    <span class="n">poll_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PollTime&#39;</span><span class="p">)</span>
+    <span class="n">prescale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Prescale&#39;</span><span class="p">)</span>
+    <span class="n">save_system</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SaveSystem&#39;</span><span class="p">)</span>
+    <span class="n">save_system_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SaveSystemFile&#39;</span><span class="p">)</span>
+    <span class="n">set_client_wait</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetClientWait&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EpicsDXPMultiElementSystem</span><span class="p">(</span><span class="n">EpicsDXPBaseSystem</span><span class="p">):</span>
+    <span class="c1"># Preset info</span>
+    <span class="n">preset_events</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetEvents&#39;</span><span class="p">)</span>
+    <span class="n">preset_live_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetLive&#39;</span><span class="p">)</span>
+    <span class="n">preset_real_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetReal&#39;</span><span class="p">)</span>
+    <span class="n">preset_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetMode&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">preset_triggers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PresetTriggers&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Acquisition</span>
+    <span class="n">erase_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EraseAll&#39;</span><span class="p">)</span>
+    <span class="n">erase_start</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EraseStart&#39;</span><span class="p">,</span> <span class="n">trigger_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">start_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StartAll&#39;</span><span class="p">)</span>
+    <span class="n">stop_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StopAll&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Status</span>
+    <span class="n">set_acquire_busy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetAcquireBusy&#39;</span><span class="p">)</span>
+    <span class="n">acquire_busy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AcquireBusy&#39;</span><span class="p">)</span>
+    <span class="n">status_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StatusAll&#39;</span><span class="p">)</span>
+    <span class="n">status_all_once</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StatusAllOnce&#39;</span><span class="p">)</span>
+    <span class="n">acquiring</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Acquiring&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Reading</span>
+    <span class="n">read_baseline_histograms</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadBaselineHistograms&#39;</span><span class="p">)</span>
+    <span class="n">read_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadAll&#39;</span><span class="p">)</span>
+    <span class="n">read_all_once</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadAllOnce&#39;</span><span class="p">)</span>
+
+    <span class="c1"># As a debugging note, if snl_connected is not &#39;1&#39;, your IOC is</span>
+    <span class="c1"># misconfigured:</span>
+    <span class="n">snl_connected</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SNL_Connected&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Copying to individual elements</span>
+    <span class="n">copy_adcp_ercent_rule</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyADCPercentRule&#39;</span><span class="p">)</span>
+    <span class="n">copy_baseline_cut_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyBaselineCutEnable&#39;</span><span class="p">)</span>
+    <span class="n">copy_baseline_cut_percent</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyBaselineCutPercent&#39;</span><span class="p">)</span>
+    <span class="n">copy_baseline_filter_length</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyBaselineFilterLength&#39;</span><span class="p">)</span>
+    <span class="n">copy_baseline_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyBaselineThreshold&#39;</span><span class="p">)</span>
+    <span class="n">copy_decay_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyDecayTime&#39;</span><span class="p">)</span>
+    <span class="n">copy_detector_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyDetectorPolarity&#39;</span><span class="p">)</span>
+    <span class="n">copy_energy_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyEnergyThreshold&#39;</span><span class="p">)</span>
+    <span class="n">copy_gap_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyGapTime&#39;</span><span class="p">)</span>
+    <span class="n">copy_max_energy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyMaxEnergy&#39;</span><span class="p">)</span>
+    <span class="n">copy_max_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyMaxWidth&#39;</span><span class="p">)</span>
+    <span class="n">copy_peaking_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyPeakingTime&#39;</span><span class="p">)</span>
+    <span class="n">copy_preamp_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyPreampGain&#39;</span><span class="p">)</span>
+    <span class="n">copy_roic_hannel</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyROIChannel&#39;</span><span class="p">)</span>
+    <span class="n">copy_roie_nergy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyROIEnergy&#39;</span><span class="p">)</span>
+    <span class="n">copy_roi_sca</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyROI_SCA&#39;</span><span class="p">)</span>
+    <span class="n">copy_reset_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyResetDelay&#39;</span><span class="p">)</span>
+    <span class="n">copy_trigger_gap_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyTriggerGapTime&#39;</span><span class="p">)</span>
+    <span class="n">copy_trigger_peaking_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyTriggerPeakingTime&#39;</span><span class="p">)</span>
+    <span class="n">copy_trigger_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyTriggerThreshold&#39;</span><span class="p">)</span>
+
+    <span class="c1"># do_* executes the process:</span>
+    <span class="n">do_read_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DoReadAll&#39;</span><span class="p">)</span>
+    <span class="n">do_read_baseline_histograms</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DoReadBaselineHistograms&#39;</span><span class="p">)</span>
+    <span class="n">do_read_traces</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DoReadTraces&#39;</span><span class="p">)</span>
+    <span class="n">do_status_all</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DoStatusAll&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Time</span>
+    <span class="n">dead_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DeadTime&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_live</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ElapsedLive&#39;</span><span class="p">)</span>
+    <span class="n">elapsed_real</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ElapsedReal&#39;</span><span class="p">)</span>
+    <span class="n">idead_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;IDeadTime&#39;</span><span class="p">)</span>
+
+    <span class="c1"># low-level</span>
+    <span class="n">read_low_level_params</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadLLParams&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Traces</span>
+    <span class="n">read_traces</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadTraces&#39;</span><span class="p">)</span>
+    <span class="n">trace_modes</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TraceModes&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">trace_times</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TraceTimes&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">SaturnMCA</span><span class="p">(</span><span class="n">EpicsMCA</span><span class="p">,</span> <span class="n">EpicsMCACallback</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">SaturnDXP</span><span class="p">(</span><span class="n">EpicsDXP</span><span class="p">,</span> <span class="n">EpicsDXPLowLevel</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">Saturn</span><span class="p">(</span><span class="n">EpicsDXPBaseSystem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;DXP Saturn with 1 channel example&#39;&#39;&#39;</span>
+    <span class="n">dxp</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SaturnDXP</span><span class="p">,</span> <span class="s1">&#39;dxp1:&#39;</span><span class="p">)</span>
+    <span class="n">mca</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SaturnMCA</span><span class="p">,</span> <span class="s1">&#39;mca1&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">MercuryDXP</span><span class="p">(</span><span class="n">EpicsDXP</span><span class="p">,</span> <span class="n">EpicsDXPLowLevel</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">Mercury1</span><span class="p">(</span><span class="n">EpicsDXPMultiElementSystem</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;DXP Mercury with 1 channel example&#39;&#39;&#39;</span>
+    <span class="n">dxp</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">MercuryDXP</span><span class="p">,</span> <span class="s1">&#39;dxp1:&#39;</span><span class="p">)</span>
+    <span class="n">mca</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsMCARecord</span><span class="p">,</span> <span class="s1">&#39;mca1&#39;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">SoftDXPTrigger</span><span class="p">(</span><span class="n">BlueskyInterface</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Simple soft trigger for DXP devices</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    count_signal : str, optional</span>
+<span class="sd">        Signal to set acquisition time (default: &#39;preset_real_time&#39;)</span>
+<span class="sd">    preset_mode : str, optional</span>
+<span class="sd">        Default preset mode for the stage signals (default: &#39;Real time&#39;)</span>
+<span class="sd">    mode_signal : str, optional</span>
+<span class="sd">        Preset mode signal attribute (default &#39;preset_mode&#39;)</span>
+<span class="sd">    stop_signal : str, optional</span>
+<span class="sd">        Stop signal attribute (default &#39;stop_all&#39;)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">count_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Signal</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;bluesky count time&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">count_signal</span><span class="o">=</span><span class="s1">&#39;preset_real_time&#39;</span><span class="p">,</span>
+                 <span class="n">stop_signal</span><span class="o">=</span><span class="s1">&#39;stop_all&#39;</span><span class="p">,</span> <span class="n">mode_signal</span><span class="o">=</span><span class="s1">&#39;preset_mode&#39;</span><span class="p">,</span>
+                 <span class="n">preset_mode</span><span class="o">=</span><span class="s1">&#39;Real time&#39;</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_status</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_count_signal</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">count_signal</span><span class="p">)</span>
+
+        <span class="n">stop_signal</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stop_signal</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="n">stop_signal</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">mode_signal</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode_signal</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="n">mode_signal</span><span class="p">]</span> <span class="o">=</span> <span class="n">preset_mode</span>
+
+    <span class="k">def</span> <span class="nf">stage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_time</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># remove count_time from the stage signals if count_time unset</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_signal</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_signal</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_time</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stage</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

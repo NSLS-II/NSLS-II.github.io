@@ -1,0 +1,270 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Ophyd &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="ophyd  documentation" href="#"/>
+        <link rel="next" title="Overview of a Device" href="device-overview.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="#">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="#">Docs</a> &raquo;</li>
+      
+    <li>Ophyd</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="ophyd">
+<h1>Ophyd<a class="headerlink" href="#ophyd" title="Permalink to this headline">¶</a></h1>
+<p>Ophyd represents hardware in Python, providing a consistent interface for
+reading values from and sending values to any device.</p>
+<p>To represent a complex device with many components, it employs a hierarchical
+structure wherein a device is a composition of subdevices, all sharing the
+common interface.</p>
+<div class="section" id="why-not-just-use-pyepics">
+<h2>Why not just use pyepics?<a class="headerlink" href="#why-not-just-use-pyepics" title="Permalink to this headline">¶</a></h2>
+<p>Ophyd builds on pyepics, Python bindings to EPICS. It provides full access to
+the underlying pyepics PV objects, but it also provides some higher-level
+abstractions.</p>
+<p>The purpose of these abstractions is make all hardware look the same as much as
+possible, enabling the same experimental control logic to apply to different
+hardware. For example, from this point of view performing a temperature sweep
+is no different that scanning a motor. The abstractions in ophyd present a
+standard interface for maximum generality. But they do not preclude direct
+access to the individual PVs, which can be important for debugging or
+interactive exploration.</p>
+<ul class="simple">
+<li>A <strong>Signal</strong> represents a single value. In EPICS, it corresponds to either
+a single read-only PV or a pair of read and write PVs, grouped together. It
+assigns a human-readable name (e.g., &#8216;temperature&#8217;) which is more natural in
+the analysis phase than the raw PV names.</li>
+<li>A <strong>Device</strong> is composed of Signals or of other Devices. Devices can be
+nested. Some devices map to single pieces of hardware (like a motor).
+Others group together many different pieces of hardware (like a
+diffractometer). In one process, the same PVs might appear in multiple
+different Devices, so organized for different uses.</li>
+</ul>
+<p>Signals and devices have:
+* a <code class="docutils literal"><span class="pre">connected</span></code> attribute, to quickly check whether <em>all</em> the involved PVs</p>
+<blockquote>
+<div>are responding</div></blockquote>
+<ul class="simple">
+<li>a <code class="docutils literal"><span class="pre">name</span></code> attribute, assigning a human-friendly alias (e.g., &#8220;temperature&#8221;)
+which is often more natural than the raw PV name in the analysis phase</li>
+<li>a means of designating signals that should included in a typical reading
+(<code class="docutils literal"><span class="pre">read_attrs</span></code> for &#8220;read attriubtes&#8221;), signals that change rarely
+(<code class="docutils literal"><span class="pre">configuration_attrs</span></code> for &#8220;configuration attributes&#8221;) and should be read
+only when known to change, and signals that should be not read at all (a
+common example: the hundreds of rarely-touched PVs in the area detector
+plugin).</li>
+<li>a single <code class="docutils literal"><span class="pre">read</span></code> method which reads the values of all a device&#8217;s designated
+components and collates them into a single, labeled result</li>
+<li>a single <code class="docutils literal"><span class="pre">describe</span></code> method which extrats the metadata (PV, units,
+precision, data type, etc.) of all a device&#8217;s designated components</li>
+</ul>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Project Architecture</a></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="device-overview.html" class="btn btn-neutral float-right" title="Overview of a Device" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

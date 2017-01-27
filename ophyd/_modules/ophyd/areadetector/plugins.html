@@ -1,0 +1,979 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.areadetector.plugins &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.areadetector.plugins</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.areadetector.plugins</h1><div class="highlight"><pre>
+<span></span><span class="c1"># vi: ts=4 sw=4</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">:mod:`ophyd.control.areadetector.plugins` - areaDetector plugins</span>
+<span class="sd">======================================================</span>
+
+<span class="sd">.. module:: ophyd.control.areadetector.plugins</span>
+<span class="sd"> :synopsis:  `areaDetector`_ plugin abstractions</span>
+
+<span class="sd">.. _areaDetector: http://cars.uchicago.edu/software/epics/areaDetector.html</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">ttime</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">import</span> <span class="nn">epics</span>
+
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="p">(</span><span class="n">ADBase</span><span class="p">,</span> <span class="n">ADComponent</span> <span class="k">as</span> <span class="n">C</span><span class="p">,</span> <span class="n">ad_group</span><span class="p">,</span>
+                   <span class="n">EpicsSignalWithRBV</span> <span class="k">as</span> <span class="n">SignalWithRBV</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..signal</span> <span class="k">import</span> <span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="n">EpicsSignal</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..device</span> <span class="k">import</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDC</span><span class="p">,</span> <span class="n">GenerateDatumInterface</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">enum</span><span class="p">,</span> <span class="n">set_and_wait</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;ColorConvPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;FilePlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;HDF5Plugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;ImagePlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;JPEGPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;MagickPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;NetCDFPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;NexusPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;OverlayPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;ProcessPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;ROIPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;StatsPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;TIFFPlugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;TransformPlugin&#39;</span><span class="p">,</span>
+
+           <span class="s1">&#39;get_areadetector_plugin&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;plugin_from_pvname&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;register_plugin&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<span class="n">_plugin_class</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="k">def</span> <span class="nf">register_plugin</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Register a plugin&#39;&#39;&#39;</span>
+    <span class="k">global</span> <span class="n">_plugin_class</span>
+
+    <span class="n">_plugin_class</span><span class="p">[</span><span class="n">cls</span><span class="o">.</span><span class="n">_plugin_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">cls</span>
+
+
+<div class="viewcode-block" id="PluginBase"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.PluginBase">[docs]</a><span class="k">class</span> <span class="nc">PluginBase</span><span class="p">(</span><span class="n">ADBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;AreaDetector plugin base class&#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Turn array callbacks on during staging.</span>
+        <span class="c1"># Without this, no array data is sent to the plugins.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="s1">&#39;cam&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="o">.</span><span class="n">update</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">array_callbacks</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                                   <span class="p">])</span>
+
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pluginDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">array_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArrayCounter&#39;</span><span class="p">)</span>
+    <span class="n">array_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArrayRate_RBV&#39;</span><span class="p">)</span>
+    <span class="n">asyn_io</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AsynIO&#39;</span><span class="p">)</span>
+
+    <span class="n">nd_attributes_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NDAttributesFile&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">pool_alloc_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolAllocBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_free_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolFreeBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_max_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolMaxBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_max_mem</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolMaxMem&#39;</span><span class="p">)</span>
+    <span class="n">pool_used_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolUsedBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_used_mem</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolUsedMem&#39;</span><span class="p">)</span>
+    <span class="n">port_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PortName_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Ensure the plugin is enabled. We do not disable it on unstage.</span>
+        <span class="n">set_and_wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enable</span><span class="p">,</span> <span class="s1">&#39;Enable&#39;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stage</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">array_pixels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The total number of pixels, calculated from array_size&#39;&#39;&#39;</span>
+
+        <span class="n">array_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array_size</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndimensions</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">dimensions</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">pixels</span> <span class="o">=</span> <span class="n">array_size</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="n">array_size</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">dimensions</span><span class="p">]:</span>
+            <span class="n">pixels</span> <span class="o">*=</span> <span class="n">dim</span>
+
+        <span class="k">return</span> <span class="n">pixels</span>
+
+    <span class="n">width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArraySize0_RBV&#39;</span><span class="p">)</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArraySize1_RBV&#39;</span><span class="p">)</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArraySize2_RBV&#39;</span><span class="p">)</span>
+    <span class="n">array_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize1_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize0_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;depth&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize2_RBV&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;The array size&#39;</span><span class="p">)</span>
+
+    <span class="n">bayer_pattern</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;BayerPattern_RBV&#39;</span><span class="p">)</span>
+    <span class="n">blocking_callbacks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BlockingCallbacks&#39;</span><span class="p">)</span>
+    <span class="n">color_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ColorMode_RBV&#39;</span><span class="p">)</span>
+    <span class="n">data_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DataType_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">dim0_sa</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Dim0SA&#39;</span><span class="p">)</span>
+    <span class="n">dim1_sa</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Dim1SA&#39;</span><span class="p">)</span>
+    <span class="n">dim2_sa</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Dim2SA&#39;</span><span class="p">)</span>
+    <span class="n">dim_sa</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;dim0&#39;</span><span class="p">,</span> <span class="s1">&#39;Dim0SA&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;dim1&#39;</span><span class="p">,</span> <span class="s1">&#39;Dim1SA&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;dim2&#39;</span><span class="p">,</span> <span class="s1">&#39;Dim2SA&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Dimension sub-arrays&#39;</span><span class="p">)</span>
+
+    <span class="n">dimensions</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Dimensions_RBV&#39;</span><span class="p">)</span>
+    <span class="n">dropped_arrays</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DroppedArrays&#39;</span><span class="p">)</span>
+    <span class="n">enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableCallbacks&#39;</span><span class="p">)</span>
+    <span class="n">min_callback_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MinCallbackTime&#39;</span><span class="p">)</span>
+    <span class="n">nd_array_address</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NDArrayAddress&#39;</span><span class="p">)</span>
+    <span class="n">nd_array_port</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NDArrayPort&#39;</span><span class="p">)</span>
+    <span class="n">ndimensions</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NDimensions_RBV&#39;</span><span class="p">)</span>
+    <span class="n">plugin_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PluginType_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">queue_free</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueFree&#39;</span><span class="p">)</span>
+    <span class="n">queue_free_low</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueFreeLow&#39;</span><span class="p">)</span>
+    <span class="n">queue_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueSize&#39;</span><span class="p">)</span>
+    <span class="n">queue_use</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueUse&#39;</span><span class="p">)</span>
+    <span class="n">queue_use_high</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueUseHIGH&#39;</span><span class="p">)</span>
+    <span class="n">queue_use_hihi</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;QueueUseHIHI&#39;</span><span class="p">)</span>
+    <span class="n">time_stamp</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;TimeStamp_RBV&#39;</span><span class="p">)</span>
+    <span class="n">unique_id</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;UniqueId_RBV&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImagePlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.ImagePlugin">[docs]</a><span class="k">class</span> <span class="nc">ImagePlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;image1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;image\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginStdArrays.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginStdArrays&#39;</span>
+
+    <span class="n">array_data</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ArrayData&#39;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">array_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array_size</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">array_size</span> <span class="o">==</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Invalid image; ensure array_callbacks are on&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">array_size</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">array_size</span> <span class="o">=</span> <span class="n">array_size</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">pixel_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array_pixels</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">array_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">count</span><span class="o">=</span><span class="n">pixel_count</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">array_size</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StatsPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.StatsPlugin">[docs]</a><span class="k">class</span> <span class="nc">StatsPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Stats1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Stats\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginStats.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginStats&#39;</span>
+
+    <span class="n">bgd_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BgdWidth&#39;</span><span class="p">)</span>
+    <span class="n">centroid_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;CentroidThreshold&#39;</span><span class="p">)</span>
+
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;CentroidX_RBV&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;CentroidY_RBV&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;The centroid XY&#39;</span><span class="p">)</span>
+
+    <span class="n">compute_centroid</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ComputeCentroid&#39;</span><span class="p">)</span>
+    <span class="n">compute_histogram</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ComputeHistogram&#39;</span><span class="p">)</span>
+    <span class="n">compute_profiles</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ComputeProfiles&#39;</span><span class="p">)</span>
+    <span class="n">compute_statistics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ComputeStatistics&#39;</span><span class="p">)</span>
+
+    <span class="n">cursor</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;CursorX&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;CursorY&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;The cursor XY&#39;</span><span class="p">)</span>
+
+    <span class="n">hist_entropy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;HistEntropy_RBV&#39;</span><span class="p">)</span>
+    <span class="n">hist_max</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HistMax&#39;</span><span class="p">)</span>
+    <span class="n">hist_min</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HistMin&#39;</span><span class="p">)</span>
+    <span class="n">hist_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HistSize&#39;</span><span class="p">)</span>
+    <span class="n">histogram</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Histogram_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeX&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeY&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;The maximum size in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">max_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MaxValue_RBV&#39;</span><span class="p">)</span>
+    <span class="n">max_xy</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxX_RBV&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxY_RBV&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Maximum in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">mean_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MeanValue_RBV&#39;</span><span class="p">)</span>
+    <span class="n">min_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MinValue_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">min_xy</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MinX_RBV&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MinY_RBV&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Minimum in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">net</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Net_RBV&#39;</span><span class="p">)</span>
+    <span class="n">profile_average</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                   <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileAverageX_RBV&#39;</span><span class="p">),</span>
+                                    <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileAverageY_RBV&#39;</span><span class="p">))),</span>
+                          <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Profile average in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">profile_centroid</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                    <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileCentroidX_RBV&#39;</span><span class="p">),</span>
+                                     <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileCentroidY_RBV&#39;</span><span class="p">))),</span>
+                           <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Profile centroid in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">profile_cursor</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                  <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileCursorX_RBV&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileCursorY_RBV&#39;</span><span class="p">))),</span>
+                         <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Profile cursor in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">profile_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileSizeX_RBV&#39;</span><span class="p">),</span>
+                                 <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileSizeY_RBV&#39;</span><span class="p">))),</span>
+                       <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Profile size in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">profile_threshold</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                     <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileThresholdX_RBV&#39;</span><span class="p">),</span>
+                                      <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ProfileThresholdY_RBV&#39;</span><span class="p">))),</span>
+                            <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Profile threshold in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">set_xhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetXHOPR&#39;</span><span class="p">)</span>
+    <span class="n">set_yhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetYHOPR&#39;</span><span class="p">)</span>
+    <span class="n">sigma_xy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SigmaXY_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sigma_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SigmaX_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sigma_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SigmaY_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Sigma_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ts_acquiring</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSAcquiring&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_centroid</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                               <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;TSCentroidX&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;TSCentroidY&#39;</span><span class="p">))),</span>
+                      <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Time series centroid in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_control</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSControl&#39;</span><span class="p">)</span>
+    <span class="n">ts_current_point</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSCurrentPoint&#39;</span><span class="p">)</span>
+    <span class="n">ts_max_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSMaxValue&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_max</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;TSMaxX&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;TSMaxY&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Time series maximum in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_mean_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSMeanValue&#39;</span><span class="p">)</span>
+    <span class="n">ts_min_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSMinValue&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_min</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;TSMinX&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;TSMinY&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Time series minimum in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">ts_net</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSNet&#39;</span><span class="p">)</span>
+    <span class="n">ts_num_points</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSNumPoints&#39;</span><span class="p">)</span>
+    <span class="n">ts_read</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSRead&#39;</span><span class="p">)</span>
+    <span class="n">ts_sigma</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSSigma&#39;</span><span class="p">)</span>
+    <span class="n">ts_sigma_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSSigmaX&#39;</span><span class="p">)</span>
+    <span class="n">ts_sigma_xy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSSigmaXY&#39;</span><span class="p">)</span>
+    <span class="n">ts_sigma_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSSigmaY&#39;</span><span class="p">)</span>
+    <span class="n">ts_total</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TSTotal&#39;</span><span class="p">)</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Total_RBV&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ColorConvPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.ColorConvPlugin">[docs]</a><span class="k">class</span> <span class="nc">ColorConvPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;CC1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;CC\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginColorConvert.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginColorConvert&#39;</span>
+
+    <span class="n">color_mode_out</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ColorModeOut&#39;</span><span class="p">)</span>
+    <span class="n">false_color</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FalseColor&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProcessPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.ProcessPlugin">[docs]</a><span class="k">class</span> <span class="nc">ProcessPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Proc1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Proc\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginProcess.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginProcess&#39;</span>
+
+    <span class="n">auto_offset_scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AutoOffsetScale&#39;</span><span class="p">)</span>
+    <span class="n">auto_reset_filter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoResetFilter&#39;</span><span class="p">)</span>
+    <span class="n">average_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AverageSeq&#39;</span><span class="p">)</span>
+    <span class="n">copy_to_filter_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CopyToFilterSeq&#39;</span><span class="p">)</span>
+    <span class="n">data_type_out</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DataTypeOut&#39;</span><span class="p">)</span>
+    <span class="n">difference_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DifferenceSeq&#39;</span><span class="p">)</span>
+    <span class="n">enable_background</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableBackground&#39;</span><span class="p">)</span>
+    <span class="n">enable_filter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableFilter&#39;</span><span class="p">)</span>
+    <span class="n">enable_flat_field</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableFlatField&#39;</span><span class="p">)</span>
+    <span class="n">enable_high_clip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableHighClip&#39;</span><span class="p">)</span>
+    <span class="n">enable_low_clip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableLowClip&#39;</span><span class="p">)</span>
+    <span class="n">enable_offset_scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableOffsetScale&#39;</span><span class="p">)</span>
+
+    <span class="n">fc</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                      <span class="p">((</span><span class="s1">&#39;fc1&#39;</span><span class="p">,</span> <span class="s1">&#39;FC1&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;fc2&#39;</span><span class="p">,</span> <span class="s1">&#39;FC2&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;fc3&#39;</span><span class="p">,</span> <span class="s1">&#39;FC3&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;fc4&#39;</span><span class="p">,</span> <span class="s1">&#39;FC4&#39;</span><span class="p">))),</span>
+             <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Filter coefficients&#39;</span><span class="p">)</span>
+
+    <span class="n">foffset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FOffset&#39;</span><span class="p">)</span>
+    <span class="n">fscale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FScale&#39;</span><span class="p">)</span>
+    <span class="n">filter_callbacks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FilterCallbacks&#39;</span><span class="p">)</span>
+    <span class="n">filter_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FilterType&#39;</span><span class="p">)</span>
+    <span class="n">filter_type_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FilterTypeSeq&#39;</span><span class="p">)</span>
+    <span class="n">high_clip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HighClip&#39;</span><span class="p">)</span>
+    <span class="n">low_clip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LowClip&#39;</span><span class="p">)</span>
+    <span class="n">num_filter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumFilter&#39;</span><span class="p">)</span>
+    <span class="n">num_filter_recip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NumFilterRecip&#39;</span><span class="p">)</span>
+    <span class="n">num_filtered</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumFiltered_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">oc</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                      <span class="p">((</span><span class="s1">&#39;oc1&#39;</span><span class="p">,</span> <span class="s1">&#39;OC1&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;oc2&#39;</span><span class="p">,</span> <span class="s1">&#39;OC2&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;oc3&#39;</span><span class="p">,</span> <span class="s1">&#39;OC3&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;oc4&#39;</span><span class="p">,</span> <span class="s1">&#39;OC4&#39;</span><span class="p">))),</span>
+             <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Output coefficients&#39;</span><span class="p">)</span>
+
+    <span class="n">o_offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;OOffset&#39;</span><span class="p">)</span>
+    <span class="n">o_scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;OScale&#39;</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Offset&#39;</span><span class="p">)</span>
+
+    <span class="n">rc</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                      <span class="p">((</span><span class="s1">&#39;rc1&#39;</span><span class="p">,</span> <span class="s1">&#39;RC1&#39;</span><span class="p">),</span>
+                       <span class="p">(</span><span class="s1">&#39;rc2&#39;</span><span class="p">,</span> <span class="s1">&#39;RC2&#39;</span><span class="p">))),</span>
+             <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Filter coefficients&#39;</span><span class="p">)</span>
+
+    <span class="n">roffset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ROffset&#39;</span><span class="p">)</span>
+    <span class="n">recursive_ave_diff_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;RecursiveAveDiffSeq&#39;</span><span class="p">)</span>
+    <span class="n">recursive_ave_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;RecursiveAveSeq&#39;</span><span class="p">)</span>
+    <span class="n">reset_filter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ResetFilter&#39;</span><span class="p">)</span>
+    <span class="n">save_background</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SaveBackground&#39;</span><span class="p">)</span>
+    <span class="n">save_flat_field</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SaveFlatField&#39;</span><span class="p">)</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Scale&#39;</span><span class="p">)</span>
+    <span class="n">scale_flat_field</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ScaleFlatField&#39;</span><span class="p">)</span>
+    <span class="n">sum_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SumSeq&#39;</span><span class="p">)</span>
+    <span class="n">valid_background</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ValidBackground_RBV&#39;</span><span class="p">)</span>
+    <span class="n">valid_flat_field</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ValidFlatField_RBV&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">Overlay</span><span class="p">(</span><span class="n">ADBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginOverlay.html&#39;</span><span class="p">]</span>
+
+    <span class="n">blue</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Blue&#39;</span><span class="p">)</span>
+    <span class="n">draw_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DrawMode&#39;</span><span class="p">)</span>
+    <span class="n">green</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Green&#39;</span><span class="p">)</span>
+    <span class="n">max_size_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MaxSizeX&#39;</span><span class="p">)</span>
+    <span class="n">max_size_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MaxSizeY&#39;</span><span class="p">)</span>
+    <span class="n">overlay_portname</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">)</span>
+
+    <span class="n">position_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PositionX&#39;</span><span class="p">)</span>
+    <span class="n">position_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PositionY&#39;</span><span class="p">)</span>
+
+    <span class="n">position_xlink</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PositionXLink&#39;</span><span class="p">)</span>
+    <span class="n">position_ylink</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PositionYLink&#39;</span><span class="p">)</span>
+
+    <span class="n">red</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Red&#39;</span><span class="p">)</span>
+    <span class="n">set_xhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetXHOPR&#39;</span><span class="p">)</span>
+    <span class="n">set_yhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetYHOPR&#39;</span><span class="p">)</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Shape&#39;</span><span class="p">)</span>
+
+    <span class="n">size_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SizeX&#39;</span><span class="p">)</span>
+    <span class="n">size_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SizeY&#39;</span><span class="p">)</span>
+
+    <span class="n">size_xlink</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SizeXLink&#39;</span><span class="p">)</span>
+    <span class="n">size_ylink</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SizeYLink&#39;</span><span class="p">)</span>
+    <span class="n">use</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Use&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="OverlayPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.OverlayPlugin">[docs]</a><span class="k">class</span> <span class="nc">OverlayPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Plugin which adds graphics overlays to an NDArray image</span>
+
+<span class="sd">    Keyword arguments are passed to the base class, PluginBase</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : str</span>
+<span class="sd">        The areaDetector plugin prefix</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Over1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Over\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginOverlay.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginOverlay&#39;</span>
+
+    <span class="n">max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeX_RBV&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeY_RBV&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;The maximum size in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">overlay_1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;1:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;2:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_3</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;3:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_4</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;4:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_5</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;5:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_6</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;6:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_7</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;7:&#39;</span><span class="p">)</span>
+    <span class="n">overlay_8</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">Overlay</span><span class="p">,</span> <span class="s1">&#39;8:&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ROIPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.ROIPlugin">[docs]</a><span class="k">class</span> <span class="nc">ROIPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;ROI1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;ROI\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginROI.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginROI&#39;</span>
+
+    <span class="n">array_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeX_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeY_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeZ_RBV&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Size of the ROI data in XYZ&#39;</span><span class="p">)</span>
+
+    <span class="n">auto_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                             <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;AutoSizeX&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;AutoSizeY&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;AutoSizeZ&#39;</span><span class="p">))),</span>
+                    <span class="n">doc</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Automatically set SizeXYZ to the input array size &#39;</span>
+                         <span class="s1">&#39;minus MinXYZ&#39;</span><span class="p">))</span>
+
+    <span class="n">bin_</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                        <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;BinX&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;BinY&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;BinZ&#39;</span><span class="p">))),</span>
+               <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Binning in XYZ&#39;</span><span class="p">)</span>
+
+    <span class="n">data_type_out</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DataTypeOut&#39;</span><span class="p">)</span>
+    <span class="n">enable_scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EnableScale&#39;</span><span class="p">)</span>
+
+    <span class="n">roi_enable</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;EnableX&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;EnableY&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;EnableZ&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Enable ROI calculations in the X, Y, Z dimensions. &#39;</span>
+                          <span class="s1">&#39;If not enabled then the start, size, binning, and &#39;</span>
+                          <span class="s1">&#39;reverse operations are disabled in the X/Y/Z &#39;</span>
+                          <span class="s1">&#39;dimension, and the values from the input array &#39;</span>
+                          <span class="s1">&#39;are used.&#39;</span><span class="p">))</span>
+
+    <span class="n">max_xy</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                          <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxX&#39;</span><span class="p">),</span>
+                           <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxY&#39;</span><span class="p">))),</span>
+                 <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Maximum in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeX_RBV&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeY_RBV&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeZ_RBV&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Maximum size of the ROI in XYZ&#39;</span><span class="p">)</span>
+
+    <span class="n">min_xyz</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                           <span class="p">((</span><span class="s1">&#39;min_x&#39;</span><span class="p">,</span> <span class="s1">&#39;MinX&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;min_y&#39;</span><span class="p">,</span> <span class="s1">&#39;MinY&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;min_z&#39;</span><span class="p">,</span> <span class="s1">&#39;MinZ&#39;</span><span class="p">))),</span>
+                  <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Minimum size of the ROI in XYZ&#39;</span><span class="p">)</span>
+
+    <span class="n">name_</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;ROI name&#39;</span><span class="p">)</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                           <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;ReverseX&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;ReverseY&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;ReverseZ&#39;</span><span class="p">))),</span>
+                  <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Reverse ROI in the XYZ dimensions. (0=No, 1=Yes)&#39;</span><span class="p">)</span>
+
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Scale&#39;</span><span class="p">)</span>
+    <span class="n">set_xhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetXHOPR&#39;</span><span class="p">)</span>
+    <span class="n">set_yhopr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SetYHOPR&#39;</span><span class="p">)</span>
+
+    <span class="n">size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                        <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeX&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeY&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeZ&#39;</span><span class="p">))),</span>
+               <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Size of the ROI in XYZ&#39;</span><span class="p">)</span>
+
+    <span class="n">size_link</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                             <span class="p">((</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeXLink&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeYLink&#39;</span><span class="p">))),</span>
+                    <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Size link in XY&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TransformPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.TransformPlugin">[docs]</a><span class="k">class</span> <span class="nc">TransformPlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Trans1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Trans\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginTransform.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginTransform&#39;</span>
+
+    <span class="n">width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArraySize0&#39;</span><span class="p">)</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArraySize1&#39;</span><span class="p">)</span>
+    <span class="n">depth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArraySize2&#39;</span><span class="p">)</span>
+    <span class="n">array_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;height&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize1&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;width&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize0&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;depth&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySize2&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Array size&#39;</span><span class="p">)</span>
+
+    <span class="n">name_</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">)</span>
+    <span class="n">origin_location</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;OriginLocation&#39;</span><span class="p">)</span>
+    <span class="n">t1_max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                               <span class="p">((</span><span class="s1">&#39;size0&#39;</span><span class="p">,</span> <span class="s1">&#39;T1MaxSize0&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size1&#39;</span><span class="p">,</span> <span class="s1">&#39;T1MaxSize1&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size2&#39;</span><span class="p">,</span> <span class="s1">&#39;T1MaxSize2&#39;</span><span class="p">))),</span>
+                      <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Transform 1 max size&#39;</span><span class="p">)</span>
+
+    <span class="n">t2_max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                               <span class="p">((</span><span class="s1">&#39;size0&#39;</span><span class="p">,</span> <span class="s1">&#39;T2MaxSize0&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size1&#39;</span><span class="p">,</span> <span class="s1">&#39;T2MaxSize1&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size2&#39;</span><span class="p">,</span> <span class="s1">&#39;T2MaxSize2&#39;</span><span class="p">))),</span>
+                      <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Transform 2 max size&#39;</span><span class="p">)</span>
+
+    <span class="n">t3_max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                               <span class="p">((</span><span class="s1">&#39;size0&#39;</span><span class="p">,</span> <span class="s1">&#39;T3MaxSize0&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size1&#39;</span><span class="p">,</span> <span class="s1">&#39;T3MaxSize1&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size2&#39;</span><span class="p">,</span> <span class="s1">&#39;T3MaxSize2&#39;</span><span class="p">))),</span>
+                      <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Transform 3 max size&#39;</span><span class="p">)</span>
+
+    <span class="n">t4_max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                               <span class="p">((</span><span class="s1">&#39;size0&#39;</span><span class="p">,</span> <span class="s1">&#39;T4MaxSize0&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size1&#39;</span><span class="p">,</span> <span class="s1">&#39;T4MaxSize1&#39;</span><span class="p">),</span>
+                                <span class="p">(</span><span class="s1">&#39;size2&#39;</span><span class="p">,</span> <span class="s1">&#39;T4MaxSize2&#39;</span><span class="p">))),</span>
+                      <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Transform 4 max size&#39;</span><span class="p">)</span>
+
+    <span class="n">types</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                         <span class="p">((</span><span class="s1">&#39;type1&#39;</span><span class="p">,</span> <span class="s1">&#39;Type1&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;type2&#39;</span><span class="p">,</span> <span class="s1">&#39;Type2&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;type3&#39;</span><span class="p">,</span> <span class="s1">&#39;Type3&#39;</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s1">&#39;type4&#39;</span><span class="p">,</span> <span class="s1">&#39;Type4&#39;</span><span class="p">))),</span>
+                <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Transform types&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FilePlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.FilePlugin">[docs]</a><span class="k">class</span> <span class="nc">FilePlugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">,</span> <span class="n">GenerateDatumInterface</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDPluginFile.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginFile&#39;</span>
+
+    <span class="n">FileWriteMode</span> <span class="o">=</span> <span class="n">enum</span><span class="p">(</span><span class="n">SINGLE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">CAPTURE</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">STREAM</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">auto_increment</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoIncrement&#39;</span><span class="p">)</span>
+    <span class="n">auto_save</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoSave&#39;</span><span class="p">)</span>
+    <span class="n">capture</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Capture&#39;</span><span class="p">)</span>
+    <span class="n">delete_driver_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DeleteDriverFile&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">file_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileName&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">file_number</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileNumber&#39;</span><span class="p">)</span>
+    <span class="n">file_number_sync</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FileNumber_Sync&#39;</span><span class="p">)</span>
+    <span class="n">file_number_write</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FileNumber_write&#39;</span><span class="p">)</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FilePath&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">file_path_exists</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;FilePathExists_RBV&#39;</span><span class="p">)</span>
+    <span class="n">file_template</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileTemplate&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">file_write_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileWriteMode&#39;</span><span class="p">)</span>
+    <span class="n">full_file_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;FullFileName_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">num_capture</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumCapture&#39;</span><span class="p">)</span>
+    <span class="n">num_captured</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumCaptured_RBV&#39;</span><span class="p">)</span>
+    <span class="n">read_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ReadFile&#39;</span><span class="p">)</span>
+    <span class="n">write_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;WriteFile&#39;</span><span class="p">)</span>
+    <span class="n">write_message</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;WriteMessage&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">write_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;WriteStatus&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NetCDFPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.NetCDFPlugin">[docs]</a><span class="k">class</span> <span class="nc">NetCDFPlugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;netCDF1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;netCDF\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileNetCDF.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDFileNetCDF&#39;</span></div>
+
+
+<div class="viewcode-block" id="TIFFPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.TIFFPlugin">[docs]</a><span class="k">class</span> <span class="nc">TIFFPlugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;TIFF1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;TIFF\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileTIFF.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDFileTIFF&#39;</span></div>
+
+
+<div class="viewcode-block" id="JPEGPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.JPEGPlugin">[docs]</a><span class="k">class</span> <span class="nc">JPEGPlugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;JPEG1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;JPEG\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileJPEG.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDFileJPEG&#39;</span>
+
+    <span class="n">jpeg_quality</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;JPEGQuality&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="NexusPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.NexusPlugin">[docs]</a><span class="k">class</span> <span class="nc">NexusPlugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Nexus1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Nexus\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileNexus.html&#39;</span><span class="p">]</span>
+    <span class="c1"># _plugin_type = &#39;NDPluginFile&#39;  # TODO was this ever fixed?</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDPluginNexus&#39;</span>
+
+    <span class="n">file_template_valid</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FileTemplateValid&#39;</span><span class="p">)</span>
+    <span class="n">template_file_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TemplateFileName&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">template_file_path</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TemplateFilePath&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HDF5Plugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.HDF5Plugin">[docs]</a><span class="k">class</span> <span class="nc">HDF5Plugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;HDF1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;HDF\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileHDF5.html&#39;</span><span class="p">]</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDFileHDF5&#39;</span>
+
+    <span class="n">boundary_align</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BoundaryAlign&#39;</span><span class="p">)</span>
+    <span class="n">boundary_threshold</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BoundaryThreshold&#39;</span><span class="p">)</span>
+    <span class="n">compression</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Compression&#39;</span><span class="p">)</span>
+    <span class="n">data_bits_offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DataBitsOffset&#39;</span><span class="p">)</span>
+
+    <span class="n">extra_dim_name</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                  <span class="p">((</span><span class="s1">&#39;name_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimNameX_RBV&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="s1">&#39;name_y&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimNameY_RBV&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="s1">&#39;name_n&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimNameN_RBV&#39;</span><span class="p">))),</span>
+                         <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Extra dimension names (XYN)&#39;</span><span class="p">)</span>
+    <span class="n">extra_dim_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                                  <span class="p">((</span><span class="s1">&#39;size_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimSizeX&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="s1">&#39;size_y&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimSizeY&#39;</span><span class="p">),</span>
+                                   <span class="p">(</span><span class="s1">&#39;size_n&#39;</span><span class="p">,</span> <span class="s1">&#39;ExtraDimSizeN&#39;</span><span class="p">))),</span>
+                         <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Extra dimension sizes (XYN)&#39;</span><span class="p">)</span>
+
+    <span class="n">io_speed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;IOSpeed&#39;</span><span class="p">)</span>
+    <span class="n">num_col_chunks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumColChunks&#39;</span><span class="p">)</span>
+    <span class="n">num_data_bits</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumDataBits&#39;</span><span class="p">)</span>
+    <span class="n">num_extra_dims</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumExtraDims&#39;</span><span class="p">)</span>
+    <span class="n">num_frames_chunks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumFramesChunks&#39;</span><span class="p">)</span>
+    <span class="n">num_frames_flush</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumFramesFlush&#39;</span><span class="p">)</span>
+    <span class="n">num_row_chunks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumRowChunks&#39;</span><span class="p">)</span>
+    <span class="n">run_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;RunTime&#39;</span><span class="p">)</span>
+    <span class="n">szip_num_pixels</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SZipNumPixels&#39;</span><span class="p">)</span>
+    <span class="n">store_attr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StoreAttr&#39;</span><span class="p">)</span>
+    <span class="n">store_perform</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StorePerform&#39;</span><span class="p">)</span>
+    <span class="n">zlevel</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ZLevel&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HDF5Plugin.warmup"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.HDF5Plugin.warmup">[docs]</a>    <span class="k">def</span> <span class="nf">warmup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A convenience method for &#39;priming&#39; the plugin.</span>
+
+<span class="sd">        The plugin has to &#39;see&#39; one acquisition before it is ready to capture.</span>
+<span class="sd">        This sets the array size, etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">set_and_wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enable</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">sigs</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">array_callbacks</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">image_mode</span><span class="p">,</span> <span class="s1">&#39;Single&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">trigger_mode</span><span class="p">,</span> <span class="s1">&#39;Internal&#39;</span><span class="p">),</span>
+                            <span class="c1"># just in case tha acquisition time is set very long...</span>
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">acquire_time</span> <span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">acquire_period</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">acquire</span><span class="p">,</span> <span class="mi">1</span><span class="p">)])</span>
+
+        <span class="n">original_vals</span> <span class="o">=</span> <span class="p">{</span><span class="n">sig</span><span class="p">:</span> <span class="n">sig</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="k">for</span> <span class="n">sig</span> <span class="ow">in</span> <span class="n">sigs</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">sigs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ttime</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># abundance of caution</span>
+            <span class="n">set_and_wait</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+        <span class="n">ttime</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># wait for acquisition</span>
+
+        <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">original_vals</span><span class="o">.</span><span class="n">items</span><span class="p">())):</span>
+            <span class="n">ttime</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="n">set_and_wait</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="MagickPlugin"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.plugins.MagickPlugin">[docs]</a><span class="k">class</span> <span class="nc">MagickPlugin</span><span class="p">(</span><span class="n">FilePlugin</span><span class="p">):</span>
+    <span class="n">_default_suffix</span> <span class="o">=</span> <span class="s1">&#39;Magick1:&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Magick\d:&#39;</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NDFileMagick&#39;</span><span class="p">]</span>  <span class="c1"># sic., no html extension</span>
+    <span class="n">_plugin_type</span> <span class="o">=</span> <span class="s1">&#39;NDFileMagick&#39;</span>
+
+    <span class="n">bit_depth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BitDepth&#39;</span><span class="p">)</span>
+    <span class="n">compress_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;CompressType&#39;</span><span class="p">)</span>
+    <span class="n">quality</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Quality&#39;</span><span class="p">)</span></div>
+
+
+<span class="c1"># register_plugin(PluginBase)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">ImagePlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">StatsPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">ColorConvPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">ProcessPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">OverlayPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">ROIPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">TransformPlugin</span><span class="p">)</span>
+<span class="c1"># register_plugin(FilePlugin)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">NetCDFPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">TIFFPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">JPEGPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">NexusPlugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">HDF5Plugin</span><span class="p">)</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">MagickPlugin</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">plugin_from_pvname</span><span class="p">(</span><span class="n">pv</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get the plugin class from a pvname,</span>
+<span class="sd">    using regular expressions defined in the classes (_suffix_re).</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">global</span> <span class="n">_plugin_class</span>
+
+    <span class="k">for</span> <span class="n">type_</span><span class="p">,</span> <span class="n">cls</span> <span class="ow">in</span> <span class="n">_plugin_class</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">_suffix_re</span><span class="p">,</span> <span class="n">pv</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">cls</span>
+
+    <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">get_areadetector_plugin_class</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get an areadetector plugin class by supplying its PV prefix</span>
+
+<span class="sd">    Uses `plugin_from_pvname` first, but falls back on using epics channel</span>
+<span class="sd">    access to determine the plugin type.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    plugin : Plugin</span>
+<span class="sd">        The plugin class</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the plugin type can&#39;t be determined</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">cls</span> <span class="o">=</span> <span class="n">plugin_from_pvname</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cls</span>
+
+    <span class="n">type_rbv</span> <span class="o">=</span> <span class="n">prefix</span> <span class="o">+</span> <span class="s1">&#39;PluginType_RBV&#39;</span>
+    <span class="n">type_</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">caget</span><span class="p">(</span><span class="n">type_rbv</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">type_</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unable to determine plugin type (caget timed out)&#39;</span><span class="p">)</span>
+
+    <span class="c1"># HDF5 includes version number, remove it</span>
+    <span class="n">type_</span> <span class="o">=</span> <span class="n">type_</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_plugin_class</span><span class="p">[</span><span class="n">type_</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unable to determine plugin type (PluginType=</span><span class="si">{}</span><span class="s1">)&#39;</span>
+                         <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">type_</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">get_areadetector_plugin</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get an instance of an areadetector plugin by supplying its PV prefix</span>
+<span class="sd">    and any kwargs for the constructor.</span>
+
+<span class="sd">    Uses `plugin_from_pvname` first, but falls back on using</span>
+<span class="sd">    epics channel access to determine the plugin type.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    plugin : Plugin</span>
+<span class="sd">        The plugin instance</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the plugin type can&#39;t be determined</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">cls</span> <span class="o">=</span> <span class="n">get_areadetector_plugin_class</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Unable to determine plugin type&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

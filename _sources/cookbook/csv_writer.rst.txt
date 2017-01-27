@@ -1,0 +1,232 @@
+
+
+.. _sphx_glr_cookbook_csv_writer.py:
+
+
+========================================
+A Minimal CSV writer for data collection
+========================================
+
+Problem
+-------
+
+Write (a subset of) the data to a CSV file during data collection.
+
+Approach
+--------
+
+Write a callback function that integrates Python's built-in csv module with
+bluesky.
+
+Example Solution
+----------------
+
+
+
+Boiler plate imports and configuration
+
+
+
+.. code-block:: python
+
+
+
+    import path
+    import os
+    import bluesky as bs
+    import bluesky.plans as bp
+    import bluesky.callbacks as bc
+    import csv
+    from bluesky.examples import motor, det
+
+    import matplotlib.pyplot as plt
+
+
+    # Do this if running the example interactively;
+    # skip it when building the documentation.
+    import os
+    if 'BUILDING_DOCS' not in os.environ:
+        from bluesky.utils import install_qt_kicker  # for notebooks, qt -> nb
+        install_qt_kicker()
+        plt.ion()
+        det.exposure_time = .1  # simulate detector exposure time
+
+    RE = bs.RunEngine({})
+
+
+
+
+
+
+
+
+Define a callback class which writes out a CSV file
+
+
+
+.. code-block:: python
+
+
+
+    class CSVWriter(bc.CallbackBase):
+        def __init__(self, fields, fname_format, fpath):
+            self._path = path.Path(fpath)
+            os.makedirs(self._path, exist_ok=True)
+            self._fname_fomat = fname_format
+            self._fields = fields
+            self._writer = None
+            self._fout = None
+
+        def close(self):
+            if self._fout is not None:
+                self._fout.close()
+            self._fout = None
+            self._writer = None
+
+        def start(self, doc):
+            self.close()
+
+            fname = self._path / self._fname_fomat.format(**doc)
+
+            self._fout = open(fname, 'xt')
+            self._writer = csv.writer(self._fout)
+
+        def descriptor(self, doc):
+            if self._writer is not None:
+                self._writer.writerow(self._fields)
+
+        def event(self, doc):
+            data = doc['data']
+            if self._writer is not None:
+                self._writer.writerow(data[k] for k in self._fields)
+
+        def stop(self, doc):
+            self.close()
+
+
+
+
+
+
+
+Set up some callbacks
+
+
+
+.. code-block:: python
+
+
+
+    def create_cbs():
+        return [bc.LiveTable([motor, det]), bc.LivePlot('det', 'motor')]
+
+    fmt = '{user}_{uid:.6s}.csv'
+    export_path = '/tmp/export_demo'
+    csv_writer = CSVWriter(('motor', 'det'), fmt, export_path)
+
+    # send all documents to the CSV writer
+    RE.subscribe('all', csv_writer)
+
+
+
+
+
+
+
+run the scan
+
+
+
+.. code-block:: python
+
+
+    uid, = RE(bp.scan([det], motor, -5, 5, 11),
+              create_cbs(), user='tcaswell')
+
+
+
+
+.. image:: /cookbook/images/sphx_glr_csv_writer_001.png
+    :align: center
+
+
+.. rst-class:: sphx-glr-script-out
+
+ Out::
+
+    +-----------+------------+------------+----------------+------------+
+    |   seq_num |       time |      motor | motor_setpoint |        det |
+    +-----------+------------+------------+----------------+------------+
+    |         1 | 17:58:36.9 |      -5.00 |          -5.00 |       0.00 |
+    |         2 | 17:58:36.9 |      -4.00 |          -4.00 |       0.00 |
+    |         3 | 17:58:37.0 |      -3.00 |          -3.00 |       0.01 |
+    |         4 | 17:58:37.0 |      -2.00 |          -2.00 |       0.14 |
+    |         5 | 17:58:37.0 |      -1.00 |          -1.00 |       0.61 |
+    |         6 | 17:58:37.1 |       0.00 |           0.00 |       1.00 |
+    |         7 | 17:58:37.1 |       1.00 |           1.00 |       0.61 |
+    |         8 | 17:58:37.1 |       2.00 |           2.00 |       0.14 |
+    |         9 | 17:58:37.2 |       3.00 |           3.00 |       0.01 |
+    |        10 | 17:58:37.2 |       4.00 |           4.00 |       0.00 |
+    |        11 | 17:58:37.2 |       5.00 |           5.00 |       0.00 |
+    +-----------+------------+------------+----------------+------------+
+    generator scan ['483449'] (scan num: 1)
+
+
+check file
+
+
+
+.. code-block:: python
+
+
+
+    fname = os.path.join(export_path,
+                         '{user}_{uid:.6s}.csv'.format(user='tcaswell', uid=uid))
+
+    print("--- {} ---".format(fname))
+    with open(fname, 'r') as fin:
+        for ln in fin:
+            print(ln.strip())
+
+
+
+
+.. rst-class:: sphx-glr-script-out
+
+ Out::
+
+    --- /tmp/export_demo/tcaswell_483449.csv ---
+    motor,det
+    -5.0,3.726653172078671e-06
+    -4.0,0.00033546262790251185
+    -3.0,0.011108996538242306
+    -2.0,0.1353352832366127
+    -1.0,0.6065306597126334
+    0.0,1.0
+    1.0,0.6065306597126334
+    2.0,0.1353352832366127
+    3.0,0.011108996538242306
+    4.0,0.00033546262790251185
+    5.0,3.726653172078671e-06
+
+
+**Total running time of the script:** ( 0 minutes  0.564 seconds)
+
+
+
+.. container:: sphx-glr-footer
+
+
+  .. container:: sphx-glr-download
+
+     :download:`Download Python source code: csv_writer.py <csv_writer.py>`
+
+
+
+  .. container:: sphx-glr-download
+
+     :download:`Download Jupyter notebook: csv_writer.ipynb <csv_writer.ipynb>`
+
+.. rst-class:: sphx-glr-signature
+
+    `Generated by Sphinx-Gallery <http://sphinx-gallery.readthedocs.io>`_

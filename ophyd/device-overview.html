@@ -1,0 +1,453 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Overview of a Device &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="ophyd  documentation" href="index.html"/>
+        <link rel="next" title="Interactive Command Interface" href="commands.html"/>
+        <link rel="prev" title="Ophyd" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview of a Device</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#signals-and-devices">Signals and Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#staging">Staging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#device-api">Device API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#high-level-interface-used-by-bluesky">High-level Interface (used by bluesky)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#low-level-interface-for-exploration-debugging">Low-level Interface (for exploration, debugging)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Overview of a Device</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/device-overview.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="overview-of-a-device">
+<h1>Overview of a Device<a class="headerlink" href="#overview-of-a-device" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="signals-and-devices">
+<h2>Signals and Devices<a class="headerlink" href="#signals-and-devices" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>A <strong>Signal</strong> represents a single value. In EPICS, it corresponds to either
+a single read-only PV or a pair of read and write PVs, grouped together.</li>
+<li>A <strong>Device</strong> is composed of Signals or of other Devices. Devices can be
+nested. Some devices map to single pieces of hardware (like a motor).
+Others group together many different pieces of hardware (like a
+diffractometer).</li>
+<li>In one process, the same PVs might appear in multiple different Devices,
+so organized for different uses.</li>
+</ul>
+</div>
+<div class="section" id="staging">
+<h2>Staging<a class="headerlink" href="#staging" title="Permalink to this headline">¶</a></h2>
+<p>When a Device <code class="docutils literal"><span class="pre">d</span></code> is used in scan, it is &#8220;staged&#8221; and &#8220;unstaged.&#8221; Think of
+this as &#8220;setup&#8221; and &#8220;cleanup&#8221;. That is, before a device is triggered, read, or
+moved, the scan is expected to call <code class="docutils literal"><span class="pre">d.stage()</span></code>. And, at the end of scan,
+<code class="docutils literal"><span class="pre">d.unstage()</span></code> is called. (Whenever possible, unstaging is performed even if
+the scan is aborted or fails due to an error.)</p>
+<p>The staging process is a &#8220;hook&#8221; for preparing a device for use. To add
+custom staging logic to a Device, subclass it and override <code class="docutils literal"><span class="pre">stage</span></code> and/or
+<code class="docutils literal"><span class="pre">unstage</span></code> like so.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMotor</span><span class="p">(</span><span class="n">EpicsMotor</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">stage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;I am staging.&#39;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stage</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">unstage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s1">&#39;I am unstaging.&#39;</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">unstage</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It is crucial to call <code class="docutils literal"><span class="pre">super()</span></code>, as above, so that any built-in staging
+behavior is not overridden.</p>
+<p>A common use for staging is to set certain signals to certain values for
+a scan and then set them back at the end. For example, a detector device
+might turn on &#8220;capture mode&#8221; at the beginning of the scan and then flip it
+back off (or back to its original setting, whatever that was) at the end.
+For this, ophyd provides a convenience, <code class="docutils literal"><span class="pre">stage_sigs</span></code> &#8212; a dictionary
+mapping signals to desired values. The device reads the initial values
+of these signals, stashes them, changes them to the desired value, and then
+restore the initial value when the device is unstaged. It is best to
+customize <code class="docutils literal"><span class="pre">stage_sigs</span></code> in the device&#8217;s <code class="docutils literal"><span class="pre">__init__</span></code> method, like so:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMotor</span><span class="p">(</span><span class="n">EpicsMotor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">user_offset</span><span class="p">]</span> <span class="o">=</span> <span class="mi">5</span>
+</pre></div>
+</div>
+<p>When a <code class="docutils literal"><span class="pre">MyMotor</span></code> device is staged, its <code class="docutils literal"><span class="pre">user_offset</span></code> value will be set
+to 5. When it is unstaged, it will be set back to whatever value it had
+right before it was staged.</p>
+</div>
+<div class="section" id="device-api">
+<h2>Device API<a class="headerlink" href="#device-api" title="Permalink to this headline">¶</a></h2>
+<p>All Devices have certain methods and attributes in common.</p>
+<dl class="class">
+<dt id="ophyd.Device">
+<em class="property">class </em><code class="descclassname">ophyd.</code><code class="descname">Device</code><span class="sig-paren">(</span><em>prefix</em>, <em>*</em>, <em>read_attrs=None</em>, <em>configuration_attrs=None</em>, <em>name=None</em>, <em>parent=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for device objects</p>
+<p>This class provides attribute access to one or more Signals, which can be
+a mixture of read-only and writable. All must share the same base_name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>prefix</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a>) &#8211; The PV prefix for all components of the device</li>
+<li><strong>read_attrs</strong> (<em>sequence of attribute names</em>) &#8211; the components to include in a normal reading (i.e., in <code class="docutils literal"><span class="pre">read()</span></code>)</li>
+<li><strong>configuration_attrs</strong> (<em>sequence of attribute names</em>) &#8211; the components to be read less often (i.e., in
+<code class="docutils literal"><span class="pre">read_configuration()</span></code>) and to adjust via <code class="docutils literal"><span class="pre">configure()</span></code></li>
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#str" title="(in Python v2.7)"><em>str</em></a><em>, </em><em>optional</em>) &#8211; The name of the device</li>
+<li><strong>parent</strong> (<em>instance</em><em> or </em><a class="reference external" href="https://docs.python.org/2/library/constants.html#None" title="(in Python v2.7)"><em>None</em></a>) &#8211; The instance of the parent device, if applicable</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="high-level-interface-used-by-bluesky">
+<h2>High-level Interface (used by bluesky)<a class="headerlink" href="#high-level-interface-used-by-bluesky" title="Permalink to this headline">¶</a></h2>
+<dl class="method">
+<dt id="ophyd.Device.read">
+<code class="descclassname">Device.</code><code class="descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns dictionary mapping names to (value, timestamp) pairs</p>
+<p>To control which fields are included, adjust the <code class="docutils literal"><span class="pre">read_attrs</span></code> list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.describe">
+<code class="descclassname">Device.</code><code class="descname">describe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.describe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.describe" title="Permalink to this definition">¶</a></dt>
+<dd><p>describe the read data keys&#8217; data types and other metadata</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.trigger">
+<code class="descclassname">Device.</code><code class="descname">trigger</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.trigger"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.trigger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start acquisition</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.stage">
+<code class="descclassname">Device.</code><code class="descname">stage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.Device.stage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare the device to be triggered.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>devices</strong> &#8211; list including self and all child devices staged</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/2/library/functions.html#list" title="(in Python v2.7)">list</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.unstage">
+<code class="descclassname">Device.</code><code class="descname">unstage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.Device.unstage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Restore the device to &#8216;standby&#8217;.</p>
+<p>Multiple calls (without a new call to &#8216;stage&#8217;) have no effect.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><strong>devices</strong> &#8211; list including self and all child devices unstaged</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/2/library/functions.html#list" title="(in Python v2.7)">list</a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.configure">
+<code class="descclassname">Device.</code><code class="descname">configure</code><span class="sig-paren">(</span><em>d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.configure"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.configure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure the device for something during a run</p>
+<p>This default implementation allows the user to change any of the
+<cite>configuration_attrs</cite>. Subclasses might override this to perform
+additional input validation, cleanup, etc.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> (<a class="reference external" href="https://docs.python.org/2/library/stdtypes.html#dict" title="(in Python v2.7)"><em>dict</em></a>) &#8211; The configuration dictionary. To specify the order that
+the changes should be made, use an OrderedDict.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><ul class="simple">
+<li><em>(old, new) tuple of dictionaries</em></li>
+<li><em>Where old and new are pre- and post-configure configuration states.</em></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.read_configuration">
+<code class="descclassname">Device.</code><code class="descname">read_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.read_configuration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.read_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>returns dictionary mapping names to (value, timestamp) pairs</p>
+<p>To control which fields are included, adjust the
+<code class="docutils literal"><span class="pre">configuration_attrs</span></code> list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.describe_configuration">
+<code class="descclassname">Device.</code><code class="descname">describe_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.describe_configuration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.describe_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>describe the configuration data keys&#8217; data types/other metadata</p>
+</dd></dl>
+
+</div>
+<div class="section" id="low-level-interface-for-exploration-debugging">
+<h2>Low-level Interface (for exploration, debugging)<a class="headerlink" href="#low-level-interface-for-exploration-debugging" title="Permalink to this headline">¶</a></h2>
+<dl class="attribute">
+<dt id="ophyd.Device.connected">
+<code class="descclassname">Device.</code><code class="descname">connected</code><a class="headerlink" href="#ophyd.Device.connected" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal"><span class="pre">True</span></code> is all components are connected, <code class="docutils literal"><span class="pre">False</span></code> if any are not</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.wait_for_connection">
+<code class="descclassname">Device.</code><code class="descname">wait_for_connection</code><span class="sig-paren">(</span><em>all_signals=False</em>, <em>timeout=2.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.wait_for_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.wait_for_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Wait for signals to connect</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>all_signals</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a><em>, </em><em>optional</em>) &#8211; Wait for all signals to connect (including lazy ones)</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#float" title="(in Python v2.7)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/2/library/constants.html#None" title="(in Python v2.7)"><em>None</em></a>) &#8211; Overall timeout</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.get">
+<code class="descclassname">Device.</code><code class="descname">get</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.get"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the value of all components in the device</p>
+<p>Keyword arguments are passed onto each signal.get()</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ophyd.Device.put">
+<code class="descclassname">Device.</code><code class="descname">put</code><span class="sig-paren">(</span><em>dev_t</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.put"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Put a value to all components of the device</p>
+<p>Keyword arguments are passed onto each signal.put()</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>dev_t</strong> (<em>DeviceTuple</em><em> or </em><a class="reference external" href="https://docs.python.org/2/library/functions.html#tuple" title="(in Python v2.7)"><em>tuple</em></a>) &#8211; The device tuple with the value(s) to put (see get_device_tuple)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ophyd.Device.get_device_tuple">
+<em class="property">classmethod </em><code class="descclassname">Device.</code><code class="descname">get_device_tuple</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ophyd/device.html#Device.get_device_tuple"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ophyd.Device.get_device_tuple" title="Permalink to this definition">¶</a></dt>
+<dd><p>The device tuple type associated with an Device class</p>
+<p>This is a tuple representing the full state of all components and
+dynamic device sub-components.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="commands.html" class="btn btn-neutral float-right" title="Interactive Command Interface" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Ophyd" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
