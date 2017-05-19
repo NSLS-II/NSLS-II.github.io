@@ -122,6 +122,7 @@ The following projects are in use but in a less mature stage of development.
    tutorials
    remote-access
    sandbox
+   history
    fresh-installation
    resources
    internal_index
