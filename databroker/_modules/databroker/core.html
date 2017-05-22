@@ -1,0 +1,903 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>databroker.core &mdash; DataBroker 0.0.6 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="DataBroker 0.0.6 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> DataBroker
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.6
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../headers.html">How Data and Metadata are Organized</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../searching.html">Searching for Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../fetching.html">Fetching Data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../whats_new.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">DataBroker</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>databroker.core</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for databroker.core</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">six</span>  <span class="c1"># noqa</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">chain</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">tzlocal</span>
+<span class="kn">import</span> <span class="nn">doct</span> <span class="k">as</span> <span class="nn">doc</span>
+<span class="kn">from</span> <span class="nn">pims</span> <span class="k">import</span> <span class="n">FramesSequence</span><span class="p">,</span> <span class="n">Frame</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numbers</span>
+<span class="kn">import</span> <span class="nn">boltons.cacheutils</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="c1"># Toolz and CyToolz have identical APIs -- same test suite, docstrings.</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">cytoolz.dicttoolz</span> <span class="k">import</span> <span class="n">merge</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">toolz.dicttoolz</span> <span class="k">import</span> <span class="n">merge</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ALL</span><span class="p">:</span>
+    <span class="s2">&quot;Sentinel used as the default value for stream_name&quot;</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">fill_event</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">handler_overrides</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Populate events with externally stored data.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fs : FileStoreRO</span>
+<span class="sd">    event : document</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        mapping spec names (strings) to handlers (callable classes)</span>
+<span class="sd">    handler_overrides : dict, optional</span>
+<span class="sd">        mapping data keys (strings) to handlers (callable classes)</span>
+
+<span class="sd">    .. warning</span>
+
+<span class="sd">       This mutates the event&#39;s ``data`` field in-place</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">handler_overrides</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">handler_overrides</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">is_external</span> <span class="o">=</span> <span class="n">_external_keys</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">descriptor</span><span class="p">)</span>
+    <span class="n">mock_registries</span> <span class="o">=</span> <span class="p">{</span><span class="n">data_key</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handler</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">data_key</span><span class="p">,</span> <span class="n">handler</span> <span class="ow">in</span> <span class="n">handler_overrides</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">for</span> <span class="n">data_key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">six</span><span class="o">.</span><span class="n">iteritems</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">is_external</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">data_key</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">data_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">handler_overrides</span><span class="p">:</span>
+                <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">_fs</span><span class="p">:</span>
+                    <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">data_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">_fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mock_registry</span> <span class="o">=</span> <span class="n">mock_registries</span><span class="p">[</span><span class="n">data_key</span><span class="p">]</span>
+                <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="n">mock_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">_fs</span><span class="p">:</span>
+                    <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">data_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">_fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Header</span><span class="p">(</span><span class="n">doc</span><span class="o">.</span><span class="n">Document</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A dictionary-like object summarizing metadata for a run.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_run_start</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">mds</span><span class="p">,</span> <span class="n">run_start</span><span class="p">,</span> <span class="n">verify_integrity</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a Header from a RunStart Document.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        run_start : dict or string</span>
+<span class="sd">            RunStart document or uid of one</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        header : databroker.broker.Header</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">run_start</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+            <span class="n">run_start</span> <span class="o">=</span> <span class="n">mds</span><span class="o">.</span><span class="n">run_start_given_uid</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span>
+        <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">run_start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">run_stop</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">ref_doc_to_uid</span><span class="p">(</span><span class="n">mds</span><span class="o">.</span><span class="n">stop_by_start</span><span class="p">(</span><span class="n">run_start_uid</span><span class="p">),</span>
+                                          <span class="s1">&#39;run_start&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">mds</span><span class="o">.</span><span class="n">NoRunStop</span><span class="p">:</span>
+            <span class="n">run_stop</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ev_descs</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span><span class="o">.</span><span class="n">ref_doc_to_uid</span><span class="p">(</span><span class="n">ev_desc</span><span class="p">,</span> <span class="s1">&#39;run_start&#39;</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">ev_desc</span> <span class="ow">in</span>
+                        <span class="n">mds</span><span class="o">.</span><span class="n">descriptors_by_start</span><span class="p">(</span><span class="n">run_start_uid</span><span class="p">)]</span>
+        <span class="k">except</span> <span class="n">mds</span><span class="o">.</span><span class="n">NoEventDescriptors</span><span class="p">:</span>
+            <span class="n">ev_descs</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="n">run_start</span><span class="p">,</span> <span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">ev_descs</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">run_stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_stop</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="s1">&#39;header&#39;</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_events</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stream_name</span><span class="o">=</span><span class="n">ALL</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+               <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">handler_overrides</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get Events from given run(s).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mds : MDSRO</span>
+<span class="sd">    fs : FileStoreRO</span>
+<span class="sd">    headers : Header or iterable of Headers</span>
+<span class="sd">        The headers to fetch the events for</span>
+<span class="sd">    fields : list, optional</span>
+<span class="sd">        whitelist of field names of interest or regular expression;</span>
+<span class="sd">        if None, all are returned</span>
+<span class="sd">    stream_name : string, optional</span>
+<span class="sd">        Get events from only one &quot;event stream&quot; with this name. Default value</span>
+<span class="sd">        is special sentinel class, `ALL`, which gets all streams together.</span>
+<span class="sd">    fill : bool, optional</span>
+<span class="sd">        Whether externally-stored data should be filled in. Defaults to False.</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        mapping filestore specs (strings) to handlers (callable classes)</span>
+<span class="sd">    handler_overrides : dict, optional</span>
+<span class="sd">        mapping data keys (strings) to handlers (callable classes)</span>
+<span class="sd">    plugins : dict or None, optional</span>
+<span class="sd">        mapping keyword arguments (strings) to Plugins</span>
+<span class="sd">    kwargs</span>
+<span class="sd">        passed through to any plugins</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    event : Event</span>
+<span class="sd">        The event, optionally with non-scalar data filled in</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError if any key in `fields` is not in at least one descriptor pre header.</span>
+<span class="sd">    KeyError if a kwarg is passed without a corresponding plugin.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># A word about the &#39;fields&#39; argument:</span>
+    <span class="c1"># Notice that we assume that the same field name cannot occur in</span>
+    <span class="c1"># more than one descriptor. We could relax this assumption, but</span>
+    <span class="c1"># we current enforce it in bluesky, so it is safe for now.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">headers</span><span class="p">]</span>
+
+    <span class="n">no_fields_filter</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">no_fields_filter</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+    <span class="n">_check_fields_exist</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+
+    <span class="n">comp_re</span> <span class="o">=</span> <span class="n">_compile_re</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">plugins</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;No plugin was found to handle the keyword &quot;</span>
+                           <span class="s2">&quot;argument </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">k</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+        <span class="c1"># cache these attribute look-ups for performance</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]:</span>
+            <span class="n">descriptor_name</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">stream_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ALL</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">stream_name</span> <span class="o">!=</span> <span class="n">descriptor_name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">objs_config</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;configuration&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="n">config_data</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">obj_conf</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">obj_conf</span> <span class="ow">in</span> <span class="n">objs_config</span><span class="p">)</span>
+            <span class="n">config_ts</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">obj_conf</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span>
+                              <span class="k">for</span> <span class="n">obj_conf</span> <span class="ow">in</span> <span class="n">objs_config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="n">event_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">])</span>
+                <span class="n">selected_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">comp_re</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">event_fields</span><span class="p">))</span>
+                <span class="n">discard_fields</span> <span class="o">=</span> <span class="n">event_fields</span> <span class="o">-</span> <span class="n">selected_fields</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">discard_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+                <span class="n">selected_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+            <span class="n">all_extra_data</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">all_extra_ts</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">no_fields_filter</span><span class="p">:</span>
+                <span class="c1"># Look in the descriptor, then start, then stop.</span>
+                <span class="n">config_data_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">comp_re</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">config_data</span><span class="p">))</span> <span class="o">-</span> <span class="n">selected_fields</span>
+                <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">config_data_fields</span><span class="p">:</span>
+                    <span class="n">selected_fields</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                    <span class="n">all_extra_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                    <span class="n">all_extra_ts</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_ts</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+
+                <span class="n">start_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">comp_re</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">start</span><span class="p">))</span> <span class="o">-</span> <span class="n">selected_fields</span>
+                <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">start_fields</span><span class="p">:</span>
+                    <span class="n">all_extra_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                    <span class="n">all_extra_ts</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>
+
+                <span class="n">stop_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">comp_re</span><span class="o">.</span><span class="n">match</span><span class="p">,</span> <span class="n">stop</span><span class="p">))</span> <span class="o">-</span> <span class="n">selected_fields</span>
+                <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">stop_fields</span><span class="p">:</span>
+                    <span class="n">all_extra_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">stop</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                    <span class="n">all_extra_ts</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">stop</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">mds</span><span class="o">.</span><span class="n">get_events_generator</span><span class="p">(</span><span class="n">descriptor</span><span class="p">):</span>
+                <span class="n">event_data</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span>  <span class="c1"># cache for perf</span>
+                <span class="n">event_timestamps</span> <span class="o">=</span> <span class="n">event</span><span class="o">.</span><span class="n">timestamps</span>
+                <span class="n">event_data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">all_extra_data</span><span class="p">)</span>
+                <span class="n">event_timestamps</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">all_extra_ts</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">discard_fields</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">event_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                    <span class="k">del</span> <span class="n">event_timestamps</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">event_data</span><span class="p">:</span>
+                    <span class="c1"># Skip events that are now empty because they had no</span>
+                    <span class="c1"># applicable fields.</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">fill</span><span class="p">:</span>
+                    <span class="n">fill_event</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">handler_registry</span><span class="p">,</span> <span class="n">handler_overrides</span><span class="p">)</span>
+                <span class="k">yield</span> <span class="n">event</span>
+        <span class="c1"># Now yield any events from plugins.</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">plugins</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">get_events</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">ev</span>
+
+
+<span class="k">def</span> <span class="nf">get_table</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stream_name</span><span class="o">=</span><span class="s1">&#39;primary&#39;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+              <span class="n">convert_times</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timezone</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">handler_overrides</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">localize_times</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make a table (pandas.DataFrame) from given run(s).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mds : MDSRO</span>
+<span class="sd">    fs : FileStoreRO</span>
+<span class="sd">    headers : Header or iterable of Headers</span>
+<span class="sd">        The headers to fetch the events for</span>
+<span class="sd">    fields : list, optional</span>
+<span class="sd">        whitelist of field names of interest; if None, all are returned</span>
+<span class="sd">    stream_name : string, optional</span>
+<span class="sd">        Get data from a single &quot;event stream.&quot; To obtain one comprehensive</span>
+<span class="sd">        table with all streams, use `stream_name=ALL` (where `ALL` is a</span>
+<span class="sd">        sentinel class defined in this module). The default name is</span>
+<span class="sd">        &#39;primary&#39;, but if no event stream with that name is found, the</span>
+<span class="sd">        default reverts to `ALL` (for backward-compatibility).</span>
+<span class="sd">    fill : bool, optional</span>
+<span class="sd">        Whether externally-stored data should be filled in. Defaults to False.</span>
+<span class="sd">    convert_times : bool, optional</span>
+<span class="sd">        Whether to convert times from float (seconds since 1970) to</span>
+<span class="sd">        numpy datetime64, using pandas. True by default, returns naive</span>
+<span class="sd">        datetime64 objects in UTC</span>
+<span class="sd">    timezone : str, optional</span>
+<span class="sd">        e.g., &#39;US/Eastern&#39;</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        mapping filestore specs (strings) to handlers (callable classes)</span>
+<span class="sd">    handler_overrides : dict, optional</span>
+<span class="sd">        mapping data keys (strings) to handlers (callable classes)</span>
+<span class="sd">    localize_times : bool, optional</span>
+<span class="sd">        If the times should be localized to the &#39;local&#39; time zone.  If</span>
+<span class="sd">        True (the default) the time stamps are converted to the localtime</span>
+<span class="sd">        zone (as configure in mds).</span>
+
+<span class="sd">        This is problematic for several reasons:</span>
+
+<span class="sd">          - apparent gaps or duplicate times around DST transitions</span>
+<span class="sd">          - incompatibility with every other time stamp (which is in UTC)</span>
+
+<span class="sd">        however, this makes the dataframe repr look nicer</span>
+
+<span class="sd">        This implies convert_times.</span>
+
+<span class="sd">        Defaults to True to preserve back-compatibility.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    table : pandas.DataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># A word about the &#39;fields&#39; argument:</span>
+    <span class="c1"># Notice that we assume that the same field name cannot occur in</span>
+    <span class="c1"># more than one descriptor. We could relax this assumption, but</span>
+    <span class="c1"># we current enforce it in bluesky, so it is safe for now.</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">headers</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">handler_overrides</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">handler_overrides</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">fields</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+    <span class="n">_check_fields_exist</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">headers</span><span class="p">)</span>
+
+    <span class="n">dfs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+        <span class="c1"># cache these attribute look-ups for performance</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">descriptors</span> <span class="o">=</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># shim for back-compat with old data that has no &#39;primary&#39; descriptor</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">descriptors</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;primary&#39;</span><span class="p">):</span>
+            <span class="n">stream_name</span> <span class="o">=</span> <span class="n">ALL</span>
+
+        <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptors</span><span class="p">:</span>
+            <span class="n">descriptor_name</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">stream_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">ALL</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">stream_name</span> <span class="o">!=</span> <span class="n">descriptor_name</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">is_external</span> <span class="o">=</span> <span class="n">_external_keys</span><span class="p">(</span><span class="n">descriptor</span><span class="p">)</span>
+            <span class="n">objs_config</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;configuration&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="n">config_data</span> <span class="o">=</span> <span class="n">merge</span><span class="p">(</span><span class="n">obj_conf</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">obj_conf</span> <span class="ow">in</span> <span class="n">objs_config</span><span class="p">)</span>
+            <span class="n">discard_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="n">extra_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">fields</span><span class="p">:</span>
+                <span class="n">event_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">])</span>
+                <span class="n">discard_fields</span> <span class="o">=</span> <span class="n">event_fields</span> <span class="o">-</span> <span class="n">fields</span>
+                <span class="n">extra_fields</span> <span class="o">=</span> <span class="n">fields</span> <span class="o">-</span> <span class="n">event_fields</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">mds</span><span class="o">.</span><span class="n">get_events_table</span><span class="p">(</span><span class="n">descriptor</span><span class="p">)</span>
+            <span class="n">descriptor</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">seq_nums</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">uids</span><span class="p">,</span> <span class="n">timestamps</span> <span class="o">=</span> <span class="n">payload</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">seq_nums</span><span class="p">)</span>
+            <span class="c1"># if converting to datetime64 (in utc or &#39;local&#39; tz)</span>
+            <span class="k">if</span> <span class="n">convert_times</span> <span class="ow">or</span> <span class="n">localize_times</span><span class="p">:</span>
+                <span class="n">times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">)</span>
+            <span class="c1"># make sure this is a series</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">seq_nums</span><span class="p">)</span>
+
+            <span class="c1"># if localizing to &#39;local&#39; time</span>
+            <span class="k">if</span> <span class="n">localize_times</span><span class="p">:</span>
+                <span class="n">times</span> <span class="o">=</span> <span class="p">(</span><span class="n">times</span>
+                         <span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="s1">&#39;UTC&#39;</span><span class="p">)</span>     <span class="c1"># first make tz aware</span>
+                         <span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz_convert</span><span class="p">(</span><span class="n">timezone</span><span class="p">)</span>   <span class="c1"># convert to &#39;local&#39;</span>
+                         <span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>      <span class="c1"># make naive again</span>
+                         <span class="p">)</span>
+
+            <span class="n">df</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">times</span>
+            <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">six</span><span class="o">.</span><span class="n">iteritems</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">discard_fields</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Discarding field </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+            <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">==</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]:</span>
+                <span class="c1"># no content</span>
+                <span class="k">continue</span>
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">is_external</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">field</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fill</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;filling data for </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
+                    <span class="c1"># TODO someday we will have bulk get_datum in FS</span>
+                    <span class="n">datum_uids</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">handler_overrides</span><span class="p">:</span>
+                        <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">_fs</span><span class="p">:</span>
+                            <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">_fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">datum_uids</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">handler</span> <span class="o">=</span> <span class="n">handler_overrides</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                        <span class="n">mock_registry</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handler</span><span class="p">)</span>
+                        <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="n">mock_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">_fs</span><span class="p">:</span>
+                            <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">_fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                                      <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">datum_uids</span><span class="p">]</span>
+                    <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">extra_fields</span><span class="p">:</span>
+                <span class="c1"># Look in the descriptor, then start, then stop.</span>
+                <span class="c1"># Broadcast any values through the whole df.</span>
+                <span class="k">if</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">config_data</span><span class="p">:</span>
+                    <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_data</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">start</span><span class="p">:</span>
+                    <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                <span class="k">elif</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">stop</span><span class="p">:</span>
+                    <span class="n">df</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="n">stop</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+                <span class="c1"># (else omit it from the events of this descriptor)</span>
+            <span class="n">dfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dfs</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">dfs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># edge case: no data</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">restream</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get all Documents from given run(s).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mds : MDSRO</span>
+<span class="sd">    fs : FileStoreRO</span>
+<span class="sd">    headers : Header or iterable of Headers</span>
+<span class="sd">        header or headers to fetch the documents for</span>
+<span class="sd">    fields : list, optional</span>
+<span class="sd">        whitelist of field names of interest; if None, all are returned</span>
+<span class="sd">    fill : bool, optional</span>
+<span class="sd">        Whether externally-stored data should be filled in. Defaults to False.</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    name, doc : tuple</span>
+<span class="sd">        string name of the Document type and the Document itself.</span>
+<span class="sd">        Example: (&#39;start&#39;, {&#39;time&#39;: ..., ...})</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; def f(name, doc):</span>
+<span class="sd">    ...     # do something</span>
+<span class="sd">    ...</span>
+<span class="sd">    &gt;&gt;&gt; h = DataBroker[-1]  # most recent header</span>
+<span class="sd">    &gt;&gt;&gt; for name, doc in restream(h):</span>
+<span class="sd">    ...     f(name, doc)</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    This output can be used as a drop-in replacement for the output of the</span>
+<span class="sd">    bluesky Run Engine.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    process</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">headers</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">headers</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]:</span>
+            <span class="k">yield</span> <span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor</span>
+        <span class="c1"># When py2 compatibility is dropped, use yield from.</span>
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">get_events</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">):</span>
+            <span class="k">yield</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span>
+        <span class="k">yield</span> <span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span>
+
+
+<span class="n">stream</span> <span class="o">=</span> <span class="n">restream</span>  <span class="c1"># compat</span>
+
+
+<span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get all Documents from given run to a callback.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mds : MDSRO</span>
+<span class="sd">    fs : FileStoreRO</span>
+<span class="sd">    headers : Header or iterable of Headers</span>
+<span class="sd">        header or headers to process documents from</span>
+<span class="sd">    func : callable</span>
+<span class="sd">        function with the signature `f(name, doc)`</span>
+<span class="sd">        where `name` is a string and `doc` is a dict</span>
+<span class="sd">    fields : list, optional</span>
+<span class="sd">        whitelist of field names of interest; if None, all are returned</span>
+<span class="sd">    fill : bool, optional</span>
+<span class="sd">        Whether externally-stored data should be filled in. Defaults to False.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; def f(name, doc):</span>
+<span class="sd">    ...     # do something</span>
+<span class="sd">    ...</span>
+<span class="sd">    &gt;&gt;&gt; h = DataBroker[-1]  # most recent header</span>
+<span class="sd">    &gt;&gt;&gt; process(h, f)</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    This output can be used as a drop-in replacement for the output of the</span>
+<span class="sd">    bluesky Run Engine.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    restream</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">restream</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">fill</span><span class="p">):</span>
+        <span class="n">func</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">register_builtin_handlers</span><span class="p">(</span><span class="n">fs</span><span class="p">):</span>
+    <span class="s2">&quot;Register all the handlers built in to filestore.&quot;</span>
+    <span class="kn">from</span> <span class="nn">filestore</span> <span class="k">import</span> <span class="n">handlers</span><span class="p">,</span> <span class="n">HandlerBase</span>
+    <span class="c1"># TODO This will blow up if any non-leaves in the class heirarchy</span>
+    <span class="c1"># have non-empty specs. Make this smart later.</span>
+    <span class="k">for</span> <span class="bp">cls</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="n">handlers</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">HandlerBase</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found Handler </span><span class="si">%r</span><span class="s2"> for specs </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="bp">cls</span><span class="o">.</span><span class="n">specs</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">specs</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Registering Handler </span><span class="si">%r</span><span class="s2"> for spec </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
+                <span class="n">fs</span><span class="o">.</span><span class="n">register_handler</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_fields"><a class="viewcode-back" href="../../fetching.html#databroker.broker.get_fields">[docs]</a><span class="k">def</span> <span class="nf">get_fields</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the set of all field names (a.k.a &quot;data keys&quot;) in a header.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header : Header</span>
+<span class="sd">    name : string, optional</span>
+<span class="sd">        Get field from only one &quot;event stream&quot; with this name. If None</span>
+<span class="sd">        (default) get fields from all event streams.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fields : set</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span></div>
+
+
+<span class="k">def</span> <span class="nf">_compile_re</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a regular expression object based on a list of regular expressions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fields : list, optional</span>
+<span class="sd">        List of regular expressions. If fields is empty returns a general RE.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    comp_re : regular expression object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;.*&#39;</span><span class="p">]</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;(?:&quot;</span> <span class="o">+</span> <span class="n">regex</span> <span class="o">+</span> <span class="sa">r</span><span class="s2">&quot;)\Z&quot;</span> <span class="k">for</span> <span class="n">regex</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">]</span>
+    <span class="n">comp_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;|&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">comp_re</span>
+
+
+<span class="k">def</span> <span class="nf">_check_fields_exist</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">headers</span><span class="p">):</span>
+    <span class="n">comp_re</span> <span class="o">=</span> <span class="n">_compile_re</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+    <span class="n">all_fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">header</span> <span class="ow">in</span> <span class="n">headers</span><span class="p">:</span>
+        <span class="n">all_fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">])</span>
+        <span class="n">all_fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]:</span>
+            <span class="n">all_fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">])</span>
+            <span class="n">objs_conf</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;configuration&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">config_fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">obj_conf</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">obj_conf</span> <span class="ow">in</span> <span class="n">objs_conf</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+            <span class="n">all_fields</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="n">config_fields</span><span class="p">))</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">comp_re</span><span class="o">.</span><span class="n">match</span><span class="p">,</span><span class="n">all_fields</span><span class="p">)))</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The fields </span><span class="si">%r</span><span class="s2"> were not found.&quot;</span> <span class="o">%</span><span class="n">fields</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_images</span><span class="p">(</span><span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">handler_override</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load images from a detector for given Header(s).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    fs: FileStoreRO</span>
+<span class="sd">    headers : Header or list of Headers</span>
+<span class="sd">    name : string</span>
+<span class="sd">        field name (data key) of a detector</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        mapping spec names (strings) to handlers (callable classes)</span>
+<span class="sd">    handler_override : callable class, optional</span>
+<span class="sd">        overrides registered handlers</span>
+
+
+<span class="sd">    Example</span>
+<span class="sd">    -------</span>
+<span class="sd">    &gt;&gt;&gt; header = DataBroker[-1]</span>
+<span class="sd">    &gt;&gt;&gt; images = Images(header, &#39;my_detector_lightfield&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; for image in images:</span>
+<span class="sd">            # do something</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Images</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">handler_registry</span><span class="p">,</span> <span class="n">handler_override</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Images</span><span class="p">(</span><span class="n">FramesSequence</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">handler_override</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load images from a detector for given Header(s).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        fs : FileStoreRO</span>
+<span class="sd">        headers : Header or list of Headers</span>
+<span class="sd">        name : str</span>
+<span class="sd">            field name (data key) of a detector</span>
+<span class="sd">        handler_registry : dict, optional</span>
+<span class="sd">            mapping spec names (strings) to handlers (callable classes)</span>
+<span class="sd">        handler_override : callable class, optional</span>
+<span class="sd">            overrides registered handlers</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+<span class="sd">        &gt;&gt;&gt; header = DataBroker[-1]</span>
+<span class="sd">        &gt;&gt;&gt; images = Images(header, &#39;my_detector_lightfield&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; for image in images:</span>
+<span class="sd">                # do something</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fs</span> <span class="o">=</span> <span class="n">fs</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="n">get_events</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">fs</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datum_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span>
+                            <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">event</span><span class="o">.</span><span class="n">data</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datum_uids</span><span class="p">)</span>
+        <span class="n">first_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_uids</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">handler_override</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span> <span class="o">=</span> <span class="n">handler_registry</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># mock a handler registry</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">handler_override</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">fs</span><span class="p">:</span>
+            <span class="n">example_frame</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="n">first_uid</span><span class="p">)</span>
+        <span class="c1"># Try to duck-type as a numpy array, but fall back as a general</span>
+        <span class="c1"># Python object.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="o">=</span> <span class="n">example_frame</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">example_frame</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="n">example_frame</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># as in, unknown</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pixel_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">frame_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_len</span>
+
+    <span class="k">def</span> <span class="nf">get_frame</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">fs</span><span class="o">.</span><span class="n">handler_context</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">)</span> <span class="k">as</span> <span class="n">fs</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">fs</span><span class="o">.</span><span class="n">get_datum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_datum_uids</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="s1">&#39;__array__&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">Frame</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">frame_no</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># some non-numpy-like type</span>
+            <span class="k">return</span> <span class="n">img</span>
+
+
+<span class="k">def</span> <span class="nf">_external_keys</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">_cache</span><span class="o">=</span><span class="n">boltons</span><span class="o">.</span><span class="n">cacheutils</span><span class="o">.</span><span class="n">LRU</span><span class="p">(</span><span class="n">max_size</span><span class="o">=</span><span class="mi">500</span><span class="p">)):</span>
+    <span class="sd">&quot;&quot;&quot;Which data keys are stored externally</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    descriptor : Doct</span>
+<span class="sd">        The descriptor</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    external_keys : dict</span>
+<span class="sd">        Maps data key -&gt; the value of external field or None if the</span>
+<span class="sd">        field does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ek</span> <span class="o">=</span> <span class="n">_cache</span><span class="p">[</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="n">data_keys</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">data_keys</span>
+        <span class="n">ek</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;external&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">_cache</span><span class="p">[</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">ek</span>
+    <span class="k">return</span> <span class="n">ek</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015 Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.0.6',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

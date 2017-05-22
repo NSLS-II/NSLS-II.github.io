@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.epics_motor &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.epics_motor</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.epics_motor</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">epics.pv</span> <span class="k">import</span> <span class="n">fmt_time</span>
+
+<span class="kn">from</span> <span class="nn">.signal</span> <span class="k">import</span> <span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">DisconnectedError</span>
+<span class="kn">from</span> <span class="nn">.utils.epics_pvs</span> <span class="k">import</span> <span class="n">raise_if_disconnected</span>
+<span class="kn">from</span> <span class="nn">.positioner</span> <span class="k">import</span> <span class="n">PositionerBase</span>
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">Cpt</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.status</span> <span class="k">import</span> <span class="n">wait</span> <span class="k">as</span> <span class="n">status_wait</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">HomeEnum</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+    <span class="n">forward</span> <span class="o">=</span> <span class="s2">&quot;forward&quot;</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="s2">&quot;reverse&quot;</span>
+
+
+<div class="viewcode-block" id="EpicsMotor"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.epics_motor.EpicsMotor">[docs]</a><span class="k">class</span> <span class="nc">EpicsMotor</span><span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;An EPICS motor record, wrapped in a :class:`Positioner`</span>
+
+<span class="sd">    Keyword arguments are passed through to the base class, Positioner</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : str</span>
+<span class="sd">        The record to use</span>
+<span class="sd">    read_attrs : sequence of attribute names</span>
+<span class="sd">        The signals to be read during data acquisition (i.e., in read() and</span>
+<span class="sd">        describe() calls)</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        The name of the device</span>
+<span class="sd">    parent : instance or None</span>
+<span class="sd">        The instance of the parent device, if applicable</span>
+<span class="sd">    settle_time : float, optional</span>
+<span class="sd">        The amount of time to wait after moves to report status completion</span>
+<span class="sd">    timeout : float, optional</span>
+<span class="sd">        The default timeout to use for motion requests, in seconds.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">user_offset</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.OFF&#39;</span><span class="p">)</span>
+    <span class="n">user_readback</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.RBV&#39;</span><span class="p">)</span>
+    <span class="n">user_setpoint</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.VAL&#39;</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">motor_egu</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.EGU&#39;</span><span class="p">)</span>
+    <span class="n">motor_is_moving</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.MOVN&#39;</span><span class="p">)</span>
+    <span class="n">motor_done_move</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;.DMOV&#39;</span><span class="p">)</span>
+    <span class="n">motor_stop</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.STOP&#39;</span><span class="p">)</span>
+    <span class="n">offset_freeze_switch</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.FOFF&#39;</span><span class="p">)</span>
+    <span class="n">velocity</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.VELO&#39;</span><span class="p">)</span>
+    <span class="n">acceleration</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.ACCL&#39;</span><span class="p">)</span>
+    <span class="n">set_use_switch</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.SET&#39;</span><span class="p">)</span>
+    <span class="n">high_limit_switch</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.HLS&#39;</span><span class="p">)</span>
+    <span class="n">low_limit_switch</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.LLS&#39;</span><span class="p">)</span>
+    <span class="n">home_forward</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.HOMF&#39;</span><span class="p">)</span>
+    <span class="n">home_reverse</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.HOMR&#39;</span><span class="p">)</span>
+    <span class="n">direction_of_travel</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.TDIR&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">configuration_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">read_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">read_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;user_readback&#39;</span><span class="p">,</span> <span class="s1">&#39;user_setpoint&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">configuration_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configuration_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;motor_egu&#39;</span><span class="p">,</span> <span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="n">read_attrs</span><span class="p">,</span>
+                         <span class="n">configuration_attrs</span><span class="o">=</span><span class="n">configuration_attrs</span><span class="p">,</span>
+                         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Make the default alias for the user_readback the name of the</span>
+        <span class="c1"># motor itself.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_readback</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">motor_done_move</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_move_changed</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_readback</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pos_changed</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The precision of the readback PV, as reported by EPICS&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_readback</span><span class="o">.</span><span class="n">precision</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">egu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The engineering units (EGU) for a position&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">motor_egu</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_setpoint</span><span class="o">.</span><span class="n">limits</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Whether or not the motor is moving</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        moving : bool</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">motor_is_moving</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">use_monitor</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">motor_stop</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="nd">@raise_if_disconnected</span>
+<div class="viewcode-block" id="EpicsMotor.move"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.epics_motor.EpicsMotor.move">[docs]</a>    <span class="k">def</span> <span class="nf">move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move to a specified position, optionally waiting for motion to</span>
+<span class="sd">        complete.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        position</span>
+<span class="sd">            Position to move to</span>
+<span class="sd">        moved_cb : callable</span>
+<span class="sd">            Call this callback when movement has finished. This callback must</span>
+<span class="sd">            accept one keyword argument: &#39;obj&#39; which will be set to this</span>
+<span class="sd">            positioner instance.</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            Maximum time to wait for the motion. If None, the default timeout</span>
+<span class="sd">            for this positioner is used.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        status : MoveStatus</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TimeoutError</span>
+<span class="sd">            When motion takes longer than `timeout`</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            On invalid positions</span>
+<span class="sd">        RuntimeError</span>
+<span class="sd">            If motion fails other than timing out</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_started_moving</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">status</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_setpoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">wait</span><span class="p">:</span>
+                <span class="n">status_wait</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="k">raise</span>
+
+        <span class="k">return</span> <span class="n">status</span></div>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The current position of the motor in its engineering units</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        position : float</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position</span>
+
+    <span class="nd">@raise_if_disconnected</span>
+<div class="viewcode-block" id="EpicsMotor.set_current_position"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.epics_motor.EpicsMotor.set_current_position">[docs]</a>    <span class="k">def</span> <span class="nf">set_current_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Configure the motor user position to the given value</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pos</span>
+<span class="sd">           Position to set.</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_use_switch</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_setpoint</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_use_switch</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+    <span class="nd">@raise_if_disconnected</span>
+<div class="viewcode-block" id="EpicsMotor.home"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.epics_motor.EpicsMotor.home">[docs]</a>    <span class="k">def</span> <span class="nf">home</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Perform the default homing function in the desired direction</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        direction : HomeEnum</span>
+<span class="sd">           Direction in which to perform the home search.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">direction</span> <span class="o">=</span> <span class="n">HomeEnum</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_started_moving</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">low_limit</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">high_limit</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">direction</span> <span class="o">==</span> <span class="n">HomeEnum</span><span class="o">.</span><span class="n">forward</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_forward</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">home_reverse</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">wait</span><span class="p">:</span>
+                <span class="n">status_wait</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="k">raise</span>
+
+        <span class="k">return</span> <span class="n">status</span></div>
+
+<div class="viewcode-block" id="EpicsMotor.check_value"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.epics_motor.EpicsMotor.check_value">[docs]</a>    <span class="k">def</span> <span class="nf">check_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Check that the position is within the soft limits&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_setpoint</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_pos_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Callback from EPICS, indicating a change in position&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_position</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_move_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sub_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Callback from EPICS, indicating that movement status has changed&#39;&#39;&#39;</span>
+        <span class="n">was_moving</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_moving</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_moving</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">started</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_started_moving</span><span class="p">:</span>
+            <span class="n">started</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_started_moving</span> <span class="o">=</span> <span class="p">(</span><span class="ow">not</span> <span class="n">was_moving</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_moving</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[ts=</span><span class="si">%s</span><span class="s1">] </span><span class="si">%s</span><span class="s1"> moving: </span><span class="si">%s</span><span class="s1"> (value=</span><span class="si">%s</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">fmt_time</span><span class="p">(</span><span class="n">timestamp</span><span class="p">),</span>
+                     <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_moving</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">started</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">sub_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_START</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                           <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">was_moving</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_moving</span><span class="p">:</span>
+            <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># Check if we are moving towards the low limit switch</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">direction_of_travel</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">low_limit_switch</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="c1"># No, we are going to the high limit switch</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">high_limit_switch</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">rep</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">report</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="c1"># TODO there might be more in this that gets lost</span>
+            <span class="n">rep</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;position&#39;</span><span class="p">:</span> <span class="s1">&#39;disconnected&#39;</span><span class="p">}</span>
+        <span class="n">rep</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_readback</span><span class="o">.</span><span class="n">pvname</span>
+        <span class="k">return</span> <span class="n">rep</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

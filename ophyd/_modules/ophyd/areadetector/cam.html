@@ -1,0 +1,843 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.areadetector.cam &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.areadetector.cam</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.areadetector.cam</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="k">import</span> <span class="n">enum</span>
+<span class="kn">from</span> <span class="nn">.base</span> <span class="k">import</span> <span class="p">(</span><span class="n">ADBase</span><span class="p">,</span> <span class="n">ADComponent</span> <span class="k">as</span> <span class="n">C</span><span class="p">,</span> <span class="n">ad_group</span><span class="p">,</span>
+                   <span class="n">EpicsSignalWithRBV</span> <span class="k">as</span> <span class="n">SignalWithRBV</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..signal</span> <span class="k">import</span> <span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="n">EpicsSignal</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..device</span> <span class="k">import</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDC</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;CamBase&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;AdscDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Andor3DetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;AndorDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;BrukerDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;FirewireLinDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;FirewireWinDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;LightFieldDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;Mar345DetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;MarCCDDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PerkinElmerDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PilatusDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PixiradDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PointGreyDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;ProsilicaDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PSLDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;PvcamDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;RoperDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;SimDetectorCam&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;URLDetectorCam&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+
+<div class="viewcode-block" id="CamBase"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.CamBase">[docs]</a><span class="k">class</span> <span class="nc">CamBase</span><span class="p">(</span><span class="n">ADBase</span><span class="p">):</span>
+    <span class="n">ImageMode</span> <span class="o">=</span> <span class="n">enum</span><span class="p">(</span><span class="n">SINGLE</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">MULTIPLE</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">CONTINUOUS</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Shared among all cams and plugins</span>
+    <span class="n">array_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArrayCounter&#39;</span><span class="p">)</span>
+    <span class="n">array_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArrayRate_RBV&#39;</span><span class="p">)</span>
+    <span class="n">asyn_io</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AsynIO&#39;</span><span class="p">)</span>
+
+    <span class="n">nd_attributes_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NDAttributesFile&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">pool_alloc_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolAllocBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_free_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolFreeBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_max_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolMaxBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_max_mem</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolMaxMem&#39;</span><span class="p">)</span>
+    <span class="n">pool_used_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolUsedBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pool_used_mem</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PoolUsedMem&#39;</span><span class="p">)</span>
+    <span class="n">port_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PortName_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Cam-specific</span>
+    <span class="n">acquire</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Acquire&#39;</span><span class="p">)</span>
+    <span class="n">acquire_period</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AcquirePeriod&#39;</span><span class="p">)</span>
+    <span class="n">acquire_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AcquireTime&#39;</span><span class="p">)</span>
+
+    <span class="n">array_callbacks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ArrayCallbacks&#39;</span><span class="p">)</span>
+    <span class="n">array_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;array_size_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeX_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;array_size_y&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeY_RBV&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;array_size_z&#39;</span><span class="p">,</span> <span class="s1">&#39;ArraySizeZ_RBV&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Size of the array in the XYZ dimensions&#39;</span><span class="p">)</span>
+
+    <span class="n">array_size_bytes</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ArraySize_RBV&#39;</span><span class="p">)</span>
+    <span class="n">bin_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BinX&#39;</span><span class="p">)</span>
+    <span class="n">bin_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BinY&#39;</span><span class="p">)</span>
+    <span class="n">color_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ColorMode&#39;</span><span class="p">)</span>
+    <span class="n">data_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DataType&#39;</span><span class="p">)</span>
+    <span class="n">detector_state</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DetectorState_RBV&#39;</span><span class="p">)</span>
+    <span class="n">frame_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FrameType&#39;</span><span class="p">)</span>
+    <span class="n">gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Gain&#39;</span><span class="p">)</span>
+
+    <span class="n">image_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ImageMode&#39;</span><span class="p">)</span>
+    <span class="n">manufacturer</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Manufacturer_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">max_size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;max_size_x&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeX_RBV&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;max_size_y&#39;</span><span class="p">,</span> <span class="s1">&#39;MaxSizeY_RBV&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Maximum sensor size in the XY directions&#39;</span><span class="p">)</span>
+
+    <span class="n">min_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MinX&#39;</span><span class="p">)</span>
+    <span class="n">min_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MinY&#39;</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Model_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">num_exposures</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumExposures&#39;</span><span class="p">)</span>
+    <span class="n">num_exposures_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumExposuresCounter_RBV&#39;</span><span class="p">)</span>
+    <span class="n">num_images</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumImages&#39;</span><span class="p">)</span>
+    <span class="n">num_images_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumImagesCounter_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">read_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadStatus&#39;</span><span class="p">)</span>
+    <span class="n">reverse</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                           <span class="p">((</span><span class="s1">&#39;reverse_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ReverseX&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;reverse_y&#39;</span><span class="p">,</span> <span class="s1">&#39;ReverseY&#39;</span><span class="p">))</span>
+                           <span class="p">))</span>
+
+    <span class="n">shutter_close_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ShutterCloseDelay&#39;</span><span class="p">)</span>
+    <span class="n">shutter_close_epics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ShutterCloseEPICS&#39;</span><span class="p">)</span>
+    <span class="n">shutter_control</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ShutterControl&#39;</span><span class="p">)</span>
+    <span class="n">shutter_control_epics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ShutterControlEPICS&#39;</span><span class="p">)</span>
+    <span class="n">shutter_fanout</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ShutterFanout&#39;</span><span class="p">)</span>
+    <span class="n">shutter_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ShutterMode&#39;</span><span class="p">)</span>
+    <span class="n">shutter_open_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ShutterOpenDelay&#39;</span><span class="p">)</span>
+    <span class="n">shutter_open_epics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ShutterOpenEPICS&#39;</span><span class="p">)</span>
+    <span class="n">shutter_status_epics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ShutterStatusEPICS_RBV&#39;</span><span class="p">)</span>
+    <span class="n">shutter_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ShutterStatus_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">size</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                        <span class="p">((</span><span class="s1">&#39;size_x&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeX&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;size_y&#39;</span><span class="p">,</span> <span class="s1">&#39;SizeY&#39;</span><span class="p">))</span>
+                        <span class="p">))</span>
+
+    <span class="n">status_message</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;StatusMessage_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">string_from_server</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;StringFromServer_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">string_to_server</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;StringToServer_RBV&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Temperature&#39;</span><span class="p">)</span>
+    <span class="n">temperature_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TemperatureActual&#39;</span><span class="p">)</span>
+    <span class="n">time_remaining</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;TimeRemaining_RBV&#39;</span><span class="p">)</span>
+    <span class="n">trigger_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerMode&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">AreaDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<div class="viewcode-block" id="SimDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.SimDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">SimDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;simDetectorDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">gain_rgb</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;gain_red&#39;</span><span class="p">,</span> <span class="s1">&#39;GainRed&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;gain_green&#39;</span><span class="p">,</span> <span class="s1">&#39;GainGreen&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;gain_blue&#39;</span><span class="p">,</span> <span class="s1">&#39;GainBlue&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Gain rgb components&#39;</span><span class="p">)</span>
+    <span class="n">gain_xy</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                           <span class="p">((</span><span class="s1">&#39;gain_x&#39;</span><span class="p">,</span> <span class="s1">&#39;GainX&#39;</span><span class="p">),</span>
+                            <span class="p">(</span><span class="s1">&#39;gain_y&#39;</span><span class="p">,</span> <span class="s1">&#39;GainY&#39;</span><span class="p">))),</span>
+                  <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Gain in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Noise&#39;</span><span class="p">)</span>
+    <span class="n">peak_num</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                            <span class="p">((</span><span class="s1">&#39;peak_num_x&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakNumX&#39;</span><span class="p">),</span>
+                             <span class="p">(</span><span class="s1">&#39;peak_num_y&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakNumY&#39;</span><span class="p">))),</span>
+                   <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Peak number in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">peak_start</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;peak_start_x&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakStartX&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;peak_start_y&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakStartY&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Peak start in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">peak_step</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                             <span class="p">((</span><span class="s1">&#39;peak_step_x&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakStepX&#39;</span><span class="p">),</span>
+                              <span class="p">(</span><span class="s1">&#39;peak_step_y&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakStepY&#39;</span><span class="p">))),</span>
+                    <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Peak step in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">peak_variation</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PeakVariation&#39;</span><span class="p">)</span>
+    <span class="n">peak_width</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;peak_width_x&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakWidthX&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;peak_width_y&#39;</span><span class="p">,</span> <span class="s1">&#39;PeakWidthY&#39;</span><span class="p">))),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Peak width in XY&#39;</span><span class="p">)</span>
+
+    <span class="n">reset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Reset&#39;</span><span class="p">)</span>
+    <span class="n">sim_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SimMode&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AdscDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.AdscDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">AdscDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;adscDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">adsc_2theta</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSC2Theta&#39;</span><span class="p">)</span>
+    <span class="n">adsc_adc</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCAdc&#39;</span><span class="p">)</span>
+    <span class="n">adsc_axis</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCAxis&#39;</span><span class="p">)</span>
+    <span class="n">adsc_beam_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCBeamX&#39;</span><span class="p">)</span>
+    <span class="n">adsc_beam_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCBeamY&#39;</span><span class="p">)</span>
+    <span class="n">adsc_dezingr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCDezingr&#39;</span><span class="p">)</span>
+    <span class="n">adsc_distance</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCDistnce&#39;</span><span class="p">)</span>
+    <span class="n">adsc_im_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCImWidth&#39;</span><span class="p">)</span>
+    <span class="n">adsc_im_xform</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCImXform&#39;</span><span class="p">)</span>
+    <span class="n">adsc_kappa</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCKappa&#39;</span><span class="p">)</span>
+    <span class="n">adsc_last_error</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCLastError&#39;</span><span class="p">)</span>
+    <span class="n">adsc_last_image</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCLastImage&#39;</span><span class="p">)</span>
+    <span class="n">adsc_omega</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCOmega&#39;</span><span class="p">)</span>
+    <span class="n">adsc_phi</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCPhi&#39;</span><span class="p">)</span>
+    <span class="n">adsc_raw</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCRaw&#39;</span><span class="p">)</span>
+    <span class="n">adsc_read_conditn</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCReadConditn&#39;</span><span class="p">)</span>
+    <span class="n">adsc_reus_drk</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCReusDrk&#39;</span><span class="p">)</span>
+    <span class="n">adsc_soft_reset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCSoftReset&#39;</span><span class="p">)</span>
+    <span class="n">adsc_state</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCState&#39;</span><span class="p">)</span>
+    <span class="n">adsc_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCStatus&#39;</span><span class="p">)</span>
+    <span class="n">adsc_stp_ex_retry_count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ADSCStpExRtryCt&#39;</span><span class="p">)</span>
+    <span class="n">adsc_str_drks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCStrDrks&#39;</span><span class="p">)</span>
+    <span class="n">adsc_wavelen</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ADSCWavelen&#39;</span><span class="p">)</span>
+
+    <span class="n">bin_x_changed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BinXChanged&#39;</span><span class="p">)</span>
+    <span class="n">bin_y_changed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BinYChanged&#39;</span><span class="p">)</span>
+    <span class="n">ext_trig_ctl</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ExSwTrCtl&#39;</span><span class="p">)</span>
+    <span class="n">ext_trig_ctl_rsp</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ExSwTrCtlRsp&#39;</span><span class="p">)</span>
+    <span class="n">ext_trig_ok_to_exp</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ExSwTrOkToExp&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AndorDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.AndorDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">AndorDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;andorDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">andor_adc_speed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AndorADCSpeed&#39;</span><span class="p">)</span>
+    <span class="n">andor_accumulate_period</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AndorAccumulatePeriod&#39;</span><span class="p">)</span>
+    <span class="n">andor_cooler</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AndorCooler&#39;</span><span class="p">)</span>
+    <span class="n">andor_message</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;AndorMessage_RBV&#39;</span><span class="p">)</span>
+    <span class="n">andor_pre_amp_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AndorPreAmpGain&#39;</span><span class="p">)</span>
+    <span class="n">andor_shutter_ex_ttl</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AndorShutterExTTL&#39;</span><span class="p">)</span>
+    <span class="n">andor_shutter_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AndorShutterMode&#39;</span><span class="p">)</span>
+    <span class="n">andor_temp_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;AndorTempStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">pal_file_path</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PALFilePath&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Andor3DetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.Andor3DetectorCam">[docs]</a><span class="k">class</span> <span class="nc">Andor3DetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;andor3Doc.html&#39;</span><span class="p">]</span>
+    <span class="n">a3_binning</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;A3Binning&#39;</span><span class="p">)</span>
+    <span class="n">a3_shutter_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;A3ShutterMode&#39;</span><span class="p">)</span>
+    <span class="n">controller_id</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ControllerID&#39;</span><span class="p">)</span>
+    <span class="n">fan_speed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FanSpeed&#39;</span><span class="p">)</span>
+    <span class="n">firmware_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FirmwareVersion&#39;</span><span class="p">)</span>
+    <span class="n">frame_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FrameRate&#39;</span><span class="p">)</span>
+    <span class="n">full_aoic_ontrol</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FullAOIControl&#39;</span><span class="p">)</span>
+    <span class="n">noise_filter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NoiseFilter&#39;</span><span class="p">)</span>
+    <span class="n">overlap</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Overlap&#39;</span><span class="p">)</span>
+    <span class="n">pixel_encoding</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PixelEncoding&#39;</span><span class="p">)</span>
+    <span class="n">pre_amp_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PreAmpGain&#39;</span><span class="p">)</span>
+    <span class="n">readout_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ReadoutRate&#39;</span><span class="p">)</span>
+    <span class="n">readout_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadoutTime&#39;</span><span class="p">)</span>
+    <span class="n">sensor_cooling</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SensorCooling&#39;</span><span class="p">)</span>
+    <span class="n">serial_number</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SerialNumber&#39;</span><span class="p">)</span>
+    <span class="n">software_trigger</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SoftwareTrigger&#39;</span><span class="p">)</span>
+    <span class="n">software_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SoftwareVersion&#39;</span><span class="p">)</span>
+    <span class="n">temp_control</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TempControl&#39;</span><span class="p">)</span>
+    <span class="n">temp_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;TempStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">transfer_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TransferRate&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BrukerDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.BrukerDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">BrukerDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;BrukerDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">bis_asyn</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BISAsyn&#39;</span><span class="p">)</span>
+    <span class="n">bis_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BISStatus&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">num_darks</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumDarks&#39;</span><span class="p">)</span>
+    <span class="n">read_sfrm_timeout</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadSFRMTimeout&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FirewireLinDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.FirewireLinDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">FirewireLinDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">bandwidth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BANDWIDTH&#39;</span><span class="p">)</span>
+    <span class="n">fanout_disable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FanoutDis&#39;</span><span class="p">)</span>
+    <span class="n">framerate_max</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FR&#39;</span><span class="p">)</span>
+    <span class="n">is_fixed_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;IsFixedMode&#39;</span><span class="p">)</span>
+    <span class="n">video_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;VIDEOMODE&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FirewireWinDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.FirewireWinDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">FirewireWinDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;FirewireWinDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">colorcode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;COLORCODE&#39;</span><span class="p">)</span>
+    <span class="n">current_colorcode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CURRENT_COLORCODE&#39;</span><span class="p">)</span>
+    <span class="n">current_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CURRENT_FORMAT&#39;</span><span class="p">)</span>
+    <span class="n">current_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CURRENT_MODE&#39;</span><span class="p">)</span>
+    <span class="n">current_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CURRENT_RATE&#39;</span><span class="p">)</span>
+    <span class="n">dropped_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DROPPED_FRAMES&#39;</span><span class="p">)</span>
+    <span class="n">format_</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FORMAT&#39;</span><span class="p">)</span>
+    <span class="n">frame_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FR&#39;</span><span class="p">)</span>
+    <span class="n">mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MODE&#39;</span><span class="p">)</span>
+    <span class="n">readout_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;READOUT_TIME&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LightFieldDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.LightFieldDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">LightFieldDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;LightFieldDoc.html&#39;</span><span class="p">]</span>
+
+    <span class="n">aux_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFAuxDelay&#39;</span><span class="p">)</span>
+    <span class="n">aux_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFAuxWidth&#39;</span><span class="p">)</span>
+    <span class="n">background_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFBackgroundEnable&#39;</span><span class="p">)</span>
+    <span class="n">background_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFBackgroundFile&#39;</span><span class="p">)</span>
+    <span class="n">background_full_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;LFBackgroundFullFile_RBV&#39;</span><span class="p">)</span>
+    <span class="n">background_path</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFBackgroundPath&#39;</span><span class="p">)</span>
+    <span class="n">entrance_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFEntranceWidth&#39;</span><span class="p">)</span>
+    <span class="n">exit_port</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFExitPort&#39;</span><span class="p">)</span>
+    <span class="n">experiment_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFExperimentName&#39;</span><span class="p">)</span>
+    <span class="n">file_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;LFFileName_RBV&#39;</span><span class="p">)</span>
+    <span class="n">file_path</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;LFFilePath_RBV&#39;</span><span class="p">)</span>
+    <span class="n">lf_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFGain&#39;</span><span class="p">)</span>
+    <span class="n">gating_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFGatingMode&#39;</span><span class="p">)</span>
+    <span class="n">grating</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFGrating&#39;</span><span class="p">)</span>
+    <span class="n">grating_wavelength</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFGratingWavelength&#39;</span><span class="p">)</span>
+    <span class="n">image_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ImageMode&#39;</span><span class="p">)</span>
+    <span class="n">intensifier_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFIntensifierEnable&#39;</span><span class="p">)</span>
+    <span class="n">intensifier_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFIntensifierGain&#39;</span><span class="p">)</span>
+    <span class="n">num_accumulations</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumAccumulations&#39;</span><span class="p">)</span>
+    <span class="n">ready_to_run</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;LFReadyToRun&#39;</span><span class="p">)</span>
+    <span class="n">rep_gate_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFRepGateDelay&#39;</span><span class="p">)</span>
+    <span class="n">rep_gate_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFRepGateWidth&#39;</span><span class="p">)</span>
+    <span class="n">seq_end_gate_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSeqEndGateDelay&#39;</span><span class="p">)</span>
+    <span class="n">seq_end_gate_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSeqEndGateWidth&#39;</span><span class="p">)</span>
+    <span class="n">seq_start_gate_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSeqStartGateDelay&#39;</span><span class="p">)</span>
+    <span class="n">seq_start_gate_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSeqStartGateWidth&#39;</span><span class="p">)</span>
+    <span class="n">lf_shutter_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFShutterMode&#39;</span><span class="p">)</span>
+    <span class="n">sync_master2_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSyncMaster2Delay&#39;</span><span class="p">)</span>
+    <span class="n">sync_master_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFSyncMasterEnable&#39;</span><span class="p">)</span>
+    <span class="n">trigger_frequency</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;LFTriggerFrequency&#39;</span><span class="p">)</span>
+    <span class="n">update_experiments</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;LFUpdateExperiments&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Mar345DetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.Mar345DetectorCam">[docs]</a><span class="k">class</span> <span class="nc">Mar345DetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Mar345Doc.html&#39;</span><span class="p">]</span>
+    <span class="n">abort</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Abort&#39;</span><span class="p">)</span>
+    <span class="n">change_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ChangeMode&#39;</span><span class="p">)</span>
+    <span class="n">erase</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Erase&#39;</span><span class="p">)</span>
+    <span class="n">erase_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;EraseMode&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">num_erase</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumErase&#39;</span><span class="p">)</span>
+    <span class="n">num_erased</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumErased_RBV&#39;</span><span class="p">)</span>
+    <span class="n">scan_resolution</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ScanResolution&#39;</span><span class="p">)</span>
+    <span class="n">scan_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ScanSize&#39;</span><span class="p">)</span>
+    <span class="n">mar_server_asyn</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;marServerAsyn&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MarCCDDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.MarCCDDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">MarCCDDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;MarCCDDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">beam_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BeamX&#39;</span><span class="p">)</span>
+    <span class="n">beam_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BeamY&#39;</span><span class="p">)</span>
+    <span class="n">dataset_comments</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DatasetComments&#39;</span><span class="p">)</span>
+    <span class="n">detector_distance</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DetectorDistance&#39;</span><span class="p">)</span>
+    <span class="n">file_comments</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FileComments&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">frame_shift</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FrameShift&#39;</span><span class="p">)</span>
+    <span class="n">mar_acquire_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarAcquireStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_correct_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarCorrectStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_dezinger_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarDezingerStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_readout_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarReadoutStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_state</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarState_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">mar_writing_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MarWritingStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">overlap_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;OverlapMode&#39;</span><span class="p">)</span>
+    <span class="n">read_tiff_timeout</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadTiffTimeout&#39;</span><span class="p">)</span>
+    <span class="n">rotation_axis</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;RotationAxis&#39;</span><span class="p">)</span>
+    <span class="n">rotation_range</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;RotationRange&#39;</span><span class="p">)</span>
+    <span class="n">stability</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Stability&#39;</span><span class="p">)</span>
+    <span class="n">start_phi</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StartPhi&#39;</span><span class="p">)</span>
+    <span class="n">two_theta</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TwoTheta&#39;</span><span class="p">)</span>
+    <span class="n">wavelength</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Wavelength&#39;</span><span class="p">)</span>
+    <span class="n">mar_server_asyn</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;marServerAsyn&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PerkinElmerDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PerkinElmerDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PerkinElmerDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PerkinElmerDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">pe_acquire_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEAcquireGain&#39;</span><span class="p">)</span>
+    <span class="n">pe_acquire_offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEAcquireOffset&#39;</span><span class="p">)</span>
+    <span class="n">pe_corrections_dir</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PECorrectionsDir&#39;</span><span class="p">)</span>
+    <span class="n">pe_current_gain_frame</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PECurrentGainFrame&#39;</span><span class="p">)</span>
+    <span class="n">pe_current_offset_frame</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PECurrentOffsetFrame&#39;</span><span class="p">)</span>
+    <span class="n">pe_dwell_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PEDwellTime&#39;</span><span class="p">)</span>
+    <span class="n">pe_frame_buff_index</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEFrameBuffIndex&#39;</span><span class="p">)</span>
+    <span class="n">pe_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PEGain&#39;</span><span class="p">)</span>
+    <span class="n">pe_gain_available</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEGainAvailable&#39;</span><span class="p">)</span>
+    <span class="n">pe_gain_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEGainFile&#39;</span><span class="p">)</span>
+    <span class="n">pe_image_number</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEImageNumber&#39;</span><span class="p">)</span>
+    <span class="n">pe_initialize</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEInitialize&#39;</span><span class="p">)</span>
+    <span class="n">pe_load_gain_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PELoadGainFile&#39;</span><span class="p">)</span>
+    <span class="n">pe_load_pixel_correction</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PELoadPixelCorrection&#39;</span><span class="p">)</span>
+    <span class="n">pe_num_frame_buffers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PENumFrameBuffers&#39;</span><span class="p">)</span>
+    <span class="n">pe_num_frames_to_skip</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PENumFramesToSkip&#39;</span><span class="p">)</span>
+    <span class="n">pe_num_gain_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PENumGainFrames&#39;</span><span class="p">)</span>
+    <span class="n">pe_num_offset_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PENumOffsetFrames&#39;</span><span class="p">)</span>
+    <span class="n">pe_offset_available</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEOffsetAvailable&#39;</span><span class="p">)</span>
+    <span class="n">pe_pixel_correction_available</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                                      <span class="s1">&#39;PEPixelCorrectionAvailable&#39;</span><span class="p">)</span>
+    <span class="n">pe_pixel_correction_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEPixelCorrectionFile&#39;</span><span class="p">)</span>
+    <span class="n">pe_save_gain_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PESaveGainFile&#39;</span><span class="p">)</span>
+    <span class="n">pe_skip_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PESkipFrames&#39;</span><span class="p">)</span>
+    <span class="n">pe_sync_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PESyncTime&#39;</span><span class="p">)</span>
+    <span class="n">pe_system_id</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PESystemID&#39;</span><span class="p">)</span>
+    <span class="n">pe_trigger</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PETrigger&#39;</span><span class="p">)</span>
+    <span class="n">pe_use_gain</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEUseGain&#39;</span><span class="p">)</span>
+    <span class="n">pe_use_offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEUseOffset&#39;</span><span class="p">)</span>
+    <span class="n">pe_use_pixel_correction</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PEUsePixelCorrection&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PSLDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PSLDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PSLDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PSLDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">tiff_comment</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TIFFComment&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PilatusDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PilatusDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PilatusDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pilatusDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Alpha&#39;</span><span class="p">)</span>
+    <span class="n">angle_incr</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AngleIncr&#39;</span><span class="p">)</span>
+    <span class="n">armed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Armed&#39;</span><span class="p">)</span>
+    <span class="n">bad_pixel_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BadPixelFile&#39;</span><span class="p">)</span>
+    <span class="n">beam_x</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BeamX&#39;</span><span class="p">)</span>
+    <span class="n">beam_y</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;BeamY&#39;</span><span class="p">)</span>
+    <span class="n">camserver_asyn</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CamserverAsyn&#39;</span><span class="p">)</span>
+    <span class="n">cbf_template_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;CbfTemplateFile&#39;</span><span class="p">)</span>
+    <span class="n">chi</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Chi&#39;</span><span class="p">)</span>
+    <span class="n">delay_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DelayTime&#39;</span><span class="p">)</span>
+    <span class="n">det_2theta</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Det2theta&#39;</span><span class="p">)</span>
+    <span class="n">det_dist</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DetDist&#39;</span><span class="p">)</span>
+    <span class="n">det_v_offset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;DetVOffset&#39;</span><span class="p">)</span>
+    <span class="n">energy_high</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EnergyHigh&#39;</span><span class="p">)</span>
+    <span class="n">energy_low</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;EnergyLow&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">filter_transm</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FilterTransm&#39;</span><span class="p">)</span>
+    <span class="n">flat_field_file</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FlatFieldFile&#39;</span><span class="p">)</span>
+    <span class="n">flat_field_valid</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FlatFieldValid&#39;</span><span class="p">)</span>
+    <span class="n">flux</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Flux&#39;</span><span class="p">)</span>
+    <span class="n">gain_menu</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;GainMenu&#39;</span><span class="p">)</span>
+    <span class="n">gap_fill</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;GapFill&#39;</span><span class="p">)</span>
+    <span class="n">header_string</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;HeaderString&#39;</span><span class="p">)</span>
+    <span class="n">humid0</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Humid0_RBV&#39;</span><span class="p">)</span>
+    <span class="n">humid1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Humid1_RBV&#39;</span><span class="p">)</span>
+    <span class="n">humid2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Humid2_RBV&#39;</span><span class="p">)</span>
+    <span class="n">image_file_tmot</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ImageFileTmot&#39;</span><span class="p">)</span>
+    <span class="n">kappa</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Kappa&#39;</span><span class="p">)</span>
+    <span class="n">min_flat_field</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;MinFlatField&#39;</span><span class="p">)</span>
+    <span class="n">num_bad_pixels</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NumBadPixels&#39;</span><span class="p">)</span>
+    <span class="n">num_oscill</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;NumOscill&#39;</span><span class="p">)</span>
+    <span class="n">oscill_axis</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;OscillAxis&#39;</span><span class="p">)</span>
+    <span class="n">phi</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Phi&#39;</span><span class="p">)</span>
+    <span class="n">pixel_cut_off</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelCutOff_RBV&#39;</span><span class="p">)</span>
+    <span class="n">polarization</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Polarization&#39;</span><span class="p">)</span>
+    <span class="n">start_angle</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;StartAngle&#39;</span><span class="p">)</span>
+    <span class="n">tvx_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;TVXVersion_RBV&#39;</span><span class="p">)</span>
+    <span class="n">temp0</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Temp0_RBV&#39;</span><span class="p">)</span>
+    <span class="n">temp1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Temp1_RBV&#39;</span><span class="p">)</span>
+    <span class="n">temp2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Temp2_RBV&#39;</span><span class="p">)</span>
+    <span class="n">threshold_apply</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ThresholdApply&#39;</span><span class="p">)</span>
+    <span class="n">threshold_auto_apply</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ThresholdAutoApply&#39;</span><span class="p">)</span>
+    <span class="n">threshold_energy</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ThresholdEnergy&#39;</span><span class="p">)</span>
+    <span class="n">wavelength</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Wavelength&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PixiradDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PixiradDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PixiradDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PixiradDoc.html&#39;</span><span class="p">]</span>
+
+    <span class="n">auto_calibrate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;AutoCalibrate&#39;</span><span class="p">)</span>
+    <span class="n">humidity_box</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;BoxHumidity_RBV&#39;</span><span class="p">)</span>
+    <span class="n">colors_collected</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ColorsCollected_RBV&#39;</span><span class="p">)</span>
+    <span class="n">cooling_state</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;CoolingState&#39;</span><span class="p">)</span>
+    <span class="n">cooling_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;CoolingStatus_RBV&#39;</span><span class="p">)</span>
+    <span class="n">dew_point</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DewPoint_RBV&#39;</span><span class="p">)</span>
+    <span class="n">frame_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FrameType&#39;</span><span class="p">)</span>
+    <span class="n">hv_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;HVActual_RBV&#39;</span><span class="p">)</span>
+    <span class="n">hv_current</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;HVCurrent_RBV&#39;</span><span class="p">)</span>
+    <span class="n">hv_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HVMode&#39;</span><span class="p">)</span>
+    <span class="n">hv_state</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HVState&#39;</span><span class="p">)</span>
+    <span class="n">hv_value</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;HVValue&#39;</span><span class="p">)</span>
+    <span class="n">peltier_power</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PeltierPower_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sync_in_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncInPolarity&#39;</span><span class="p">)</span>
+    <span class="n">sync_out_function</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOutFunction&#39;</span><span class="p">)</span>
+    <span class="n">sync_out_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOutPolarity&#39;</span><span class="p">)</span>
+    <span class="n">system_reset</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SystemReset&#39;</span><span class="p">)</span>
+
+    <span class="n">temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Temperature&#39;</span><span class="p">)</span>
+    <span class="n">temperature_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TemperatureActual&#39;</span><span class="p">)</span>
+    <span class="n">temperature_box</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;BoxTemperature_RBV&#39;</span><span class="p">)</span>
+    <span class="n">temperature_hot</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;HotTemperature_RBV&#39;</span><span class="p">)</span>
+
+    <span class="n">threshold_1_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual1_RBV&#39;</span><span class="p">)</span>
+    <span class="n">threshold_2_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual2_RBV&#39;</span><span class="p">)</span>
+    <span class="n">threshold_3_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual3_RBV&#39;</span><span class="p">)</span>
+    <span class="n">threshold_4_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual4_RBV&#39;</span><span class="p">)</span>
+    <span class="n">thresholds_actual</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span>
+                                     <span class="p">((</span><span class="s1">&#39;threshold_1&#39;</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual1_RBV&#39;</span><span class="p">),</span>
+                                      <span class="p">(</span><span class="s1">&#39;threshold_2&#39;</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual2_RBV&#39;</span><span class="p">),</span>
+                                      <span class="p">(</span><span class="s1">&#39;threshold_3&#39;</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual3_RBV&#39;</span><span class="p">),</span>
+                                      <span class="p">(</span><span class="s1">&#39;threshold_4&#39;</span><span class="p">,</span> <span class="s1">&#39;ThresholdActual4_RBV&#39;</span><span class="p">),</span>
+                                      <span class="p">)),</span>
+                            <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Actual thresholds&#39;</span><span class="p">)</span>
+
+    <span class="n">threshold_1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Threshold1&#39;</span><span class="p">)</span>
+    <span class="n">threshold_2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Threshold2&#39;</span><span class="p">)</span>
+    <span class="n">threshold_3</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Threshold3&#39;</span><span class="p">)</span>
+    <span class="n">threshold_4</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Threshold4&#39;</span><span class="p">)</span>
+    <span class="n">thresholds</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span>
+                              <span class="p">((</span><span class="s1">&#39;threshold_1&#39;</span><span class="p">,</span> <span class="s1">&#39;Threshold1&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;threshold_2&#39;</span><span class="p">,</span> <span class="s1">&#39;Threshold2&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;threshold_3&#39;</span><span class="p">,</span> <span class="s1">&#39;Threshold3&#39;</span><span class="p">),</span>
+                               <span class="p">(</span><span class="s1">&#39;threshold_4&#39;</span><span class="p">,</span> <span class="s1">&#39;Threshold4&#39;</span><span class="p">),</span>
+                               <span class="p">)),</span>
+                     <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Thresholds&#39;</span><span class="p">)</span>
+
+    <span class="n">udp_buffers_free</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;UDPBuffersFree_RBV&#39;</span><span class="p">)</span>
+    <span class="n">udp_buffers_max</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;UDPBuffersMax_RBV&#39;</span><span class="p">)</span>
+    <span class="n">udp_buffers_read</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;UDPBuffersRead_RBV&#39;</span><span class="p">)</span>
+    <span class="n">udp_speed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;UDPSpeed_RBV&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PointGreyDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PointGreyDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PointGreyDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PointGreyDoc.html&#39;</span><span class="p">]</span>
+
+    <span class="n">bandwidth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Bandwidth&#39;</span><span class="p">)</span>
+    <span class="n">binning_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;BinningMode&#39;</span><span class="p">)</span>
+    <span class="n">convert_pixel_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;ConvertPixelFormat&#39;</span><span class="p">)</span>
+    <span class="n">corrupt_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;CorruptFrames_RBV&#39;</span><span class="p">)</span>
+    <span class="n">driver_dropped</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DriverDropped_RBV&#39;</span><span class="p">)</span>
+    <span class="n">dropped_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DroppedFrames_RBV&#39;</span><span class="p">)</span>
+    <span class="n">firmware_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;FirmwareVersion&#39;</span><span class="p">)</span>
+    <span class="n">format7_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Format7Mode&#39;</span><span class="p">)</span>
+    <span class="n">frame_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FrameRate&#39;</span><span class="p">)</span>
+    <span class="n">max_packet_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MaxPacketSize&#39;</span><span class="p">)</span>
+    <span class="n">packet_delay_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PacketDelayActual&#39;</span><span class="p">)</span>
+    <span class="n">packet_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PacketDelay&#39;</span><span class="p">)</span>
+    <span class="n">packet_size_actual</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PacketSizeActual&#39;</span><span class="p">)</span>
+    <span class="n">packet_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PacketSize&#39;</span><span class="p">)</span>
+    <span class="n">pixel_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PixelFormat&#39;</span><span class="p">)</span>
+    <span class="n">read_status</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ReadStatus&#39;</span><span class="p">)</span>
+    <span class="n">serial_number</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SerialNumber&#39;</span><span class="p">)</span>
+    <span class="n">skip_frames</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SkipFrames&#39;</span><span class="p">)</span>
+    <span class="n">software_trigger</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SoftwareTrigger&#39;</span><span class="p">)</span>
+    <span class="n">software_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;SoftwareVersion&#39;</span><span class="p">)</span>
+    <span class="n">strobe_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StrobeDelay&#39;</span><span class="p">)</span>
+    <span class="n">strobe_duration</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StrobeDuration&#39;</span><span class="p">)</span>
+    <span class="n">strobe_enable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StrobeEnable&#39;</span><span class="p">)</span>
+    <span class="n">strobe_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StrobePolarity&#39;</span><span class="p">)</span>
+    <span class="n">strobe_source</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;StrobeSource&#39;</span><span class="p">)</span>
+    <span class="n">time_stamp_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TimeStampMode&#39;</span><span class="p">)</span>
+    <span class="n">transmit_failed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;TransmitFailed_RBV&#39;</span><span class="p">)</span>
+    <span class="n">trigger_polarity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerPolarity&#39;</span><span class="p">)</span>
+    <span class="n">trigger_source</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerSource&#39;</span><span class="p">)</span>
+    <span class="n">video_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;VideoMode&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ProsilicaDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.ProsilicaDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">ProsilicaDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;prosilicaDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">ps_bad_frame_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSBadFrameCounter_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_byte_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PSByteRate&#39;</span><span class="p">)</span>
+    <span class="n">ps_driver_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSDriverType_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_filter_version</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSFilterVersion_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_frame_rate</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSFrameRate_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_frames_completed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSFramesCompleted_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_frames_dropped</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSFramesDropped_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packet_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketSize_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packets_erroneous</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketsErroneous_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packets_missed</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketsMissed_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packets_received</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketsReceived_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packets_requested</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketsRequested_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_packets_resent</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PSPacketsResent_RBV&#39;</span><span class="p">)</span>
+    <span class="n">ps_read_statistics</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PSReadStatistics&#39;</span><span class="p">)</span>
+    <span class="n">ps_reset_timer</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;PSResetTimer&#39;</span><span class="p">)</span>
+    <span class="n">ps_timestamp_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;PSTimestampType&#39;</span><span class="p">)</span>
+    <span class="n">strobe1_ctl_duration</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Strobe1CtlDuration&#39;</span><span class="p">)</span>
+    <span class="n">strobe1_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Strobe1Delay&#39;</span><span class="p">)</span>
+    <span class="n">strobe1_duration</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Strobe1Duration&#39;</span><span class="p">)</span>
+    <span class="n">strobe1_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Strobe1Mode&#39;</span><span class="p">)</span>
+    <span class="n">sync_in1_level</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SyncIn1Level_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sync_in2_level</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SyncIn2Level_RBV&#39;</span><span class="p">)</span>
+    <span class="n">sync_out1_invert</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut1Invert&#39;</span><span class="p">)</span>
+    <span class="n">sync_out1_level</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut1Level&#39;</span><span class="p">)</span>
+    <span class="n">sync_out1_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut1Mode&#39;</span><span class="p">)</span>
+    <span class="n">sync_out2_invert</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut2Invert&#39;</span><span class="p">)</span>
+    <span class="n">sync_out2_level</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut2Level&#39;</span><span class="p">)</span>
+    <span class="n">sync_out2_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut2Mode&#39;</span><span class="p">)</span>
+    <span class="n">sync_out3_invert</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut3Invert&#39;</span><span class="p">)</span>
+    <span class="n">sync_out3_level</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut3Level&#39;</span><span class="p">)</span>
+    <span class="n">sync_out3_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SyncOut3Mode&#39;</span><span class="p">)</span>
+    <span class="n">trigger_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerDelay&#39;</span><span class="p">)</span>
+    <span class="n">trigger_event</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerEvent&#39;</span><span class="p">)</span>
+    <span class="n">trigger_overlap</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerOverlap&#39;</span><span class="p">)</span>
+    <span class="n">trigger_software</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;TriggerSoftware&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PvcamDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.PvcamDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">PvcamDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pvcamDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">bit_depth</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;BitDepth_RBV&#39;</span><span class="p">)</span>
+    <span class="n">camera_firmware_vers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;CameraFirmwareVers_RBV&#39;</span><span class="p">)</span>
+    <span class="n">chip_height</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ChipHeight_RBV&#39;</span><span class="p">)</span>
+    <span class="n">chip_name</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ChipName_RBV&#39;</span><span class="p">)</span>
+    <span class="n">chip_width</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;ChipWidth_RBV&#39;</span><span class="p">)</span>
+    <span class="n">close_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;CloseDelay&#39;</span><span class="p">)</span>
+    <span class="n">detector_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DetectorMode&#39;</span><span class="p">)</span>
+    <span class="n">detector_selected</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;DetectorSelected&#39;</span><span class="p">)</span>
+    <span class="n">dev_drv_vers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;DevDrvVers_RBV&#39;</span><span class="p">)</span>
+    <span class="n">frame_transfer_capable</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;FrameTransferCapable_RBV&#39;</span><span class="p">)</span>
+    <span class="n">full_well_capacity</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;FullWellCapacity_RBV&#39;</span><span class="p">)</span>
+    <span class="n">gain_index</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;GainIndex&#39;</span><span class="p">)</span>
+    <span class="n">head_ser_num</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;HeadSerNum_RBV&#39;</span><span class="p">)</span>
+    <span class="n">initialize</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Initialize&#39;</span><span class="p">)</span>
+    <span class="n">max_gain_index</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MaxGainIndex_RBV&#39;</span><span class="p">)</span>
+    <span class="n">max_set_temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MaxSetTemperature&#39;</span><span class="p">)</span>
+    <span class="n">max_shutter_close_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MaxShutterCloseDelay_RBV&#39;</span><span class="p">)</span>
+    <span class="n">max_shutter_open_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MaxShutterOpenDelay_RBV&#39;</span><span class="p">)</span>
+    <span class="n">measured_temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MeasuredTemperature_RBV&#39;</span><span class="p">)</span>
+    <span class="n">min_set_temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;MinSetTemperature&#39;</span><span class="p">)</span>
+    <span class="n">min_shutter_close_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MinShutterCloseDelay_RBV&#39;</span><span class="p">)</span>
+    <span class="n">min_shutter_open_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;MinShutterOpenDelay_RBV&#39;</span><span class="p">)</span>
+    <span class="n">num_parallel_pixels</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumParallelPixels_RBV&#39;</span><span class="p">)</span>
+    <span class="n">num_ports</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumPorts_RBV&#39;</span><span class="p">)</span>
+    <span class="n">num_serial_pixels</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumSerialPixels_RBV&#39;</span><span class="p">)</span>
+    <span class="n">num_speed_table_entries</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumSpeedTableEntries_RBV&#39;</span><span class="p">)</span>
+    <span class="n">open_delay</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;OpenDelay&#39;</span><span class="p">)</span>
+    <span class="n">pcifw_vers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PCIFWVers_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pv_cam_vers</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PVCamVers_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pixel_parallel_dist</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelParallelDist_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pixel_parallel_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelParallelSize_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pixel_serial_dist</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelSerialDist_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pixel_serial_size</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelSerialSize_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pixel_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PixelTime_RBV&#39;</span><span class="p">)</span>
+    <span class="n">post_mask</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PostMask_RBV&#39;</span><span class="p">)</span>
+    <span class="n">post_scan</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PostScan_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pre_mask</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PreMask_RBV&#39;</span><span class="p">)</span>
+    <span class="n">pre_scan</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;PreScan_RBV&#39;</span><span class="p">)</span>
+    <span class="n">serial_num</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;SerialNum_RBV&#39;</span><span class="p">)</span>
+    <span class="n">set_temperature</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SetTemperature&#39;</span><span class="p">)</span>
+    <span class="n">slot1_cam</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Slot1Cam_RBV&#39;</span><span class="p">)</span>
+    <span class="n">slot2_cam</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Slot2Cam_RBV&#39;</span><span class="p">)</span>
+    <span class="n">slot3_cam</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;Slot3Cam_RBV&#39;</span><span class="p">)</span>
+    <span class="n">speed_table_index</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;SpeedTableIndex&#39;</span><span class="p">)</span>
+    <span class="n">trigger_edge</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;TriggerEdge&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RoperDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.RoperDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">RoperDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;RoperDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">auto_data_type</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;AutoDataType&#39;</span><span class="p">)</span>
+    <span class="n">comment1</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Comment1&#39;</span><span class="p">)</span>
+    <span class="n">comment2</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Comment2&#39;</span><span class="p">)</span>
+    <span class="n">comment3</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Comment3&#39;</span><span class="p">)</span>
+    <span class="n">comment4</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Comment4&#39;</span><span class="p">)</span>
+    <span class="n">comment5</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;Comment5&#39;</span><span class="p">)</span>
+    <span class="n">file_format</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;FileFormat&#39;</span><span class="p">)</span>
+    <span class="n">num_acquisitions</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;NumAcquisitions&#39;</span><span class="p">)</span>
+    <span class="n">num_acquisitions_counter</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;NumAcquisitionsCounter_RBV&#39;</span><span class="p">)</span>
+    <span class="n">roper_shutter_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">SignalWithRBV</span><span class="p">,</span> <span class="s1">&#39;RoperShutterMode&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="URLDetectorCam"><a class="viewcode-back" href="../../../area-detector.html#ophyd.areadetector.URLDetectorCam">[docs]</a><span class="k">class</span> <span class="nc">URLDetectorCam</span><span class="p">(</span><span class="n">CamBase</span><span class="p">):</span>
+    <span class="n">_html_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;URLDoc.html&#39;</span><span class="p">]</span>
+    <span class="n">urls</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span>
+                        <span class="p">((</span><span class="s1">&#39;url_1&#39;</span><span class="p">,</span> <span class="s1">&#39;URL1&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_2&#39;</span><span class="p">,</span> <span class="s1">&#39;URL2&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_3&#39;</span><span class="p">,</span> <span class="s1">&#39;URL3&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_4&#39;</span><span class="p">,</span> <span class="s1">&#39;URL4&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_5&#39;</span><span class="p">,</span> <span class="s1">&#39;URL5&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_6&#39;</span><span class="p">,</span> <span class="s1">&#39;URL6&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_7&#39;</span><span class="p">,</span> <span class="s1">&#39;URL7&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_8&#39;</span><span class="p">,</span> <span class="s1">&#39;URL8&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_9&#39;</span><span class="p">,</span> <span class="s1">&#39;URL9&#39;</span><span class="p">),</span>
+                         <span class="p">(</span><span class="s1">&#39;url_10&#39;</span><span class="p">,</span> <span class="s1">&#39;URL10&#39;</span><span class="p">))),</span>
+               <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;URLs&#39;</span><span class="p">)</span>
+
+    <span class="n">url_select</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;URLSelect&#39;</span><span class="p">)</span>
+    <span class="n">url_seq</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;URLSeq&#39;</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="s1">&#39;URL_RBV&#39;</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

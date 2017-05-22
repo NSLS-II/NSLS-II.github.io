@@ -1,0 +1,1488 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Live Visualization and Processing &mdash; bluesky 0.8.0+6.g7402173 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="bluesky 0.8.0+6.g7402173 documentation" href="index.html"/>
+        <link rel="next" title="Interruptions" href="state-machine.html"/>
+        <link rel="prev" title="bluesky.spec_api.setup_liveraster" href="bluesky.spec_api.setup_liveraster.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.8.0+6.g7402173
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">User Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="plans_intro.html">Basic Usage &amp; Intro to Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documents.html">Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plans.html">Plans</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Live Visualization and Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview-of-callbacks">Overview of Callbacks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#simplest-working-example">Simplest Working Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ways-to-invoke-callbacks">Ways to Invoke Callbacks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#interactively">Interactively</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#persistently">Persistently</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#through-a-plan">Through a plan</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#callbacks-for-visualization-fitting">Callbacks for Visualization &amp; Fitting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#livetable">LiveTable</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aside-making-plots-update-live">Aside: Making plots update live</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#liveplot-for-scalar-data">LivePlot (for scalar data)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#live-image">Live Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#liveraster-gridded-heat-map">LiveRaster (gridded heat map)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#livemesh-scattered-heat-map">LiveMesh (scattered heat map)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#livefit">LiveFit</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#livefitplot">LiveFitPlot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#peakstats">PeakStats</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#callback-for-export">Callback for Export</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#exporting-image-data-as-tiff-files">Exporting Image Data as TIFF Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#export-all-data-and-metadata-in-an-hdf5-file">Export All Data and Metadata in an HDF5 File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#export-metadata-to-the-olog">Export Metadata to the Olog</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#verify-data-has-been-saved">Verify Data Has Been Saved</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ignoring-callback-exceptions">Ignoring Callback Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#filtering-by-document-type">Filtering by Document Type</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#writing-custom-callbacks">Writing Custom Callbacks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#two-simple-custom-callbacks">Two Simple Custom Callbacks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-multiple-document-types">Using multiple document types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#subscriptions-in-separate-processes-or-host-with-0mq">Subscriptions in Separate Processes or Host with 0MQ</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#minimal-example">Minimal Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-plotting-in-separate-process">Example: Plotting in separate process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#publisher-remotedispatcher-api">Publisher / RemoteDispatcher API</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="event_descriptors.html">Event Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging and Logging</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hardware.html">How Bluesky Interfaces with Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="msg.html">Message Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_engine.html">The RunEngine run loop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">bluesky</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Live Visualization and Processing</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/callbacks.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="live-visualization-and-processing">
+<h1>Live Visualization and Processing<a class="headerlink" href="#live-visualization-and-processing" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview-of-callbacks">
+<span id="callbacks"></span><h2>Overview of Callbacks<a class="headerlink" href="#overview-of-callbacks" title="Permalink to this headline">¶</a></h2>
+<p>As the RunEngine executes a plan, it organizes metadata and data into
+<em>Documents,</em> Python dictionaries organized in a <a class="reference external" href="http://nsls-ii.github.io/architecture-overview.html">specified but flexible</a> way.
+Each time a new Document is created, the RunEngine passes it to a list of
+functions. These functions can do anything: store the data to disk, print a
+line of text to the screen, add a point to a plot, or even transfer the data to
+a cluster for immediate processing. These functions are called &#8220;callbacks.&#8221;</p>
+<p>We &#8220;subscribe&#8221; callbacks to the live stream of Documents coming from the
+RunEngine. You can think of a callback as a self-addressed stamped envelope: it
+tells the RunEngine, &#8220;When you create a Document, send it to this function for
+processing.&#8221;</p>
+</div>
+<div class="section" id="simplest-working-example">
+<h2>Simplest Working Example<a class="headerlink" href="#simplest-working-example" title="Permalink to this headline">¶</a></h2>
+<p>This example passes every Document to the <code class="docutils literal"><span class="pre">print</span></code> function, printing
+each Document as it is generated during data collection.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">count</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">count</span><span class="p">([</span><span class="n">det</span><span class="p">]),</span> <span class="k">print</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">print</span></code> function is a blunt instrument; it dumps too much information to
+the screen.  See <a class="reference internal" href="#livetable"><span class="std std-ref">LiveTable</span></a> below for a more refined option.</p>
+</div>
+<div class="section" id="ways-to-invoke-callbacks">
+<h2>Ways to Invoke Callbacks<a class="headerlink" href="#ways-to-invoke-callbacks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="interactively">
+<h3>Interactively<a class="headerlink" href="#interactively" title="Permalink to this headline">¶</a></h3>
+<p>As in the simple example above, pass a second argument to the RunEngine.
+For some callback function <code class="docutils literal"><span class="pre">cb</span></code>, the usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">(),</span> <span class="n">cb</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>A working example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det</span><span class="p">,</span> <span class="n">motor</span>
+<span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveTable</span>
+<span class="n">dets</span> <span class="o">=</span> <span class="p">[</span><span class="n">det</span><span class="p">]</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">(</span><span class="n">dets</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>A <em>list</em> of callbacks &#8212; <code class="docutils literal"><span class="pre">[cb1,</span> <span class="pre">cb2]</span></code> &#8212; is also accepted; see
+<a class="reference internal" href="#filtering"><span class="std std-ref">Filtering by Document Type</span></a>, below, for additional options.</p>
+</div>
+<div class="section" id="persistently">
+<h3>Persistently<a class="headerlink" href="#persistently" title="Permalink to this headline">¶</a></h3>
+<p>The RunEngine keeps a list of callbacks to apply to <em>every</em> plan it executes.
+For example, the callback that saves the data to a database is typically
+invoked this way. For some callback function <code class="docutils literal"><span class="pre">cb</span></code>, the usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This step is usually performed in a startup file (i.e., IPython profile).</p>
+<p>The method <code class="docutils literal"><span class="pre">RunEngine.subscribe</span></code> is an alias for this method:</p>
+<dl class="method">
+<dt id="bluesky.run_engine.Dispatcher.subscribe">
+<code class="descclassname">Dispatcher.</code><code class="descname">subscribe</code><span class="sig-paren">(</span><em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.Dispatcher.subscribe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to consume documents.</p>
+<p>The Run Engine can execute callback functions at the start and end
+of a scan, and after the insertion of new Event Descriptors
+and Events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>{'start'</em><em>, </em><em>'descriptor'</em><em>, </em><em>'event'</em><em>, </em><em>'stop'</em><em>, </em><em>'all'}</em>) &#8211; </li>
+<li><strong>func</strong> (<em>callable</em>) &#8211; expecting signature like <code class="docutils literal"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
+where name is a string and document is a dict</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>token</strong> &#8211; an integer token that can be used to unsubscribe</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<p>The method <code class="docutils literal"><span class="pre">RunEngine.unsubscribe</span></code> is an alias for this method:</p>
+<dl class="method">
+<dt id="bluesky.run_engine.Dispatcher.unsubscribe">
+<code class="descclassname">Dispatcher.</code><code class="descname">unsubscribe</code><span class="sig-paren">(</span><em>token</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unregister a callback function using its integer ID.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>token</strong> (<em>int</em>) &#8211; the integer token issued by <cite>subscribe</cite></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="through-a-plan">
+<span id="subs-decorator"></span><h3>Through a plan<a class="headerlink" href="#through-a-plan" title="Permalink to this headline">¶</a></h3>
+<p>Use the <code class="docutils literal"><span class="pre">subs_decorator</span></code> <a class="reference internal" href="plans.html#preprocessors"><span class="std std-ref">plan preprocessor</span></a> to attach
+callbacks to a plan so that they are subscribed every time it is run.</p>
+<p>In this example, we define a new plan, <code class="docutils literal"><span class="pre">plan2</span></code>, that adds some callback
+<code class="docutils literal"><span class="pre">cb</span></code> to some existing plan, <code class="docutils literal"><span class="pre">plan1</span></code>.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">subs_decorator</span>
+
+<span class="nd">@subs_decorator</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">plan2</span><span class="p">():</span>
+    <span class="k">yield from</span> <span class="n">plan1</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>or, equivalently,</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">plan2</span> <span class="o">=</span> <span class="n">subs_decorator</span><span class="p">(</span><span class="n">cb</span><span class="p">)(</span><span class="n">plan1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For example, to define a variant of <code class="docutils literal"><span class="pre">scan</span></code> that includes a table by default:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span><span class="p">,</span> <span class="n">subs_decorator</span>
+
+<span class="k">def</span> <span class="nf">my_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="s2">&quot;This plan takes the same arguments as `scan`.&quot;</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">LiveTable</span><span class="p">([</span><span class="n">motor</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">))</span>
+
+    <span class="nd">@subs_decorator</span><span class="p">(</span><span class="n">table</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner</span><span class="p">():</span>
+        <span class="k">yield from</span> <span class="n">scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span>
+                        <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="n">md</span><span class="p">)</span>
+
+    <span class="k">yield from</span> <span class="n">inner</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="callbacks-for-visualization-fitting">
+<h2>Callbacks for Visualization &amp; Fitting<a class="headerlink" href="#callbacks-for-visualization-fitting" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="livetable">
+<span id="id1"></span><h3>LiveTable<a class="headerlink" href="#livetable" title="Permalink to this headline">¶</a></h3>
+<p>As each data point is collected (i.e., as each Event Document is generated) a
+row is added to the table. Demo:</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+
+<span class="gp">In [2]: </span><span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
+
+<span class="gp">In [3]: </span><span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveTable</span>
+
+<span class="gp">In [4]: </span><span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="n">LiveTable</span><span class="p">([</span><span class="n">motor</span><span class="p">,</span> <span class="n">det</span><span class="p">]))</span>
+<span class="go">+-----------+------------+------------+----------------+------------+</span>
+<span class="go">|   seq_num |       time |      motor | motor_setpoint |        det |</span>
+<span class="go">+-----------+------------+------------+----------------+------------+</span>
+<span class="go">|         1 | 20:39:48.6 |       1.00 |           1.00 |       0.61 |</span>
+<span class="go">|         2 | 20:39:48.6 |       2.00 |           2.00 |       0.14 |</span>
+<span class="go">|         3 | 20:39:48.6 |       3.00 |           3.00 |       0.01 |</span>
+<span class="go">|         4 | 20:39:48.6 |       4.00 |           4.00 |       0.00 |</span>
+<span class="go">|         5 | 20:39:48.6 |       5.00 |           5.00 |       0.00 |</span>
+<span class="go">+-----------+------------+------------+----------------+------------+</span>
+<span class="go">generator scan [&#39;6667f7&#39;] (scan num: 1)</span>
+<span class="gh">Out[4]: </span><span class="go">[&#39;6667f7af-b7e5-4c17-b161-c9742860b657&#39;]</span>
+</pre></div>
+</div>
+<p>Pass an empty list of columns to show simply &#8216;time&#8217; and &#8216;seq_num&#8217; (sequence
+number).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">LiveTable</span><span class="p">([])</span>
+</pre></div>
+</div>
+<p>In the demo above, we passed in a list of <em>device(s)</em>, like so:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">LiveTable</span><span class="p">([</span><span class="n">motor</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Internally, <code class="docutils literal"><span class="pre">LiveTable</span></code> obtains the name(s) of the field(s) produced by
+reading <code class="docutils literal"><span class="pre">motor</span></code>. You can do this yourself too:</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [5]: </span><span class="nb">list</span><span class="p">(</span><span class="n">motor</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+<span class="gh">Out[5]: </span><span class="go">[&#39;motor_setpoint&#39;, &#39;motor&#39;]</span>
+</pre></div>
+</div>
+<p>In the general case, a device can produce tens or even hundreds of separate
+readings, and it can be useful to spell out specific fields rather than a whole
+device.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># the field &#39;motor&#39;, in quotes, not the device, motor</span>
+<span class="n">LiveTable</span><span class="p">([</span><span class="s1">&#39;motor&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>In fact, almost all other callbacks (including <a class="reference internal" href="#liveplot"><span class="std std-ref">LivePlot (for scalar data)</span></a>) <em>require</em> a
+specific field. They will not accept a device because it may have more than one
+field.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveTable">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveTable</code><span class="sig-paren">(</span><em>fields</em>, <em>*</em>, <em>stream_name='primary'</em>, <em>print_header_interval=50</em>, <em>min_width=12</em>, <em>default_prec=3</em>, <em>extra_pad=1</em>, <em>logbook=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveTable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Live updating table</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fields</strong> (<em>list</em>) &#8211; List of fields to add to the table.</li>
+<li><strong>stream_name</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; The event stream to watch for</li>
+<li><strong>print_header_interval</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; Reprint the header every this many lines, defaults to 50</li>
+<li><strong>min_width</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; The minimum width is spaces of the data columns.  Defaults to 12</li>
+<li><strong>default_prec</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; Precision to use if it can not be found in descriptor, defaults to 3</li>
+<li><strong>extra_pad</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; Number of extra spaces to put around the printed data, defaults to 1</li>
+<li><strong>logbook</strong> (<em>callable</em><em>, </em><em>optional</em>) &#8211; <p>Must take a sting as the first positional argument</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>def logbook(input_str):</dt>
+<dd>pass</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="aside-making-plots-update-live">
+<span id="kickers"></span><h3>Aside: Making plots update live<a class="headerlink" href="#aside-making-plots-update-live" title="Permalink to this headline">¶</a></h3>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>If you are a user working with a pre-configured setup, you can probably
+skip this. Come back if your plots are not appearing / updating.</p>
+<p class="last">This configuration is typically performed in an IPython profile startup
+script so that is happens automatically at startup time.</p>
+</div>
+<p>To make plots live-update while the RunEngine is executing a plan, you have run
+this command once. In an IPython terminal, the command is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="o">%</span><span class="n">matplotlib</span> <span class="n">qt</span>
+<span class="kn">from</span> <span class="nn">bluesky.utils</span> <span class="kn">import</span> <span class="n">install_qt_kickcer</span>
+<span class="n">install_qt_kicker</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If you are using a Jupyter notebook, the command is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="o">%</span><span class="n">matplotlib</span> <span class="n">notebook</span>
+<span class="kn">from</span> <span class="nn">bluesky.utils</span> <span class="kn">import</span> <span class="n">install_nb_kickcer</span>
+<span class="n">install_nb_kicker</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Why? The RunEngine and matplotlib (technically, matplotlib&#8217;s Qt backend) both
+use an event loop. The RunEngine takes control of the event loop while it is
+executing a plan. The kicker function periodically &#8220;kicks&#8221; the Qt event loop so
+that the plots can re-draw while the RunEngine is running.</p>
+<p>The <code class="docutils literal"><span class="pre">%matplotlib</span> <span class="pre">...</span></code> command is standard setup, having nothing to do with
+bluesky in particular. See
+<a class="reference external" href="https://ipython.readthedocs.io/en/stable/interactive/magics.html?highlight=matplotlib#magic-matplotlib">the relevant section of the IPython documentation</a>
+for details.</p>
+</div>
+<div class="section" id="liveplot-for-scalar-data">
+<span id="liveplot"></span><h3>LivePlot (for scalar data)<a class="headerlink" href="#liveplot-for-scalar-data" title="Permalink to this headline">¶</a></h3>
+<p>Plot scalars. Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det</span><span class="p">,</span> <span class="n">motor</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LivePlot</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-1.png" src="_images/callbacks-1.png" />
+</div>
+<p>To customize style, pass in any
+<a class="reference external" href="http://matplotlib.org/api/lines_api.html#module-matplotlib.lines">matplotlib line style keyword argument</a>.
+(<code class="docutils literal"><span class="pre">LivePlot</span></code> will pass it through to <code class="docutils literal"><span class="pre">Axes.plot</span></code>.) Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+   <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">markersize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;red&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-2.png" src="_images/callbacks-2.png" />
+</div>
+<dl class="class">
+<dt id="bluesky.callbacks.LivePlot">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LivePlot</code><span class="sig-paren">(</span><em>y</em>, <em>x=None</em>, <em>*</em>, <em>legend_keys=None</em>, <em>xlim=None</em>, <em>ylim=None</em>, <em>ax=None</em>, <em>fig=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LivePlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a function that updates a plot from a stream of Events.</p>
+<p>Note: If your figure blocks the main thread when you are trying to
+scan with this callback, call <cite>plt.ion()</cite> in your IPython session.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>y</strong> (<em>str</em>) &#8211; the name of a data field in an Event</li>
+<li><strong>x</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; the name of a data field in an Event
+If None, use the Event&#8217;s sequence number.</li>
+<li><strong>legend_keys</strong> (<em>list</em><em>, </em><em>optional</em>) &#8211; The list of keys to extract from the RunStart document and format
+in the legend of the plot. The legend will always show the
+scan_id followed by a colon (&#8220;1: &#8221;).  Each</li>
+<li><strong>xlim</strong> (<em>tuple</em><em>, </em><em>optional</em>) &#8211; passed to Axes.set_xlim</li>
+<li><strong>ylim</strong> (<em>tuple</em><em>, </em><em>optional</em>) &#8211; passed to Axes.set_ylim</li>
+<li><strong>ax</strong> (<em>Axes</em><em>, </em><em>optional</em>) &#8211; matplotib Axes; if none specified, new figure and axes are made.</li>
+<li><strong>fig</strong> (<em>Figure</em>) &#8211; deprecated: use ax instead</li>
+<li><strong>additional keyword arguments are passed through to Axes.plot.</strong> (<em>All</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_plotter</span> <span class="o">=</span> <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="n">legend_keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sample&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span><span class="p">(</span><span class="n">my_scan</span><span class="p">,</span> <span class="n">my_plotter</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="live-image">
+<h3>Live Image<a class="headerlink" href="#live-image" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="bluesky.callbacks.broker.LiveImage">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.broker.</code><code class="descname">LiveImage</code><span class="sig-paren">(</span><em>field</em>, <em>*</em>, <em>fs=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.broker.LiveImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stream 2D images in a cross-section viewer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>field</strong> (<em>string</em>) &#8211; name of data field in an Event</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="liveraster-gridded-heat-map">
+<span id="liveraster"></span><h3>LiveRaster (gridded heat map)<a class="headerlink" href="#liveraster-gridded-heat-map" title="Permalink to this headline">¶</a></h3>
+<p>Plot a scalar value as a function of two variables on a regular grid. Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">outer_product_scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det4</span><span class="p">,</span> <span class="n">motor1</span><span class="p">,</span> <span class="n">motor2</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveRaster</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">outer_product_scan</span><span class="p">([</span><span class="n">det4</span><span class="p">],</span> <span class="n">motor1</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
+   <span class="n">LiveRaster</span><span class="p">((</span><span class="mi">6</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="s1">&#39;det4&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-3.png" src="_images/callbacks-3.png" />
+</div>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveRaster">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveRaster</code><span class="sig-paren">(</span><em>raster_shape</em>, <em>I</em>, <em>*</em>, <em>clim=None</em>, <em>cmap='viridis'</em>, <em>xlabel='x'</em>, <em>ylabel='y'</em>, <em>extent=None</em>, <em>aspect='equal'</em>, <em>ax=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveRaster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot gridded 2D data in a &#8220;heat map&#8221;.</p>
+<p>This assumes that readings are placed on a regular grid and can be placed
+into an image by sequence number. The seq_num is used to determine which
+pixel to fill in.</p>
+<p>For non-gridded data with arbitrary placement, use
+<a class="reference internal" href="#bluesky.callbacks.LiveMesh" title="bluesky.callbacks.LiveMesh"><code class="xref py py-func docutils literal"><span class="pre">bluesky.callbacks.LiveMesh()</span></code></a>.</p>
+<p>This simply wraps around a <cite>AxesImage</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>raster_shap</strong> (<em>tuple</em>) &#8211; The (row, col) shape of the raster</li>
+<li><strong>I</strong> (<em>str</em>) &#8211; The field to use for the color of the markers</li>
+<li><strong>clim</strong> (<em>tuple</em><em>, </em><em>optional</em>) &#8211; The color limits</li>
+<li><strong>cmap</strong> (<em>str</em><em> or </em><em>colormap</em><em>, </em><em>optional</em>) &#8211; The color map to use</li>
+<li><strong>ylabel</strong> (<em>xlabel</em><em>,</em><em></em>) &#8211; Labels for the x and y axis</li>
+<li><strong>extent</strong> (<em>scalars</em><em> (</em><em>left</em><em>, </em><em>right</em><em>, </em><em>bottom</em><em>, </em><em>top</em><em>)</em><em></em><em>, </em><em>optional</em>) &#8211; Passed through to <cite>Axes.imshow</cite></li>
+<li><strong>aspect</strong> (<em>str</em><em> or </em><em>float</em><em>, </em><em>optional</em>) &#8211; Passed through to <cite>Axes.imshow</cite></li>
+<li><strong>ax</strong> (<em>Axes</em><em>, </em><em>optional</em>) &#8211; matplotib Axes; if none specified, new figure and axes are made.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="#bluesky.callbacks.LiveMesh" title="bluesky.callbacks.LiveMesh"><code class="xref py py-class docutils literal"><span class="pre">bluesky.callbacks.LiveMesh</span></code></a></p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="livemesh-scattered-heat-map">
+<h3>LiveMesh (scattered heat map)<a class="headerlink" href="#livemesh-scattered-heat-map" title="Permalink to this headline">¶</a></h3>
+<p>Plot a scalar value as a function of two variables. Unlike
+<a class="reference internal" href="#bluesky.callbacks.LiveRaster" title="bluesky.callbacks.LiveRaster"><code class="xref py py-class docutils literal"><span class="pre">bluesky.callbacks.LiveRaster</span></code></a>, this does not assume a regular grid.
+Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">outer_product_scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det5</span><span class="p">,</span> <span class="n">jittery_motor1</span><span class="p">,</span> <span class="n">jittery_motor2</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveMesh</span>
+
+<span class="c1"># The &#39;jittery&#39; example motors won&#39;t go exactly where they are told to go.</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">outer_product_scan</span><span class="p">([</span><span class="n">det5</span><span class="p">],</span>
+                      <span class="n">jittery_motor1</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span>
+                      <span class="n">jittery_motor2</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
+   <span class="n">LiveMesh</span><span class="p">(</span><span class="s1">&#39;jittery_motor1&#39;</span><span class="p">,</span> <span class="s1">&#39;jittery_motor2&#39;</span><span class="p">,</span> <span class="s1">&#39;det5&#39;</span><span class="p">,</span>
+            <span class="n">xlim</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">ylim</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)))</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-4.png" src="_images/callbacks-4.png" />
+</div>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveMesh">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveMesh</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>I</em>, <em>*</em>, <em>xlim=None</em>, <em>ylim=None</em>, <em>clim=None</em>, <em>cmap='viridis'</em>, <em>ax=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveMesh" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot scattered 2D data in a &#8220;heat map&#8221;.</p>
+<p>Alternatively, if the data is placed on a regular grid, you can use
+<a class="reference internal" href="#bluesky.callbacks.LiveRaster" title="bluesky.callbacks.LiveRaster"><code class="xref py py-func docutils literal"><span class="pre">bluesky.callbacks.LiveRaster()</span></code></a>.</p>
+<p>This simply wraps around a <cite>PathCollection</cite> as generated by scatter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>y</strong> (<em>x</em><em>,</em><em></em>) &#8211; The fields to use for the x and y data</li>
+<li><strong>I</strong> (<em>str</em>) &#8211; The field to use for the color of the markers</li>
+<li><strong>ylim</strong><strong>, </strong><strong>clim</strong> (<em>xlim</em><em>,</em><em></em>) &#8211; The x, y and color limits respectively</li>
+<li><strong>cmap</strong> (<em>str</em><em> or </em><em>colormap</em><em>, </em><em>optional</em>) &#8211; The color map to use</li>
+<li><strong>ax</strong> (<em>Axes</em><em>, </em><em>optional</em>) &#8211; matplotib Axes; if none specified, new figure and axes are made.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="#bluesky.callbacks.LiveRaster" title="bluesky.callbacks.LiveRaster"><code class="xref py py-class docutils literal"><span class="pre">bluesky.callbacks.LiveRaster</span></code></a></p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="livefit">
+<h3>LiveFit<a class="headerlink" href="#livefit" title="Permalink to this headline">¶</a></h3>
+<p>Perform a nonlinear least squared best fit to the data with a user-defined
+model function. The function can depend on any number of independent variables.
+We integrate with the package
+<a class="reference external" href="https://lmfit.github.io/lmfit-py/model.html">lmfit</a>, which provides a nice
+interface for NLS minimization.</p>
+<p>In this example, we fit a Gaussian to detector readings as a function of motor
+position. First, define a Gaussian function, create an <code class="docutils literal"><span class="pre">lmfit.Model</span></code> from it,
+and provide initial guesses for the parameters.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">lmfit</span>
+
+<span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">x0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">A</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">gaussian</span><span class="p">)</span>
+<span class="n">init_guess</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+              <span class="s1">&#39;sigma&#39;</span><span class="p">:</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+              <span class="s1">&#39;x0&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>The guesses can be given as plain numbers or as <code class="docutils literal"><span class="pre">lmfit.Parameter</span></code> objects, as
+in the case of &#8216;sigma&#8217; above, to specify constraints.</p>
+<p>To integrate with the bluesky we need to provide:</p>
+<ul class="simple">
+<li>the field with the dependent variable (in this example, <code class="docutils literal"><span class="pre">'noisy_det'</span></code>)</li>
+<li>a mapping between the name(s) of independent variable(s) in
+the function (<code class="docutils literal"><span class="pre">'x'</span></code>) to the corresponding field(s) in the data
+(<code class="docutils literal"><span class="pre">'motor'</span></code>)</li>
+<li>any initial guesses expected by the model (defined above)</li>
+</ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">noisy_det</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveFit</span>
+
+<span class="n">lf</span> <span class="o">=</span> <span class="n">LiveFit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;noisy_det&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="s1">&#39;motor&#39;</span><span class="p">},</span> <span class="n">init_guess</span><span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">noisy_det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">lf</span><span class="p">)</span>
+<span class="c1"># best-fit values for &#39;A&#39;, &#39;sigma&#39; and &#39;x0&#39; are in lf.result.values</span>
+</pre></div>
+</div>
+<p>The fit results are accessible in the <code class="docutils literal"><span class="pre">result</span></code> attribute of the callback.
+For example, the center of the Gaussian is <code class="docutils literal"><span class="pre">lf.result.values['x0']</span></code>. This
+could be used in a next step, like so:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">x0</span> <span class="o">=</span> <span class="n">lf</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">values</span><span class="p">[</span><span class="s1">&#39;x0&#39;</span><span class="p">]</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">noisy_det</span><span class="p">],</span> <span class="n">x0</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">x0</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Refer the
+<a class="reference external" href="https://lmfit.github.io/lmfit-py/model.html#the-modelresult-class">lmfit documentation</a>
+for more about <code class="docutils literal"><span class="pre">result</span></code>.</p>
+<p>This example uses a model with two independent variables, x and y.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor1</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="n">det4</span>
+
+<span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">A</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">y0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="c1"># Specify the names of the independent variables to Model.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">gaussian</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">])</span>
+
+<span class="n">init_guess</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+              <span class="s1">&#39;sigma&#39;</span><span class="p">:</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+              <span class="s1">&#39;x0&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span>
+              <span class="s1">&#39;y0&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">}</span>
+
+<span class="n">lf</span> <span class="o">=</span> <span class="n">LiveFit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;det4&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="s1">&#39;motor1&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">:</span> <span class="s1">&#39;motor2&#39;</span><span class="p">},</span> <span class="n">init_guess</span><span class="p">)</span>
+
+<span class="c1"># Scan a 2D mesh.</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">outer_product_scan</span><span class="p">([</span><span class="n">det4</span><span class="p">],</span> <span class="n">motor1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="bp">False</span><span class="p">),</span>
+   <span class="n">lf</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>By default, the fit is recomputed every time a new data point is available. See
+the API documentation below for other options. Fitting does not commence until
+the number of accumulated data points is equal to the number of free parameters
+in the model.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveFit">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveFit</code><span class="sig-paren">(</span><em>model</em>, <em>y</em>, <em>independent_vars</em>, <em>init_guess=None</em>, <em>*</em>, <em>update_every=1</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveFit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fit a model to data using nonlinear least-squares minimization.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>model</strong> (<em>lmfit.Model</em>) &#8211; </li>
+<li><strong>y</strong> (<em>string</em>) &#8211; name of the field in the Event document that is the dependent variable</li>
+<li><strong>independent_vars</strong> (<em>dict</em>) &#8211; map the independent variable name(s) in the model to the field(s)
+in the Event document; e.g., <code class="docutils literal"><span class="pre">{'x':</span> <span class="pre">'motor'}</span></code></li>
+<li><strong>init_guess</strong> (<em>dict</em><em>, </em><em>optional</em>) &#8211; initial guesses for other values, if expected by model;
+e.g., <code class="docutils literal"><span class="pre">{'sigma':</span> <span class="pre">1}</span></code></li>
+<li><strong>update_every</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>optional</em>) &#8211; How often to recompute the fit. If <cite>None</cite>, do not compute until the
+end. Default is 1 (recompute after each new point).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="LiveFit.result">
+<code class="descname">result</code><a class="headerlink" href="#LiveFit.result" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>lmfit.ModelResult</em></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="livefitplot">
+<h3>LiveFitPlot<a class="headerlink" href="#livefitplot" title="Permalink to this headline">¶</a></h3>
+<p>This is a variation on <code class="docutils literal"><span class="pre">LivePlot</span></code> that plots the best fit curve from
+<code class="docutils literal"><span class="pre">LiveFit</span></code>. It applies to 1D model functions only.</p>
+<p>Repeating the example from <code class="docutils literal"><span class="pre">LiveFit</span></code> above, adding a plot:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># same as above...</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">lmfit</span>
+<span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">noisy_det</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveFit</span>
+
+<span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">x0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">A</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">gaussian</span><span class="p">)</span>
+<span class="n">init_guess</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+              <span class="s1">&#39;sigma&#39;</span><span class="p">:</span> <span class="n">lmfit</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+              <span class="s1">&#39;x0&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">}</span>
+
+<span class="n">lf</span> <span class="o">=</span> <span class="n">LiveFit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;noisy_det&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="s1">&#39;motor&#39;</span><span class="p">},</span> <span class="n">init_guess</span><span class="p">)</span>
+
+<span class="c1"># now add the plot...</span>
+
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveFitPlot</span>
+<span class="n">lpf</span> <span class="o">=</span> <span class="n">LiveFitPlot</span><span class="p">(</span><span class="n">lf</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">noisy_det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">lfp</span><span class="p">)</span>
+
+<span class="c1"># Notice that we did&#39;nt need to subscribe lf directly, just lfp.</span>
+<span class="c1"># But, as before, the results are in lf.result.</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-5.png" src="_images/callbacks-5.png" />
+</div>
+<p>We can use the standard <code class="docutils literal"><span class="pre">LivePlot</span></code> to show the data on the same axes.
+Notice that they can styled independently.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>  <span class="c1"># explitly create figure, axes to use below</span>
+<span class="n">lfp</span> <span class="o">=</span> <span class="n">LiveFitPlot</span><span class="p">(</span><span class="n">lf</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="n">lp</span> <span class="o">=</span> <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;noisy_det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;none&#39;</span><span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">noisy_det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="p">[</span><span class="n">lp</span><span class="p">,</span> <span class="n">lfp</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-6.png" src="_images/callbacks-6.png" />
+</div>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveFitPlot">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveFitPlot</code><span class="sig-paren">(</span><em>livefit</em>, <em>*</em>, <em>num_points=100</em>, <em>legend_keys=None</em>, <em>xlim=None</em>, <em>ylim=None</em>, <em>ax=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveFitPlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a plot to an instance of LiveFit.</p>
+<p>Note: If your figure blocks the main thread when you are trying to
+scan with this callback, call <cite>plt.ion()</cite> in your IPython session.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>livefit</strong> (<a class="reference internal" href="#bluesky.callbacks.LiveFit" title="bluesky.callbacks.LiveFit"><em>LiveFit</em></a>) &#8211; an instance of <code class="docutils literal"><span class="pre">LiveFit</span></code></li>
+<li><strong>num_points</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; number of points to sample when evaluating the model; default 100</li>
+<li><strong>legend_keys</strong> (<em>list</em><em>, </em><em>optional</em>) &#8211; The list of keys to extract from the RunStart document and format
+in the legend of the plot. The legend will always show the
+scan_id followed by a colon (&#8220;1: &#8221;).  Each</li>
+<li><strong>xlim</strong> (<em>tuple</em><em>, </em><em>optional</em>) &#8211; passed to Axes.set_xlim</li>
+<li><strong>ylim</strong> (<em>tuple</em><em>, </em><em>optional</em>) &#8211; passed to Axes.set_ylim</li>
+<li><strong>ax</strong> (<em>Axes</em><em>, </em><em>optional</em>) &#8211; matplotib Axes; if none specified, new figure and axes are made.</li>
+<li><strong>additional keyword arguments are passed through to Axes.plot.</strong> (<em>All</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="peakstats">
+<h3>PeakStats<a class="headerlink" href="#peakstats" title="Permalink to this headline">¶</a></h3>
+<p>Compute statistics of peak-like data. Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.scientific</span> <span class="kn">import</span> <span class="n">PeakStats</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
+<span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="n">PeakStats</span><span class="p">(</span><span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="s1">&#39;det&#39;</span><span class="p">)</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">ps</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now attributes of <code class="docutils literal"><span class="pre">ps</span></code>, documented below, contain various peak statistics.
+There is also a convenience function for plotting:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.scientific</span> <span class="kn">import</span> <span class="n">plot_peak_stats</span>
+
+<span class="n">plot_peak_stats</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="figure">
+<img alt="_images/callbacks-7.png" src="_images/callbacks-7.png" />
+</div>
+<dl class="class">
+<dt id="bluesky.callbacks.scientific.PeakStats">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.scientific.</code><code class="descname">PeakStats</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>edge_count=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.scientific.PeakStats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute peak statsitics after a run finishes.</p>
+<p>Results are stored in the attributes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>x</strong> (<em>string</em>) &#8211; field name for the x variable (e.g., a motor)</li>
+<li><strong>y</strong> (<em>string</em>) &#8211; field name for the y variable (e.g., a detector)</li>
+<li><strong>edge_count</strong> (<em>int</em><em> or </em><em>None</em><em>, </em><em>optional</em>) &#8211; If not None, number of points at beginning and end to use
+for quick and dirty background subtraction.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">It is assumed that the two fields, x and y, are recorded in the same
+Event stream.</p>
+</div>
+<dl class="attribute">
+<dt id="PeakStats.com">
+<code class="descname">com</code><a class="headerlink" href="#PeakStats.com" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>center of mass</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="PeakStats.cen">
+<code class="descname">cen</code><a class="headerlink" href="#PeakStats.cen" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>mid-point between half-max points on each side of the peak</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="PeakStats.max">
+<code class="descname">max</code><a class="headerlink" href="#PeakStats.max" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>x location of y maximum</em></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="PeakStats.min">
+<code class="descname">min</code><a class="headerlink" href="#PeakStats.min" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>x location of y minimum</em></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="bluesky.callbacks.scientific.plot_peak_stats">
+<code class="descclassname">bluesky.callbacks.scientific.</code><code class="descname">plot_peak_stats</code><span class="sig-paren">(</span><em>peak_stats</em>, <em>ax=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.scientific.plot_peak_stats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot data and various peak statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>peak_stats</strong> (<a class="reference internal" href="#bluesky.callbacks.scientific.PeakStats" title="bluesky.callbacks.scientific.PeakStats"><em>PeakStats</em></a>) &#8211; </li>
+<li><strong>ax</strong> (<em>matplotlib.Axes</em><em>, </em><em>optional</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>arts</strong> &#8211; dictionary of matplotlib Artist objects, for further styling</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="callback-for-export">
+<h2>Callback for Export<a class="headerlink" href="#callback-for-export" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="exporting-image-data-as-tiff-files">
+<h3>Exporting Image Data as TIFF Files<a class="headerlink" href="#exporting-image-data-as-tiff-files" title="Permalink to this headline">¶</a></h3>
+<p>First, compose a filename template. The template can include metadata or event
+data from the scan.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># a template that includes the scan ID and sequence number in each filename</span>
+<span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;output_dir/{start[scan_id]}_{event[seq_num]}.tiff&quot;</span>
+
+<span class="c1"># a template that sorts files into directories based user and scan ID</span>
+<span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;output_dir/{start[user]}/{start[scan_id]}/{event[seq_num]}.tiff&quot;</span>
+
+<span class="c1"># a more complex template includes actual measurements in the filenames</span>
+<span class="n">template</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;output_dir/{start[scan_id]}_{start[sample_name]}_&quot;</span>
+            <span class="s2">&quot;{event[data][temperature]}_{event[seq_num]}.tiff&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Above, we are using a Python language feature called format strings. Notice
+that inside the curly brackets we don&#8217;t use quotes around the key names; it&#8217;s
+<code class="docutils literal"><span class="pre">{event[seq_num]}</span></code> not <code class="docutils literal"><span class="pre">{event['seq_num']}</span></code>.</p>
+<p>If each image data point is actually a stack of 2D image planes, the template
+must also include <code class="docutils literal"><span class="pre">{i}</span></code>, which will count through the image planes in the
+stack.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Most metadata comes from the &#8220;start&#8221; document, hence <code class="docutils literal"><span class="pre">start.scan_id</span></code>
+above.  Review the <a class="reference internal" href="documents.html"><span class="doc">Documents</span></a> section for details.</p>
+</div>
+<p>Create a callback that exports TIFFs using your template.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">LiveTiffExporter</span>
+
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">LiveTiffExporter</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally, to export all the images from a run when it finishes running, wrap the
+exporter in <code class="docutils literal"><span class="pre">post_run</span></code> and subscribe.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">post_run</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">post_run</span><span class="p">(</span><span class="n">exporter</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>It also possible to write TIFFs live, hence the name <code class="docutils literal"><span class="pre">LiveTiffExporter</span></code>, but
+there is an important disadvantage to doing this subscription in the same
+process: progress of the experiment may be intermittently slowed while data is
+written to disk. In some circumstances, this affect on the timing of the
+experiment may not be acceptable.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">exporter</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are more configuration options available, as given in detail below. It is
+recommended to use these expensive callbacks in a separate process.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.broker.LiveTiffExporter">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.broker.</code><code class="descname">LiveTiffExporter</code><span class="sig-paren">(</span><em>field</em>, <em>template</em>, <em>dryrun=False</em>, <em>overwrite=False</em>, <em>db=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.broker.LiveTiffExporter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save TIFF files.</p>
+<p>Incorporate metadata and data from individual data points in the filenames.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>field</strong> (<em>str</em>) &#8211; a data key, e.g., &#8216;image&#8217;</li>
+<li><strong>template</strong> (<em>str</em>) &#8211; A templated file path, where curly brackets will be filled in with
+the attributes of &#8216;start&#8217;, &#8216;event&#8217;, and (for image stacks) &#8216;i&#8217;,
+a sequential number.
+e.g., &#8220;dir/scan{start[scan_id]}_by_{start[experimenter]}_{i}.tiff&#8221;</li>
+<li><strong>dryrun</strong> (<em>bool</em>) &#8211; default to False; if True, do not write any files</li>
+<li><strong>overwrite</strong> (<em>bool</em>) &#8211; default to False, raising an OSError if file exists</li>
+<li><strong>db</strong> (<em>Broker</em><em>, </em><em>optional</em>) &#8211; The databroker instance to use, if not provided use databroker
+singleton</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="LiveTiffExporter.filenames">
+<code class="descname">filenames</code><a class="headerlink" href="#LiveTiffExporter.filenames" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>list of filenames written in ongoing or most recent run</em></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="export-all-data-and-metadata-in-an-hdf5-file">
+<h3>Export All Data and Metadata in an HDF5 File<a class="headerlink" href="#export-all-data-and-metadata-in-an-hdf5-file" title="Permalink to this headline">¶</a></h3>
+<p>A Stop Document is emitted at the end of every run. Subscribe to it, using it
+as a cue to load the dataset via the DataBroker and export an HDF5 file
+using <a class="reference external" href="https://nsls-ii.github.io/suitcase">suitcase</a>.</p>
+<p>Working example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">databroker</span> <span class="kn">import</span> <span class="n">DataBroker</span> <span class="k">as</span> <span class="n">db</span>
+<span class="kn">import</span> <span class="nn">suitcase</span>
+
+<span class="k">def</span> <span class="nf">suitcase_as_callback</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">]</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;{}.h5&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run_start_uid</span><span class="p">)</span>
+    <span class="n">suitcase</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">suitcase_as_callback</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="export-metadata-to-the-olog">
+<h3>Export Metadata to the Olog<a class="headerlink" href="#export-metadata-to-the-olog" title="Permalink to this headline">¶</a></h3>
+<p>The <a class="reference external" href="http://olog.github.io/2.2.7-SNAPSHOT/">Olog</a> (&#8220;operational log&#8221;) is an
+electronic logbook. We can use a callback to automatically generate log entries
+at the beginning of a run. The Python interface to Olog is not straightforward,
+so there is some boilerplate:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">pyOlog</span> <span class="kn">import</span> <span class="n">SimpleOlogClient</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks.olog</span> <span class="kn">import</span> <span class="n">logbook_cb_factory</span>
+
+<span class="c1"># Set up the logbook. This configures bluesky&#39;s summaries of</span>
+<span class="c1"># data acquisition (scan type, ID, etc.).</span>
+
+<span class="n">LOGBOOKS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Data Acquisition&#39;</span><span class="p">]</span>  <span class="c1"># list of logbook names to publish to</span>
+<span class="n">simple_olog_client</span> <span class="o">=</span> <span class="n">SimpleOlogClient</span><span class="p">()</span>
+<span class="n">generic_logbook_func</span> <span class="o">=</span> <span class="n">simple_olog_client</span><span class="o">.</span><span class="n">log</span>
+<span class="n">configured_logbook_func</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">generic_logbook_func</span><span class="p">,</span> <span class="n">logbooks</span><span class="o">=</span><span class="n">LOGBOOKS</span><span class="p">)</span>
+
+<span class="n">cb</span> <span class="o">=</span> <span class="n">logbook_cb_factory</span><span class="p">(</span><span class="n">configured_logbook_func</span><span class="p">)</span>
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">cb</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The module <code class="docutils literal"><span class="pre">bluesky.callbacks.olog</span></code> includes some templates that format the
+data from the &#8216;start&#8217; document into a readable log entry. You can also write
+customize templates and pass them to <code class="docutils literal"><span class="pre">logbook_cb_factory</span></code>.</p>
+<p>You may specify a custom template. Here is a very simple example; see the
+<a href="#id2"><span class="problematic" id="id3">`source code &lt; https://github.com/NSLS-II/bluesky/blob/master/bluesky/callbacks/olog.py&gt;`_</span></a>
+for a more complex example (the default template).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">CUSTOM_TEMPLATE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">My Log Entry</span>
+
+<span class="s2">{{ start.plan_name }}</span>
+<span class="s2">Detectors: {{ start.detectors }}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="c1"># Do same boilerplate above to set up configured_logbook_func. Then:</span>
+<span class="n">cb</span> <span class="o">=</span> <span class="n">logbook_cb_factory</span><span class="p">(</span><span class="n">configured_logbook_func</span><span class="p">,</span>
+                        <span class="n">desc_template</span><span class="o">=</span><span class="n">CUSTOM_TEMPLATE</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>You may also specify a variety of different templates that are suitable for
+different kinds of plans. The callback will use the <code class="docutils literal"><span class="pre">'plan_name'</span></code> field to
+determine which template to use.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># a template for a &#39;count&#39; plan (which has no motors)</span>
+<span class="n">COUNT_TEMPLATE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Plan Name: {{ start.plan_name }}</span>
+<span class="s2">Detectors: {{ start.detectors }}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="c1"># a template for any plan with motors</span>
+<span class="n">SCAN_TEMPLATE</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">Plan Name: {{ start.plan_name }}</span>
+<span class="s2">Detectors: {{ start.detectors }}</span>
+<span class="s2">Motor(s): {{ start.motors }}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">templates</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;count&#39;</span><span class="p">:</span> <span class="n">COUNT_TEMPLATE</span><span class="p">,</span>
+             <span class="s1">&#39;scan&#39;</span><span class="p">:</span> <span class="n">SCAN_TEMPLATE</span><span class="p">,</span>
+             <span class="s1">&#39;relative_scan&#39;</span><span class="p">:</span> <span class="n">SCAN_TEMPLATE</span><span class="p">}</span>
+
+<span class="c1"># Do same boilerplate above to set up configured_logbook_func. Then:</span>
+<span class="n">cb</span> <span class="o">=</span> <span class="n">logbook_cb_factory</span><span class="p">(</span><span class="n">configured_logbook_func</span><span class="p">,</span>
+                        <span class="n">desc_dispatch</span><span class="o">=</span><span class="n">templates</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="function">
+<dt id="bluesky.callbacks.olog.logbook_cb_factory">
+<code class="descclassname">bluesky.callbacks.olog.</code><code class="descname">logbook_cb_factory</code><span class="sig-paren">(</span><em>logbook_func</em>, <em>desc_template=None</em>, <em>long_template=None</em>, <em>desc_dispatch=None</em>, <em>long_dispatch=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.olog.logbook_cb_factory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a logbook run_start callback</p>
+<p>The returned function is suitable for registering as
+a &#8216;start&#8217; callback on the the BlueSky run engine.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>logbook_func</strong> (<em>callable</em>) &#8211; <p>The required signature is</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">logbok_func</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logbooks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">properties</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attachments</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">ensure</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    text : string</span>
+<span class="sd">        The body of the log entry.</span>
+<span class="sd">    logbooks : string or list of strings</span>
+<span class="sd">        The logbooks which to add the log entry to.</span>
+<span class="sd">    tags : string or list of strings</span>
+<span class="sd">        The tags to add to the log entry.</span>
+<span class="sd">    properties : dict of property dicts</span>
+<span class="sd">        The properties to add to the log entry</span>
+<span class="sd">    attachments : list of file like objects</span>
+<span class="sd">        The attachments to add to the log entry</span>
+<span class="sd">    verify : bool</span>
+<span class="sd">        Check that properties, tags and logbooks are in the Olog</span>
+<span class="sd">        instance.</span>
+<span class="sd">    ensure : bool</span>
+<span class="sd">        If a property, tag or logbook is not in the Olog then</span>
+<span class="sd">        create the property, tag or logbook before making the log</span>
+<span class="sd">        entry. Seting ensure to True will set verify to False.</span>
+
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>This matches the API on <cite>SimpleOlogClient.log</cite></p>
+</li>
+<li><strong>desc_template</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; A jinja2 template to be used for the description line in olog.  This is
+the default used if the plan_name does not map to a more specific one.</li>
+<li><strong>long_template</strong> (<em>str</em><em>, </em><em>optional</em>) &#8211; A jinja2 template to be used for the attachment in olog.  This is
+the default used if the plan_name does not map to a more specific one.</li>
+<li><strong>long_dispatch</strong> (<em>desc_dispatch</em><em>,</em><em></em>) &#8211; Mappings between &#8216;plan_name&#8217; to jinja2 templates to use for the
+description and attachments respectively.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="verify-data-has-been-saved">
+<h2>Verify Data Has Been Saved<a class="headerlink" href="#verify-data-has-been-saved" title="Permalink to this headline">¶</a></h2>
+<p>The following verifies that all Documents and external files from a run have
+been saved to disk and are accessible from the DataBroker.  It prints a message
+indicating success or failure.</p>
+<p>Note: If the data collection machine is not able to access the machine where
+some external data is being saved, it will indicate failure. This can be a
+false alarm.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">post_run</span><span class="p">,</span> <span class="n">verify_files_saved</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">post_run</span><span class="p">(</span><span class="n">verify_files_saved</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="ignoring-callback-exceptions">
+<span id="debugging-callbacks"></span><h2>Ignoring Callback Exceptions<a class="headerlink" href="#ignoring-callback-exceptions" title="Permalink to this headline">¶</a></h2>
+<p>If an exception is raised while processing a callback, the error can interrupt
+data collection. Usually, this is good: if, for example, the callback that is
+saving your data encounters an error, you want to know immediately.</p>
+<p>But if a &#8220;flaky&#8221; callback is causing errors, it is possible to convert errors
+to warnings like so.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">ignore_callback_exceptions</span> <span class="o">=</span> <span class="bp">False</span>
+</pre></div>
+</div>
+<p>This is <code class="docutils literal"><span class="pre">False</span></code> by default. In bluesky version 0.6.4 (September 2016) and
+earlier, this was <code class="docutils literal"><span class="pre">True</span></code> by default.</p>
+</div>
+<div class="section" id="filtering-by-document-type">
+<span id="filtering"></span><h2>Filtering by Document Type<a class="headerlink" href="#filtering-by-document-type" title="Permalink to this headline">¶</a></h2>
+<p>There are four &#8220;subscriptions&#8221; that a callback to receive documents from:</p>
+<ul class="simple">
+<li>&#8216;start&#8217;</li>
+<li>&#8216;stop&#8217;</li>
+<li>&#8216;event&#8217;</li>
+<li>&#8216;descriptor&#8217;</li>
+</ul>
+<p>Additionally, there is an &#8216;all&#8217; subscription.</p>
+<p>The command:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">(),</span> <span class="n">cb</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>is a shorthand that is normalized to <code class="docutils literal"><span class="pre">{'all':</span> <span class="pre">[cb]}</span></code>. To receive only certain
+documents, specify the document routing explicitly. Examples:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">cb</span><span class="p">]}</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;all&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">cb1</span><span class="p">,</span> <span class="n">cb2</span><span class="p">],</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">cb3</span><span class="p">]})</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">subs_decorator</span></code>, presented above, accepts the same variety of inputs.</p>
+</div>
+<div class="section" id="writing-custom-callbacks">
+<h2>Writing Custom Callbacks<a class="headerlink" href="#writing-custom-callbacks" title="Permalink to this headline">¶</a></h2>
+<p>Any function that accepts a Python dictionary as its argument can be used as
+a callback. Refer to simple examples above to get started.</p>
+<div class="section" id="two-simple-custom-callbacks">
+<h3>Two Simple Custom Callbacks<a class="headerlink" href="#two-simple-custom-callbacks" title="Permalink to this headline">¶</a></h3>
+<p>These simple examples illustrate the concept and the usage.</p>
+<p>First, we define a function that takes two arguments</p>
+<ol class="arabic simple">
+<li>the name of the Document type (&#8216;start&#8217;, &#8216;stop&#8217;, &#8216;event&#8217;, or &#8216;descriptor&#8217;)</li>
+<li>the Document itself, a dictionary</li>
+</ol>
+<p>This is the <em>callback</em>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [6]: </span><span class="k">def</span> <span class="nf">print_data</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+<span class="gp">   ...: </span>    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Measured: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])</span>
+<span class="gp">   ...: </span>
+</pre></div>
+</div>
+<p>Then, we tell the RunEngine to call this function on each Event Document.
+We are setting up a <em>subscription</em>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [7]: </span><span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">det</span>
+
+<span class="gp">In [8]: </span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">count</span>
+
+<span class="gp">In [9]: </span><span class="n">RE</span><span class="p">(</span><span class="n">count</span><span class="p">([</span><span class="n">det</span><span class="p">]),</span> <span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="n">print_data</span><span class="p">})</span>
+<span class="go">Measured: {&#39;det&#39;: 3.726653172078671e-06}</span>
+<span class="gh">Out[9]: </span><span class="go">[&#39;0ed91466-18f1-47fa-9150-ff908534d345&#39;]</span>
+</pre></div>
+</div>
+<p>Each time the RunEngine generates a new Event Document (i.e., data point)
+<code class="docutils literal"><span class="pre">print_data</span></code> is called.</p>
+<p>There are five kinds of subscriptions matching the four kinds of Documents plus
+an &#8216;all&#8217; subscription that receives all Documents.</p>
+<ul class="simple">
+<li>&#8216;start&#8217;</li>
+<li>&#8216;descriptor&#8217;</li>
+<li>&#8216;event&#8217;</li>
+<li>&#8216;stop&#8217;</li>
+<li>&#8216;all&#8217;</li>
+</ul>
+<p>We can use the &#8216;stop&#8217; subscription to trigger automatic end-of-run activities.
+For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">celebrate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="c1"># Do nothing with the input; just use it as a signal that run is over.</span>
+    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;The run is finished!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let&#8217;s use both <code class="docutils literal"><span class="pre">print_data</span></code> and <code class="docutils literal"><span class="pre">celebrate</span></code> at once.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="n">print_data</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="n">celebrate</span><span class="p">})</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-multiple-document-types">
+<h3>Using multiple document types<a class="headerlink" href="#using-multiple-document-types" title="Permalink to this headline">¶</a></h3>
+<p>Some tasks use only one Document type, but we often need to use more than one.
+For example, LiveTable uses &#8216;start&#8217; kick off the creation of a fresh table,
+it uses &#8216;event&#8217; to see the data, and it uses &#8216;stop&#8217; to draw the bottom border.</p>
+<p>A convenient pattern for this kind of subscription is a class with a method
+for each Document type.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">CallbackBase</span>
+
+<span class="k">class</span> <span class="nc">MyCallback</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;start&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;descriptor&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;event&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;stop&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+</pre></div>
+</div>
+<p>The base class, <code class="docutils literal"><span class="pre">CallbackBase</span></code>, takes care of dispatching each Document to
+the corresponding method. If your application does not need all four, you may
+simple omit methods that aren&#8217;t required.</p>
+</div>
+</div>
+<div class="section" id="subscriptions-in-separate-processes-or-host-with-0mq">
+<h2>Subscriptions in Separate Processes or Host with 0MQ<a class="headerlink" href="#subscriptions-in-separate-processes-or-host-with-0mq" title="Permalink to this headline">¶</a></h2>
+<p>Because subscriptions are processed during a scan, it&#8217;s possible that they can
+slow down data collection. We mitigate this by making the subscriptions run in
+a separate process.</p>
+<p>In the main process, where the RunEngine is executing the plan, a <code class="docutils literal"><span class="pre">Publisher</span></code>
+is created. It subscribes to the RunEngine. It serializes the documents it
+receives and it sends them over a socket to a 0MQ &#8220;forwarder device,&#8221; which
+rebroadcasts the documents to any number of other processes or machines on the
+network.</p>
+<p>These other processes or machines set up a <code class="docutils literal"><span class="pre">RemoteDispatcher</span></code> which connects
+to the &#8220;forwarder device,&#8221; receives the documents, and then runs callbacks just
+as they would be run if they were in the local <code class="docutils literal"><span class="pre">RunEngine</span></code> process.</p>
+<p>Multiple Publishers (each with its own RunEngine) can send documents to the
+same forwarder device. RemoteDispatchers can filter the document stream based
+on host, process ID, and/or <code class="docutils literal"><span class="pre">id(RunEngine)</span></code>.</p>
+<div class="section" id="minimal-example">
+<h3>Minimal Example<a class="headerlink" href="#minimal-example" title="Permalink to this headline">¶</a></h3>
+<p>Look for a forwarder device configuration file at
+<code class="docutils literal"><span class="pre">/etc/zmq_forwarder_device.yml</span></code> or
+<code class="docutils literal"><span class="pre">~/.config/zmq_forwarder_device/connection.yml</span></code>. If there isn&#8217;t one, create
+one:</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="c1">#~/.config/zmq_forwarder_device.yml</span>
+<span class="p p-Indicator">{</span><span class="s">&#39;frontend_port&#39;</span><span class="p p-Indicator">:</span> <span class="nv">5577</span>
+<span class="nv">&#39;backend_port&#39;</span><span class="p p-Indicator">:</span> <span class="nv">5578</span>
+<span class="nv">&#39;host&#39;</span><span class="p p-Indicator">:</span> <span class="s">&#39;localhost&#39;</span><span class="p p-Indicator">}</span>  <span class="c1"># optional</span>
+</pre></div>
+</div>
+<p>In production (e.g., at NSLS-II beamlines) the forwarder device should be
+running in the background as a service. Here is how to start one just for play:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="c1"># uses config in /etc/zmq_forwarder_device.yml</span>
+<span class="c1">#  or ~/.config/zmq_forwarder_device/connection.yml</span>
+$ python bluesky/examples/forwarder_device.py
+</pre></div>
+</div>
+<p>Start a callback that will receive documents from the forwarder and, in this
+simple example, just print them.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.zmqsub</span> <span class="kn">import</span> <span class="n">RemoteDispatcher</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">RemoteDispatcher</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5578</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="k">print</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># runs event loop forever</span>
+</pre></div>
+</div>
+<p>On the machine/process where you want to actually collect data,
+hook up a subscription to publish documents to the forwarder. Finally,
+generate some documents with a simple plan.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Assume you have already create a RunEngine, RE.</span>
+
+<span class="kn">from</span> <span class="nn">bluesky.callbacks.zmqpub</span> <span class="kn">import</span> <span class="n">Publisher</span>
+<span class="n">Publisher</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5577</span><span class="p">)</span>
+<span class="n">RE</span><span class="p">([</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;open_run&#39;</span><span class="p">),</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>As a result, the callback prints:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">start</span>
+<span class="n">stop</span>
+</pre></div>
+</div>
+<p>The connection between the publisher and the subscriber is lossless. (Messages
+are cached on the publisher side if the subscriber is slow.)</p>
+</div>
+<div class="section" id="example-plotting-in-separate-process">
+<h3>Example: Plotting in separate process<a class="headerlink" href="#example-plotting-in-separate-process" title="Permalink to this headline">¶</a></h3>
+<p>As in the minimal example above, start a forwarder device. Then:</p>
+<p>On the plotting machine:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib</span>
+<span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Qt4Agg&#39;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+
+<span class="kn">from</span> <span class="nn">bluesky.utils</span> <span class="kn">import</span> <span class="n">install_qt_kicker</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LivePlot</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks.zmqsub</span> <span class="kn">import</span> <span class="n">RemoteDispatcher</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">RemoteDispatcher</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5578</span><span class="p">)</span>
+<span class="n">install_qt_kicker</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+<span class="n">d</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">))</span>
+<span class="n">d</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>On the data collection machine, if there is not already a <code class="docutils literal"><span class="pre">Publisher</span></code>
+running, add one.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Assume you have already create a RunEngine, RE.</span>
+
+<span class="kn">from</span> <span class="nn">bluesky.callbacks.zmqpub</span> <span class="kn">import</span> <span class="n">Publisher</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Publisher</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5577</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And now run a demo scan with a simulated motor and detector.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
+<span class="n">motor</span><span class="o">.</span><span class="n">_fake_sleep</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># makes motor &quot;move&quot; slowly so we can watch it</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="publisher-remotedispatcher-api">
+<h3>Publisher / RemoteDispatcher API<a class="headerlink" href="#publisher-remotedispatcher-api" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="bluesky.callbacks.zmqpub.Publisher">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.zmqpub.</code><code class="descname">Publisher</code><span class="sig-paren">(</span><em>RE</em>, <em>host</em>, <em>port</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.zmqpub.Publisher" title="Permalink to this definition">¶</a></dt>
+<dd><p>A callback that publishes documents to a 0MQ forwarder device.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>RE</strong> (<code class="docutils literal"><span class="pre">bluesky.RunEngine</span></code>) &#8211; RunEngine to which the Publish will subscribe</li>
+<li><strong>host</strong> (<em>string</em>) &#8211; name of host running forwarder_device
+(See bluesky/examples/forwarder_device.py.)</li>
+<li><strong>port</strong> (<em>int</em>) &#8211; frontend port of Forwarder Device
+(See bluesky/examples/forwarder_device.py.)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">Publisher</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span> <span class="mi">5567</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="bluesky.callbacks.zmqsub.RemoteDispatcher">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.zmqsub.</code><code class="descname">RemoteDispatcher</code><span class="sig-paren">(</span><em>host</em>, <em>port</em>, <em>*</em>, <em>filter_hostname=None</em>, <em>filter_pid=None</em>, <em>filter_run_engine_id=None</em>, <em>loop=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.zmqsub.RemoteDispatcher" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dispatch documents received over a socket.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>host</strong> (<em>string</em>) &#8211; name of host running forwarder_device
+(See bluesky/examples/forwarder_device.py.)</li>
+<li><strong>port</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; default 5560</li>
+<li><strong>filter_hostname</strong> (<em>string</em><em>, </em><em>optional</em>) &#8211; only process documents from a host with this name</li>
+<li><strong>filter_pid</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; only process documents from a process with this pid</li>
+<li><strong>filter_run_engine_id</strong> (<em>int</em><em>, </em><em>optional</em>) &#8211; only process documents from a RunEngine with this Python id
+(memory address)</li>
+<li><strong>loop</strong> (<em>zmq.asyncio.ZMQEventLoop</em><em>, </em><em>optional</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Example</p>
+<p>Create a LivePlot and feed it documents published to a 0MQ forwarder
+device at running on localhost at port 5560.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bluesky.qt_kicker</span> <span class="k">import</span> <span class="n">install_qt_kicker</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">install_qt_kicker</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dispatcher</span> <span class="o">=</span> <span class="n">Dispatcher</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">5568</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dispatcher</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dispatcher</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="state-machine.html" class="btn btn-neutral float-right" title="Interruptions" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="bluesky.spec_api.setup_liveraster.html" class="btn btn-neutral" title="bluesky.spec_api.setup_liveraster" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.8.0+6.g7402173',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

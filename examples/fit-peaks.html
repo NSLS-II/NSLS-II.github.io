@@ -1,0 +1,349 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Fit and analyze peaks &mdash; NSLS-II Software Documentation  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="NSLS-II Software Documentation  documentation" href="../index.html"/>
+        <link rel="up" title="Examples" href="index.html"/>
+        <link rel="next" title="How metadata is organized: understand the contents of the header" href="header-contents.html"/>
+        <link rel="prev" title="Concatenating plans" href="concatenating-plans.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> NSLS-II Software Documentation
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture-overview.html">Event-Based Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Examples</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="simple-scan.html">Perform a simple scan with a data table and plot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="retrieving-data.html">Retrieve metadata, tabular data, and image data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="replot.html">Re-plot saved data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pausing.html">Interruptions: interactively pause and resume</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concatenating-plans.html">Concatenating plans</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Fit and analyze peaks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#problem">Problem</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#approach">Approach</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-solution">Example Solution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#execution">Execution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="header-contents.html">How metadata is organized: understand the contents of the header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exporting-csv.html">Export tabular data as a CSV file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="exporting-images.html">Export images as TIFF files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulation-mode.html">Inspect or rehearse a plan without touching hardware (&#8220;simulation mode&#8221;)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="baseline-readings.html">Take baseline readings at the beginning and end</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adaptive-steps.html">Use scans with adaptive step sizes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="count-with-exp-decay-delay.html">Take successive readings spaced exponentially in time or space</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flyer-progress-bar.html">Add a progress bar to a fly scan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="archiver-appliance-integration.html">Access EPICS Archiver Appliance via the data broker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="msg-hook.html">Troubleshoot a slow or stalling plan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="scan_gaussian.html">Re-scan until fit achieves desired confidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="grid_in_grid.html">Scan a grid around each sample in a grid</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../remote-access.html">Remote Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sandbox.html">Sandbox</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fresh-installation.html">Installation at a Beamline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data Collection</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/bluesky">bluesky</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/ophyd">ophyd</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data Access and Management</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/databroker">databroker</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/amostra">amostra</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/datamuxer">datamuxer</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/suitcase">suitcase</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data Analysis</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="http://scikit-beam.github.io/scikit-beam">scikit-beam</a></li>
+</ul>
+<p class="caption"><span class="caption-text">GitHub Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NSLS-II/">NSLS-II Repositories</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NSLS-II/wishlist/issues">Wish List</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NSLS-II/Bug-Reports/issues">Bug Reports</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../index.html">NSLS-II Software Documentation</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="index.html">Examples</a> &raquo;</li>
+      
+    <li>Fit and analyze peaks</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/examples/fit-peaks.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="fit-and-analyze-peaks">
+<h1>Fit and analyze peaks<a class="headerlink" href="#fit-and-analyze-peaks" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="problem">
+<h2>Problem<a class="headerlink" href="#problem" title="Permalink to this headline">¶</a></h2>
+<p>Scan a region where a peak is expected. Fit a nonlinear model to the
+measurements and characterize the peak center, full-width half-max, etc.</p>
+</div>
+<div class="section" id="approach">
+<h2>Approach<a class="headerlink" href="#approach" title="Permalink to this headline">¶</a></h2>
+<p>Use the bluesky <code class="docutils literal"><span class="pre">PeakStats</span></code> callback. Here&#8217;s how it works:</p>
+<ol class="arabic simple">
+<li>Like <code class="docutils literal"><span class="pre">LiveTable</span></code> and <code class="docutils literal"><span class="pre">LivePlot</span></code>, it receives a live stream of data.</li>
+<li>It silently accumulates this data until a run completes.</li>
+<li>It performs a nonlinear best fit, and it makes the results available through
+attributes that can be used in plots, computations, or future scans.</li>
+</ol>
+<p>A convenience function called <code class="docutils literal"><span class="pre">plot_peak_stats</span></code> takes a <code class="docutils literal"><span class="pre">PeakStats</span></code>
+instance as input and produces a nice plot.</p>
+</div>
+<div class="section" id="example-solution">
+<h2>Example Solution<a class="headerlink" href="#example-solution" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="configuration">
+<h3>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h3>
+<p>Create an instance of <code class="docutils literal"><span class="pre">PeakStats</span></code> that looks for an x field <code class="docutils literal"><span class="pre">'motor'</span></code>
+and a y field <code class="docutils literal"><span class="pre">'det'</span></code>. (These should match the field names of your motor
+and detector, whatever they are.)</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># These may already be imported by your configuration.</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
+<span class="kn">from</span> <span class="nn">bluesky.plans</span> <span class="kn">import</span> <span class="n">scan</span>
+<span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">LiveTable</span>
+
+<span class="kn">from</span> <span class="nn">bluesky.callbacks.scientific</span> <span class="kn">import</span> <span class="n">PeakStats</span><span class="p">,</span> <span class="n">plot_peak_stats</span>
+
+<span class="n">ps</span> <span class="o">=</span> <span class="n">PeakStats</span><span class="p">(</span><span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="s1">&#39;det&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="execution">
+<h3>Execution<a class="headerlink" href="#execution" title="Permalink to this headline">¶</a></h3>
+<p>Run a simple scan (as we did in <a class="reference internal" href="simple-scan.html"><span class="doc">Perform a simple scan with a data table and plot</span></a>) but provide the output to our
+PeakStats instance, <code class="docutils literal"><span class="pre">ps</span></code>,  as well as to <code class="docutils literal"><span class="pre">LiveTable</span></code>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="n">subs</span> <span class="o">=</span> <span class="p">[</span><span class="n">LiveTable</span><span class="p">([</span><span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="s1">&#39;det&#39;</span><span class="p">]),</span> <span class="n">ps</span><span class="p">]</span>
+
+<span class="gp">In [2]: </span><span class="n">RE</span><span class="p">(</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">),</span> <span class="n">subs</span><span class="p">)</span>
+<span class="go">+-----------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |      motor |        det |</span>
+<span class="go">+-----------+------------+------------+------------+</span>
+<span class="go">|         1 | 17:01:30.2 |     -10.00 |       0.00 |</span>
+<span class="go">|         2 | 17:01:30.2 |      -8.57 |       0.00 |</span>
+<span class="go">|         3 | 17:01:30.2 |      -7.14 |       0.00 |</span>
+<span class="go">|         4 | 17:01:30.2 |      -5.71 |       0.00 |</span>
+<span class="go">|         5 | 17:01:30.2 |      -4.29 |       0.00 |</span>
+<span class="go">|         6 | 17:01:30.2 |      -2.86 |       0.02 |</span>
+<span class="go">|         7 | 17:01:30.2 |      -1.43 |       0.36 |</span>
+<span class="go">|         8 | 17:01:30.2 |       0.00 |       1.00 |</span>
+<span class="go">|         9 | 17:01:30.2 |       1.43 |       0.36 |</span>
+<span class="go">|        10 | 17:01:30.2 |       2.86 |       0.02 |</span>
+<span class="go">|        11 | 17:01:30.2 |       4.29 |       0.00 |</span>
+<span class="go">|        12 | 17:01:30.2 |       5.71 |       0.00 |</span>
+<span class="go">|        13 | 17:01:30.2 |       7.14 |       0.00 |</span>
+<span class="go">|        14 | 17:01:30.2 |       8.57 |       0.00 |</span>
+<span class="go">|        15 | 17:01:30.2 |      10.00 |       0.00 |</span>
+<span class="go">+-----------+------------+------------+------------+</span>
+<span class="go">generator scan [&#39;7c1150&#39;] (scan num: 1)</span>
+<span class="gh">Out[2]: </span><span class="go">[&#39;7c115088-450e-406e-86f2-c6ed0595358d&#39;]</span>
+
+<span class="gp">In [3]: </span><span class="n">plot_peak_stats</span><span class="p">(</span><span class="n">ps</span><span class="p">)</span>
+<span class="go">                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {&#39;color&#39;: &#39;k&#39;} cen</span>
+<span class="go">{&#39;color&#39;: &#39;r&#39;} com</span>
+<span class="go">{&#39;color&#39;: &#39;b&#39;} max</span>
+<span class="go">{&#39;color&#39;: &#39;m&#39;} min</span>
+<span class="gh">Out[3]: </span><span class="go"></span>
+<span class="go">{&#39;legend&#39;: &lt;matplotlib.legend.Legend at 0x2b2488f01b00&gt;,</span>
+<span class="go"> &#39;points&#39;: &lt;matplotlib.lines.Line2D at 0x2b2488f019b0&gt;,</span>
+<span class="go"> &#39;vlines&#39;: [&lt;matplotlib.lines.Line2D at 0x2b2488f082b0&gt;,</span>
+<span class="go">  &lt;matplotlib.lines.Line2D at 0x2b2488f08f60&gt;,</span>
+<span class="go">  &lt;matplotlib.lines.Line2D at 0x2b2488f0f908&gt;,</span>
+<span class="go">  &lt;matplotlib.lines.Line2D at 0x2b2488f13128&gt;,</span>
+<span class="go">  &lt;matplotlib.lines.Line2D at 0x2b2488f13c50&gt;,</span>
+<span class="go">  &lt;matplotlib.lines.Line2D at 0x2b2488f19320&gt;]}</span>
+</pre></div>
+</div>
+<img alt="../_images/fit-peaks-1.png" src="../_images/fit-peaks-1.png" />
+<p>Cross-hairs mark the x and y position of the min and max measurements. (In
+this simulated data set, &#8216;cen&#8217; and &#8216;com&#8217; happen to align perfectly with &#8216;max&#8217;
+and are thus eclipsed in this particular example.)</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="header-contents.html" class="btn btn-neutral float-right" title="How metadata is organized: understand the contents of the header" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="concatenating-plans.html" class="btn btn-neutral" title="Concatenating plans" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015 Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

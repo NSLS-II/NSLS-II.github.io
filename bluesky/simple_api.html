@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>(Optional) SPEC-like Interface &mdash; bluesky 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="bluesky 0.0.1 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.6.3+55.g1597528
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="plans.html">Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="callbacks.html">Live Visualization and Export</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="msg.html">Message Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_engine.html">The RunEngine run loop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">bluesky</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>(Optional) SPEC-like Interface</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/simple_api.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="optional-spec-like-interface">
+<h1>(Optional) SPEC-like Interface<a class="headerlink" href="#optional-spec-like-interface" title="Permalink to this headline">¶</a></h1>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The SPEC-like interface was changed in bluesky v0.5.0, and this
+documentation has not yet been updated. It will be updated before the
+start of the Summer 2016 cycle. Until then, consult the DAMA group with
+any questions.</p>
+</div>
+<div class="section" id="conceptual-differences-between-bluesky-and-spec">
+<h2>Conceptual Differences Between Bluesky and SPEC<a class="headerlink" href="#conceptual-differences-between-bluesky-and-spec" title="Permalink to this headline">¶</a></h2>
+<p>Some scientists are familiar with <a class="reference external" href="http://www.certif.com/spec.html">SPEC</a>,
+a domain-specific language for hardware control. It is possible to imitate the
+SPEC workflow on top of bluesky. Of course, we still adhere to the Python
+syntax so that we can employ the full power of the general-purpose Python
+language.</p>
+<p>It is useful to understand a key conceptual difference between bluesky and
+SPEC. SPEC treats the <em>specification</em> of an experiment (&#8220;move a motor from 1
+to 5 in 5 strides&#8221;) and its <em>execution</em> in one step. For example, in SPEC,
+typing</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>ascan th, 1, 5, 5
+</pre></div>
+</div>
+<p>both specifies and executes the scan. Fundamentally, bluesky separates these
+steps: first we generate a &#8220;plan&#8221; (a set of granular instructions)</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">plan</span> <span class="o">=</span> <span class="n">AbsScanPlan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">th</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>and then we pass the plan to a RunEninge for execution.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To imitate the SPEC workflow, these two steps are lumped together.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ascan</span><span class="p">(</span><span class="n">th</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># this is bluesky&#39;s imitation of SPEC</span>
+</pre></div>
+</div>
+<p>For simple tasks, the condensed syntax is clearly convenient; for others,
+maintaining that logical separation can be empowering. (See the section on
+<a class="reference internal" href="plans.html"><span class="doc">Plans</span></a> for why.)</p>
+<p>Addiontally, SPEC maintains a global list of detectors that apply to all scans.
+Bluesky specifies detectors on a per-plan basis: for example, a &#8220;count&#8221; might
+involve different detectors than an &#8220;ascan&#8221;. But, to imitate SPEC, bluesky
+provides a global &#8220;stash&#8221; of settings, <code class="docutils literal"><span class="pre">gs</span></code>, including a customizable list of
+&#8220;standard&#8221; detectors, as illustrated below.</p>
+</div>
+<div class="section" id="specify-detectors">
+<h2>Specify Detectors<a class="headerlink" href="#specify-detectors" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you are using a IPython profile, a list of detectors might be
+automatically specified at startup. In that case, you may not need to do
+anything unless you need to inspect or customize that list.</p>
+</div>
+<p>The setting <code class="docutils literal"><span class="pre">gs.DETS</span></code> is a list of a detector objects. It controls
+which detectors are triggered and read by all the simple scans.
+(Incidentally, <code class="docutils literal"><span class="pre">gs</span></code> stands for &#8220;global state&#8221; or &#8220;global settings.&#8221; Why
+can&#8217;t it just be plain <code class="docutils literal"><span class="pre">DETS</span></code>? Global variables are best avoided in Python,
+and the <code class="docutils literal"><span class="pre">gs.</span></code> part provides useful input validation.)</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="n">gs</span><span class="o">.</span><span class="n">DETS</span> <span class="o">=</span> <span class="p">[</span><span class="n">det1</span><span class="p">,</span> <span class="n">det2</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Like any Python list, you can append and remove elements.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [2]: </span><span class="n">gs</span><span class="o">.</span><span class="n">DETS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">det3</span><span class="p">)</span>
+
+<span class="gp">In [3]: </span><span class="n">gs</span><span class="o">.</span><span class="n">DETS</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">det1</span><span class="p">)</span>
+
+<span class="gp">In [4]: </span><span class="n">gs</span><span class="o">.</span><span class="n">DETS</span>
+<span class="gh">Out[4]: </span><span class="go">[reader: det2, reader: det3]</span>
+</pre></div>
+</div>
+<p>There are other settings which control the output of the scans &#8211;
+<code class="docutils literal"><span class="pre">gs.TABLE_COLS</span></code> and <code class="docutils literal"><span class="pre">gs.PLOT_Y</span></code>  for example. Explore the contents of
+<code class="docutils literal"><span class="pre">gs</span></code> by typing <code class="docutils literal"><span class="pre">gs.&lt;TAB&gt;</span></code>.</p>
+</div>
+<div class="section" id="peak-stats">
+<h2>Peak Stats<a class="headerlink" href="#peak-stats" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="live-plotting">
+<h2>Live Plotting<a class="headerlink" href="#live-plotting" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="count">
+<h2>Count<a class="headerlink" href="#count" title="Permalink to this headline">¶</a></h2>
+<p>A <code class="docutils literal"><span class="pre">ct</span></code> (&#8220;count&#8221;) scan reads all the detectors in the list <code class="docutils literal"><span class="pre">DETS</span></code> for
+a given acquisition time. If no time is specified, 1 second is the default.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ct</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="motor-scans">
+<h2>Motor Scans<a class="headerlink" href="#motor-scans" title="Permalink to this headline">¶</a></h2>
+<p>Like <code class="docutils literal"><span class="pre">ct</span></code>, the motor scans read from all the detectors in the list
+<code class="docutils literal"><span class="pre">DETS</span></code>.</p>
+<div class="section" id="absolute-scans">
+<h3>Absolute Scans<a class="headerlink" href="#absolute-scans" title="Permalink to this headline">¶</a></h3>
+<p>An <code class="docutils literal"><span class="pre">ascan</span></code> (&#8220;absolute scan&#8221;) scans one motor in equal-sized steps.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ascan</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">finish</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Note that <code class="docutils literal"><span class="pre">intervals</span></code> counts the number of <em>steps</em> which is one less
+than the number of <em>data points</em>. This follows the convention in SPEC.
+Outside of the simple API, we revert to the Python convention of counting
+data points, not steps.</p>
+<p>An <code class="docutils literal"><span class="pre">a2scan</span></code> scans two motors together along different trajectories,
+again in equal-sized steps. (We think of this as the &#8220;inner product&#8221; of two
+trajectories.)</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">a2scan</span><span class="p">(</span><span class="n">motor1</span><span class="p">,</span> <span class="n">start1</span><span class="p">,</span> <span class="n">finish1</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="n">start2</span><span class="p">,</span> <span class="n">finish2</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">a3scan</span><span class="p">(</span><span class="n">motor1</span><span class="p">,</span> <span class="n">start1</span><span class="p">,</span> <span class="n">finish1</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="n">start2</span><span class="p">,</span> <span class="n">finish2</span><span class="p">,</span> <span class="n">motor3</span><span class="p">,</span>
+       <span class="n">start3</span><span class="p">,</span> <span class="n">finish3</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We provide <code class="docutils literal"><span class="pre">a2scan</span></code> and <code class="docutils literal"><span class="pre">a3scan</span></code> for convenience, but in fact both of them
+support any number of motors. This is valid:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">a2scan</span><span class="p">(</span><span class="n">motor1</span><span class="p">,</span> <span class="n">start1</span><span class="p">,</span> <span class="n">finish1</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="n">start2</span><span class="p">,</span> <span class="n">finish2</span><span class="p">,</span> <span class="n">motor3</span><span class="p">,</span> <span class="n">start3</span><span class="p">,</span>
+       <span class="n">finish3</span><span class="p">,</span> <span class="n">motor4</span><span class="p">,</span> <span class="n">start4</span><span class="p">,</span> <span class="n">finish4</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="delta-scans">
+<h3>Delta Scans<a class="headerlink" href="#delta-scans" title="Permalink to this headline">¶</a></h3>
+<p>A <code class="docutils literal"><span class="pre">dscan</span></code> (&#8220;delta scan&#8221;) scans one motor in equal-size steps, specified
+relative to the motor&#8217;s current position.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">dscan</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">finish</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">lup</span></code> is an alias for <code class="docutils literal"><span class="pre">dscan</span></code>. And as with <code class="docutils literal"><span class="pre">ascan</span></code> above, there is a
+<code class="docutils literal"><span class="pre">d2scan</span></code> and a <code class="docutils literal"><span class="pre">d3scan</span></code>, each of which accept an unlimited number of
+motors.</p>
+</div>
+<div class="section" id="mesh-scan">
+<h3>Mesh Scan<a class="headerlink" href="#mesh-scan" title="Permalink to this headline">¶</a></h3>
+<p>A <code class="docutils literal"><span class="pre">mesh</span></code> scan scans any number of motors in a mesh. (We think of this as the
+&#8220;other product&#8221; of the trajectories.)</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">mesh</span><span class="p">(</span><span class="n">motor1</span><span class="p">,</span> <span class="n">start1</span><span class="p">,</span> <span class="n">finish1</span><span class="p">,</span> <span class="n">intervals1</span><span class="p">,</span> <span class="n">motor2</span><span class="p">,</span> <span class="n">start2</span><span class="p">,</span> <span class="n">finish2</span><span class="p">,</span>
+     <span class="n">intervals2</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As with <code class="docutils literal"><span class="pre">a2scan</span></code> and <code class="docutils literal"><span class="pre">a3scan</span></code>, <code class="docutils literal"><span class="pre">mesh</span></code> accepts any number of motors.
+Notice that the number of intervals is specified sepraately for each motor.</p>
+</div>
+</div>
+<div class="section" id="scans-tied-to-particular-motors-controllers">
+<h2>Scans Tied to Particular Motors / Controllers<a class="headerlink" href="#scans-tied-to-particular-motors-controllers" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="theta-two-theta">
+<h3>Theta Two Theta<a class="headerlink" href="#theta-two-theta" title="Permalink to this headline">¶</a></h3>
+<p>This scan requires the settings <code class="docutils literal"><span class="pre">gs.TH_MOTOR</span></code> (&#8220;theta motor&#8221;) and
+<code class="docutils literal"><span class="pre">gs.TTH_MOTOR</span></code> (&#8220;two theta motor&#8221;).</p>
+<p>A <code class="docutils literal"><span class="pre">th2th</span></code> (&#8220;theta two theta&#8221;) scans steps the two theta motor through a
+given range while stepping the theta motor through half that range.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">th2th</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">finish</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="temperature-scans">
+<h3>Temperature Scans<a class="headerlink" href="#temperature-scans" title="Permalink to this headline">¶</a></h3>
+<p>Temperature scans require the setting <code class="docutils literal"><span class="pre">gs.TEMP_CONTROLLER</span></code>.</p>
+<p>A <code class="docutils literal"><span class="pre">tscan</span></code> steps the temperature controller through equally-spaced temperature
+set points. An optional <code class="docutils literal"><span class="pre">sleep</span></code> argument specifies a thermalization time. As
+in SPEC, it is zero by default.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tscan</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">finish</span><span class="p">,</span> <span class="n">intervals</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">sleep</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There is also <code class="docutils literal"><span class="pre">dtscan</span></code>, a relative temperature scan.</p>
+</div>
+</div>
+<div class="section" id="tweak">
+<h2>Tweak<a class="headerlink" href="#tweak" title="Permalink to this headline">¶</a></h2>
+<p>Tweak is an interactive scan that reads a field from one detector, displays
+the result, and prompts the user to specify where to step the motor next.
+It requires the setting <code class="docutils literal"><span class="pre">gs.MASTER_DET</span></code> (which detector to use,
+such as <code class="docutils literal"><span class="pre">sclr</span></code>) and <code class="docutils literal"><span class="pre">MASTER_DET_FIELD</span></code> (the name of the field in that
+detector to read out, such as <code class="docutils literal"><span class="pre">'sclr_chan4'</span></code>). Note that the former is a
+readable object and the latter is a string of text.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">tw</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
