@@ -1,0 +1,968 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.commands &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.commands</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.commands</h1><div class="highlight"><pre>
+<span></span>
+<span class="sd">&quot;&quot;&quot;Command Line Interface to opyd objects&quot;&quot;&quot;</span>
+
+
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">contextmanager</span><span class="p">,</span> <span class="n">closing</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">attrgetter</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="kn">import</span> <span class="nn">IPython</span>
+<span class="kn">from</span> <span class="nn">IPython.utils.coloransi</span> <span class="k">import</span> <span class="n">TermColors</span> <span class="k">as</span> <span class="n">tc</span>
+
+<span class="kn">from</span> <span class="nn">epics</span> <span class="k">import</span> <span class="n">caget</span><span class="p">,</span> <span class="n">caput</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="p">(</span><span class="n">EpicsMotor</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">,</span> <span class="n">PVPositioner</span><span class="p">,</span> <span class="n">Device</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">DisconnectedError</span>
+<span class="kn">from</span> <span class="nn">.utils.startup</span> <span class="k">import</span> <span class="n">setup</span> <span class="k">as</span> <span class="n">setup_ophyd</span>
+<span class="kn">from</span> <span class="nn">prettytable</span> <span class="k">import</span> <span class="n">PrettyTable</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;mov&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;movr&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;set_pos&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;wh_pos&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;set_lm&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;log_pos&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;log_pos_diff&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;log_pos_mov&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;get_all_positioners&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;get_logbook&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;setup_ophyd&#39;</span><span class="p">,</span>
+           <span class="p">]</span>
+
+<span class="c1"># Global Defs of certain strings</span>
+
+<span class="n">FMT_LEN</span> <span class="o">=</span> <span class="mi">18</span>
+<span class="n">FMT_PREC</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">DISCONNECTED</span> <span class="o">=</span> <span class="s1">&#39;disconnected&#39;</span>
+
+
+<span class="k">def</span> <span class="nf">scrape_namespace</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get all public objects from the user namespace, sorted by name.</span>
+
+<span class="sd">    If we are not in an IPython session, warn and return an empty list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">get_ipython</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">ip</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Unable to inspect Python global namespace; &#39;</span>
+                      <span class="s1">&#39;use IPython to enable these features.&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">val</span> <span class="k">for</span> <span class="n">var</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ip</span><span class="o">.</span><span class="n">user_ns</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">var</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)]</span>
+
+
+<span class="k">def</span> <span class="nf">instances_from_namespace</span><span class="p">(</span><span class="n">classes</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get all instances of `classes` from the user namespace</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    classes : type, or sequence of types</span>
+<span class="sd">        Passed directly to isinstance(), only instances of these classes</span>
+<span class="sd">        will be returned.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">val</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">scrape_namespace</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">classes</span><span class="p">)]</span>
+
+
+<span class="k">def</span> <span class="nf">ducks_from_namespace</span><span class="p">(</span><span class="n">attr</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get all instances that have a given attribute.</span>
+
+<span class="sd">    &quot;Ducks&quot; is a reference to &quot;duck-typing.&quot; If it looks like a duck....</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    attr : str</span>
+<span class="sd">        name of attribute</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">val</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">scrape_namespace</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">attr</span><span class="p">)]</span>
+
+
+<div class="viewcode-block" id="get_all_positioners"><a class="viewcode-back" href="../../generated/ophyd.commands.get_all_positioners.html#ophyd.commands.get_all_positioners">[docs]</a><span class="k">def</span> <span class="nf">get_all_positioners</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;Get all positioners defined in the IPython namespace&#39;&#39;&#39;</span>
+    <span class="n">devices</span> <span class="o">=</span> <span class="n">instances_from_namespace</span><span class="p">((</span><span class="n">Device</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">))</span>
+    <span class="n">positioners</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
+        <span class="n">positioners</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_recursive_positioner_search</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">positioners</span></div>
+
+
+<span class="k">def</span> <span class="nf">_recursive_positioner_search</span><span class="p">(</span><span class="n">device</span><span class="p">):</span>
+    <span class="s2">&quot;Return a flat list the device and any subdevices that can be &#39;set&#39;.&quot;</span>
+    <span class="c1"># TODO Refactor this as a method on Device.</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="s1">&#39;position&#39;</span><span class="p">):</span>  <span class="c1"># duck-typed as a Positioner</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+        <span class="n">res</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">Device</span><span class="p">):</span>  <span class="c1"># only Devices have `_signals`</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">device</span><span class="o">.</span><span class="n">_signals</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">)):</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_recursive_positioner_search</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">def</span> <span class="nf">_normalize_positioners</span><span class="p">(</span><span class="n">positioners</span><span class="p">):</span>
+    <span class="s2">&quot;input normalization used by wh_pos, log_pos, log_pos_mov&quot;</span>
+    <span class="k">if</span> <span class="n">positioners</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Grab IPython namespace, recursively find Positioners.</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">get_all_positioners</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">)):</span>
+        <span class="c1"># Explore children in case this is a composite Device.</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">_recursive_positioner_search</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Assume this is a list of Devices.</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Input is not a Device: </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">device</span><span class="p">)</span>
+            <span class="n">res</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">_recursive_positioner_search</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">res</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)))</span>
+
+
+<span class="k">def</span> <span class="nf">var_from_namespace</span><span class="p">(</span><span class="n">var</span><span class="p">):</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">get_ipython</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">ip</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ip</span><span class="o">.</span><span class="n">user_ns</span><span class="p">[</span><span class="n">var</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;No IPython session&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_logbook"><a class="viewcode-back" href="../../generated/ophyd.commands.get_logbook.html#ophyd.commands.get_logbook">[docs]</a><span class="k">def</span> <span class="nf">get_logbook</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;Get the logbook instance from the user namespace&#39;&#39;&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">var_from_namespace</span><span class="p">(</span><span class="s1">&#39;logbook&#39;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<span class="k">def</span> <span class="nf">ensure</span><span class="p">(</span><span class="o">*</span><span class="n">ensure_args</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">wrap</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="c1"># First check if we have an iterable first on the first arg.</span>
+            <span class="c1"># If not, then make these all lists</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;__iter__&quot;</span><span class="p">):</span>
+                    <span class="n">args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">([[</span><span class="n">a</span><span class="p">]</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">args</span><span class="p">])</span>
+            <span class="c1"># Now do type checking ignoring None</span>
+            <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">ensure_args</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># Ignore when type is specified as None</span>
+                    <span class="k">continue</span>
+
+                <span class="n">invalid</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">arg</span>
+                           <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">t</span><span class="p">)]</span>
+
+                <span class="k">if</span> <span class="n">invalid</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Incorrect type in parameter list.</span><span class="se">\n</span><span class="s1">&#39;</span>
+                                    <span class="s1">&#39;Parameter at 0-based position </span><span class="si">{}</span><span class="s1"> must be&#39;</span>
+                                    <span class="s1">&#39;an instance of </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">t</span><span class="p">))</span>
+
+            <span class="n">f</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">wrapper</span>
+    <span class="k">return</span> <span class="n">wrap</span>
+
+
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">PositionerBase</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<div class="viewcode-block" id="mov"><a class="viewcode-back" href="../../generated/ophyd.commands.mov.html#ophyd.commands.mov">[docs]</a><span class="k">def</span> <span class="nf">mov</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move positioners to given positions</span>
+
+<span class="sd">    Move positioners using the move method of the Positioner class.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positioner : Positioner or list</span>
+<span class="sd">        Positioners to move</span>
+<span class="sd">    position : float or list of float</span>
+<span class="sd">        Values to move positioners to.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Move a single positioner `slt1_xc` to 10::</span>
+
+<span class="sd">    &gt;&gt;&gt;mov(slt1_xc, 10)</span>
+
+<span class="sd">    Move positioner `slt1_xg` and `slt1_yg` to 2 and 3 respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;mov([slt1_xg, slt1_yg], [2, 3])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Start Moving all Positioners in context manager to catch</span>
+    <span class="c1"># Keyboard interrupts</span>
+
+    <span class="c1"># TODO : This should be a utility function</span>
+
+    <span class="n">pos_prec</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s1">&#39;precision&#39;</span><span class="p">):</span>
+            <span class="n">pos_prec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pos_prec</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">catch_keyboard_interrupt</span><span class="p">(</span><span class="n">positioner</span><span class="p">):</span>
+        <span class="n">stat</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span>
+                <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">)]</span>
+
+        <span class="c1"># The loop below ensures that at least a couple prints</span>
+        <span class="c1"># will happen</span>
+        <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">while</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">flag</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">LightGreen</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;   &#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">prec</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">pos_prec</span><span class="p">):</span>
+                <span class="n">print_value</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">prec</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\033</span><span class="s1">[2A&#39;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">s</span><span class="o">.</span><span class="n">success</span><span class="p">]:</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">pos</span>
+        <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">high_limit_switch</span><span class="o">.</span><span class="n">get</span><span class="p">():</span>
+                <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;Motor reached the high limit switch.&quot;</span>
+            <span class="k">elif</span> <span class="n">device</span><span class="o">.</span><span class="n">low_limit_switch</span><span class="o">.</span><span class="n">get</span><span class="p">():</span>
+                <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;Motor reached the low limit switch.&quot;</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Warning: </span><span class="si">{}</span><span class="s1"> failed to reach the target position. &#39;</span>
+              <span class="s1">&#39;Reason: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">reason</span><span class="p">))</span></div>
+
+
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">PositionerBase</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<div class="viewcode-block" id="movr"><a class="viewcode-back" href="../../generated/ophyd.commands.movr.html#ophyd.commands.movr">[docs]</a><span class="k">def</span> <span class="nf">movr</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move positioners relative to their current positon.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    mov : move positioners to an absolute position.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_start_val</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">position</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">_start_val</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Unable to read motor position for relative move&quot;</span><span class="p">)</span>
+
+    <span class="n">_new_val</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">_start_val</span><span class="p">,</span> <span class="n">position</span><span class="p">)]</span>
+    <span class="n">mov</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">_new_val</span><span class="p">)</span></div>
+
+
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">PositionerBase</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<div class="viewcode-block" id="set_lm"><a class="viewcode-back" href="../../generated/ophyd.commands.set_lm.html#ophyd.commands.set_lm">[docs]</a><span class="k">def</span> <span class="nf">set_lm</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">limits</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set the limits of the positioner</span>
+
+<span class="sd">    Sets the limits of the positioner or list of positioners. For EpicsMotors</span>
+<span class="sd">    the fields .HLM and .LLM are set to the high and low limits respectively.</span>
+<span class="sd">    For PVPositioners the .DRVH and .DRVL fields are set on the setopoint</span>
+<span class="sd">    record. If neither method works then an IOError is raised.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positioner : positioner or list of positioners</span>
+<span class="sd">    limits : single or list of tuple of form (+ve, -ve) limits</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    IOError</span>
+<span class="sd">        If the caput (EPICS put) fails then an IOError is raised.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Set the limits of motor `m1` to (10, -10)::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_lm(slt1_xc, (10, -10))</span>
+
+<span class="sd">    Set the limits of motors `m1` and `m2` to (2, -2) and (3, -3)</span>
+<span class="sd">    respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_lm([m1, m2], [[2,-2], [3, -3]])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="n">high_fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">low_fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
+            <span class="n">high_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s1">&#39;.HLM&#39;</span><span class="p">)</span>
+            <span class="n">low_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s1">&#39;.LLM&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">PVPositioner</span><span class="p">):</span>
+            <span class="n">high_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">setpoint_pvname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;.DRVH&#39;</span><span class="p">)</span>
+            <span class="n">low_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">setpoint_pvname</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;.DRVL&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Positioners must be EpicsMotors or PVPositioners&quot;</span>
+                            <span class="s2">&quot;to set the limits&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">lim</span><span class="p">,</span> <span class="n">high_field</span><span class="p">,</span> <span class="n">low_field</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span>
+                                             <span class="n">limits</span><span class="p">,</span>
+                                             <span class="n">high_fields</span><span class="p">,</span> <span class="n">low_fields</span><span class="p">):</span>
+        <span class="n">lim1</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span>
+        <span class="n">lim2</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">lim</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">caput</span><span class="p">(</span><span class="n">high_field</span><span class="p">,</span> <span class="n">lim1</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Unable to set high limit for </span><span class="si">{}</span><span class="s2">&quot;</span>
+                          <span class="s2">&quot; writing to PV </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">high_field</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s2">&quot;Upper limit set to {:.</span><span class="si">{prec}</span><span class="s2">g} for positioner </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+               <span class="n">lim1</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">caput</span><span class="p">(</span><span class="n">low_field</span><span class="p">,</span> <span class="n">lim2</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;Unable to set low limit for </span><span class="si">{}</span><span class="s2">&quot;</span>
+                          <span class="s2">&quot; writing to PV </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">low_field</span><span class="p">))</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s2">&quot;Lower limit set to {:.</span><span class="si">{prec}</span><span class="s2">g} for positioner </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+               <span class="n">lim2</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="n">logbook</span> <span class="o">=</span> <span class="n">get_logbook</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">logbook</span><span class="p">:</span>
+        <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+
+<span class="nd">@ensure</span><span class="p">(</span><span class="n">PositionerBase</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">))</span>
+<div class="viewcode-block" id="set_pos"><a class="viewcode-back" href="../../generated/ophyd.commands.set_pos.html#ophyd.commands.set_pos">[docs]</a><span class="k">def</span> <span class="nf">set_pos</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set the position of a positioner</span>
+
+<span class="sd">    Set the position of a positioner or positioners to the value position.</span>
+<span class="sd">    This function only works for EpicsMotors (Based on the EPICS Motor Record)</span>
+<span class="sd">    and uses the .OFF field to set the current position to the value passed to</span>
+<span class="sd">    the function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positioner : Positioner or list of positioners.</span>
+<span class="sd">    position : float or list of floats.</span>
+<span class="sd">        New position of positioners</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        If positioner is not an instance of an EpicsMotor.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Set the position of motor m1 to 4::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_pos(m1, 4)</span>
+
+<span class="sd">    Set the position of motors m1 and m2 to 1 and 2 respectively::</span>
+
+<span class="sd">    &gt;&gt;&gt;set_pos([m1, m2], [1, 2])</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        TypeError: If positioner is not an instance of an EpicsMotor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">EpicsMotor</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Positioner </span><span class="si">{}</span><span class="s2"> must be an EpicsMotor&quot;</span>
+                            <span class="s2">&quot;to set position.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="c1"># Get the current offset</span>
+
+    <span class="n">offset_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;.OFF&quot;</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+    <span class="n">dial_pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s2">&quot;.DRBV&quot;</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioner</span><span class="p">]</span>
+
+    <span class="n">old_offsets</span> <span class="o">=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">offset_pvs</span><span class="p">]</span>
+    <span class="n">dial</span> <span class="o">=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">dial_pvs</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">old_offsets</span> <span class="o">+</span> <span class="n">dial</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not read or invalid value for current&quot;</span>
+                             <span class="s2">&quot;position of positioners&quot;</span><span class="p">)</span>
+
+    <span class="n">new_offsets</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">dial</span><span class="p">)]</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">o</span><span class="p">,</span> <span class="n">old_o</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">new_offsets</span><span class="p">,</span> <span class="n">old_offsets</span><span class="p">,</span> <span class="n">positioner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">caput</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">prefix</span> <span class="o">+</span> <span class="s1">&#39;.OFF&#39;</span><span class="p">,</span> <span class="n">o</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;Motor </span><span class="si">{0}</span><span class="s1"> set to position </span><span class="si">{1}</span><span class="s1"> (Offset = </span><span class="si">{2}</span><span class="s1"> was </span><span class="si">{3}</span><span class="s1">)</span><span class="se">\n</span><span class="s1">&#39;</span>\
+                   <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">,</span> <span class="n">o</span><span class="p">,</span> <span class="n">old_o</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to set position of positioner </span><span class="si">{0}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+    <span class="n">logbook</span> <span class="o">=</span> <span class="n">get_logbook</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">logbook</span><span class="p">:</span>
+        <span class="n">lmsg</span> <span class="o">=</span> <span class="n">logbook_add_objects</span><span class="p">(</span><span class="n">positioner</span><span class="p">,</span> <span class="n">dial_pvs</span> <span class="o">+</span> <span class="n">offset_pvs</span><span class="p">)</span>
+        <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="n">lmsg</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="wh_pos"><a class="viewcode-back" href="../../generated/ophyd.commands.wh_pos.html#ophyd.commands.wh_pos">[docs]</a><span class="k">def</span> <span class="nf">wh_pos</span><span class="p">(</span><span class="n">positioners</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the current position of Positioners and print to screen.</span>
+
+<span class="sd">    Print to the screen the position of the positioners in a formated table.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positioners : Positioner, list of Positioners or None</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    log_pos : Log positioner values to logbook</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    List all positioners::</span>
+
+<span class="sd">    &gt;&gt;&gt;wh_pos()</span>
+
+<span class="sd">    List positioners `m1`, `m2` and `m3`::</span>
+
+<span class="sd">    &gt;&gt;&gt;wh_pos([m1, m2, m3])</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">positioners</span> <span class="o">=</span> <span class="n">_normalize_positioners</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="log_pos"><a class="viewcode-back" href="../../generated/ophyd.commands.log_pos.html#ophyd.commands.log_pos">[docs]</a><span class="k">def</span> <span class="nf">log_pos</span><span class="p">(</span><span class="n">positioners</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_msg</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Get the current position of Positioners and make a logbook entry.</span>
+
+<span class="sd">    Print to the screen the position of the positioners and make a logbook text</span>
+<span class="sd">    entry. This routine also creates session information in the logbook so</span>
+<span class="sd">    positions can be recovered.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    positioners : Positioner, list of Positioners or None</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    int</span>
+<span class="sd">        The ID of the logbook entry returned by the logbook.log method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">positioners</span> <span class="o">=</span> <span class="n">_normalize_positioners</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">logbook</span> <span class="o">=</span> <span class="n">get_logbook</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">extra_msg</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="n">extra_msg</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="k">with</span> <span class="n">closing</span><span class="p">(</span><span class="n">StringIO</span><span class="p">())</span> <span class="k">as</span> <span class="n">sio</span><span class="p">:</span>
+        <span class="n">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sio</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="n">sio</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+    <span class="c1"># Add the text representation of the positioners</span>
+
+    <span class="c1"># Create the property for storing motor posisions</span>
+    <span class="n">pdict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">msg</span> <span class="o">+=</span> <span class="n">logbook_add_objects</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">][</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">position</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">][</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">DISCONNECTED</span>
+
+    <span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;objects&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">pdict</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">logbook</span><span class="p">:</span>
+        <span class="n">id_</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;OphydPositioners&#39;</span><span class="p">:</span> <span class="n">pdict</span><span class="p">},</span>
+                          <span class="n">ensure</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Logbook positions added as Logbook ID </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">id_</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">id_</span></div>
+
+
+<div class="viewcode-block" id="log_pos_mov"><a class="viewcode-back" href="../../generated/ophyd.commands.log_pos_mov.html#ophyd.commands.log_pos_mov">[docs]</a><span class="k">def</span> <span class="nf">log_pos_mov</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">positioners</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook</span>
+
+<span class="sd">    This function moves to positions recorded in the experimental logbook using</span>
+<span class="sd">    the :py:func:`log_pos` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : integer, optional</span>
+<span class="sd">        ID of logbook entry to search for and move positions to.</span>
+<span class="sd">    dry_run : bool, optional</span>
+<span class="sd">        If True, do not move motors, but execute a dry_run</span>
+<span class="sd">    positioners : list, optional</span>
+<span class="sd">        List of string names of positioners to compare and move. Other</span>
+<span class="sd">        positioners in the log entry will be ignored.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">positioners</span> <span class="o">=</span> <span class="n">_normalize_positioners</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">logpos</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">objects</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">stat</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">newpos</span> <span class="o">=</span> <span class="n">logpos</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">newpos</span> <span class="o">==</span> <span class="n">DISCONNECTED</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to move positioner </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">: position was stored&#39;</span>
+                  <span class="s1">&#39;as disconnected&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">oldpos</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">position</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to move positioner </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">: disconnected&#39;</span>
+                  <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">dry_run</span><span class="p">:</span>
+                <span class="n">stat</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">newpos</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to move positioner </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1"> (</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">)&#39;</span>
+                  <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">ex</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[**] Moving positioner </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">&#39;</span>
+                  <span class="s1">&#39; from current position of </span><span class="si">{}{}</span><span class="s1">`&#39;</span>
+                  <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Green</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">newpos</span><span class="p">,</span> <span class="n">oldpos</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="si">{}</span><span class="s1">Waiting for positioners to complete .....&#39;</span>
+          <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">LightGreen</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">while</span> <span class="nb">all</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">done</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stat</span><span class="p">):</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; Done</span><span class="si">{}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="log_pos_diff"><a class="viewcode-back" href="../../generated/ophyd.commands.log_pos_diff.html#ophyd.commands.log_pos_diff">[docs]</a><span class="k">def</span> <span class="nf">log_pos_diff</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">positioners</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Move to positions located in logboook</span>
+
+<span class="sd">    This function compares positions recorded in the experimental logbook</span>
+<span class="sd">    using the :py:func:`log_pos` function.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : integer</span>
+<span class="sd">        ID of logbook entry to search for and move positions to.</span>
+<span class="sd">    positioners : list</span>
+<span class="sd">        List of string names of positioners to compare. Other positioners</span>
+<span class="sd">        in the log entry will be ignored.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">positioners</span> <span class="o">=</span> <span class="n">_normalize_positioners</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span>
+    <span class="n">logpos</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span>
+
+    <span class="c1"># Cycle through positioners and compare position with old value</span>
+    <span class="c1"># If we have an error, print a warning</span>
+
+    <span class="n">diff</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">positioners</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">objects</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="p">:</span> <span class="n">objects</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">objects</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">oldpos</span> <span class="o">=</span> <span class="n">logpos</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">oldpos</span> <span class="o">==</span> <span class="n">DISCONNECTED</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to compare position </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">: position was stored&#39;</span>
+                  <span class="s1">&#39;as disconnected&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">newpos</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">position</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to compare position </span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">: disconnected&#39;</span>
+                  <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">))</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">diff</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newpos</span> <span class="o">-</span> <span class="n">oldpos</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">[!!] Unable to compare position </span><span class="si">{}{}</span><span class="s1">: (</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">)&#39;</span>
+                  <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">ex</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">newpos</span><span class="p">)</span>
+
+    <span class="n">header_len</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="p">(</span><span class="n">FMT_LEN</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="n">header_len</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s1">&#39;Positioner&#39;</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s1">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; | &#39;</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s1">&#39;Value&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; | &#39;</span><span class="p">)</span>
+    <span class="n">print_string</span><span class="p">(</span><span class="s1">&#39;Difference&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; |</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="n">header_len</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">diff</span><span class="p">):</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s1">&#39;| &#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; | &#39;</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; | &#39;</span><span class="p">)</span>
+        <span class="n">print_value</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">egu</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; |</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">print_header</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="n">header_len</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">logbook_to_objects</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Search the logbook and return positioners&quot;&quot;&quot;</span>
+
+    <span class="n">logbook</span> <span class="o">=</span> <span class="n">get_logbook</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">logbook</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;No logbook is available&quot;</span><span class="p">)</span>
+
+    <span class="n">entry</span> <span class="o">=</span> <span class="n">logbook</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Search of logbook was not unique, please refine&quot;</span>
+                         <span class="s2">&quot;search&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">prop</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="s1">&#39;OphydPositioners&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s1">&#39;No property in log entry with positioner information&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s1">&#39;objects&#39;</span><span class="p">])</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">prop</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">])</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Unable to create objects from log entry &#39;</span>
+                           <span class="s1">&#39;(</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">ex</span><span class="p">)</span>
+
+    <span class="n">objects</span> <span class="o">=</span> <span class="p">{</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">obj</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">val</span><span class="p">,</span> <span class="n">objects</span>
+
+
+<span class="k">def</span> <span class="nf">logbook_add_objects</span><span class="p">(</span><span class="n">objects</span><span class="p">,</span> <span class="n">extra_pvs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add to the logbook aditional information on ophyd objects.</span>
+
+<span class="sd">    This routine takes objects and possible extra pvs and adds to the log entry</span>
+<span class="sd">    information which is not printed to stdout/stderr.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    objects : Ophyd objects</span>
+<span class="sd">        Objects to add to log entry.</span>
+<span class="sd">    extra_pvs : List of strings</span>
+<span class="sd">        Extra PVs to include in report</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{:^43}</span><span class="s1">|</span><span class="si">{:^22}</span><span class="s1">|</span><span class="si">{:^50}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;PV Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Name&#39;</span><span class="p">,</span> <span class="s1">&#39;Value&#39;</span><span class="p">)</span>
+    <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;</span><span class="si">{:-^120}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Make a list of all PVs and positioners</span>
+    <span class="n">reports</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">report</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">]</span>
+    <span class="n">pvs</span> <span class="o">=</span> <span class="p">[</span><span class="n">report</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pv&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span> <span class="k">for</span> <span class="n">report</span> <span class="ow">in</span> <span class="n">reports</span><span class="p">]</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">]</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">report</span> <span class="ow">in</span> <span class="n">reports</span>
+              <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s1">&#39;pv&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">extra_pvs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">pvs</span> <span class="o">+=</span> <span class="n">extra_pvs</span>
+        <span class="n">names</span> <span class="o">+=</span> <span class="p">[</span><span class="s1">&#39;None&#39;</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extra_pvs</span><span class="p">]</span>
+        <span class="n">values</span> <span class="o">+=</span> <span class="p">[</span><span class="n">caget</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extra_pvs</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">pvs</span><span class="p">,</span> <span class="n">names</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="n">msg</span> <span class="o">+=</span> <span class="s1">&#39;PV:</span><span class="si">{:&lt;40}</span><span class="s1"> </span><span class="si">{:&lt;22}</span><span class="s1"> </span><span class="si">{:&lt;50}</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">msg</span>
+
+
+<span class="k">def</span> <span class="nf">print_header</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">char</span><span class="o">=</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;{:</span><span class="si">{char}</span><span class="s1">^</span><span class="si">{len}</span><span class="s1">}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">char</span><span class="o">=</span><span class="n">char</span><span class="p">,</span> <span class="nb">len</span><span class="o">=</span><span class="nb">len</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">print_string</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">FMT_LEN</span><span class="p">,</span> <span class="n">pre</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">{:&lt;</span><span class="si">{size}</span><span class="s1">}</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pre</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">post</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">print_value</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">prec</span><span class="o">=</span><span class="n">FMT_PREC</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="s1">&#39;{: .</span><span class="si">{fmt}</span><span class="s1">f} </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">egu</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">prec</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">print_string</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">blink</span><span class="p">(</span><span class="n">on</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">on</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[?25h&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\x1b</span><span class="s2">[?25l&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+
+<span class="nd">@contextmanager</span>
+<span class="k">def</span> <span class="nf">catch_keyboard_interrupt</span><span class="p">(</span><span class="n">positioners</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Context manager to capture Keyboard Interrupt and stop motors</span>
+
+<span class="sd">    This context manager should be used when moving positioners via the cli</span>
+<span class="sd">    to capture the keyboardInterrupt and ensure that motors are stopped and</span>
+<span class="sd">    clean up the output to the screen.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">blink</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span> <span class="o">+</span> <span class="s2">&quot;[!!] ABORTED &quot;</span>
+              <span class="s2">&quot;: Commanding all positioners to stop.&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">:</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">[--] Stopping </span><span class="si">{}{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Red</span><span class="p">,</span> <span class="n">tc</span><span class="o">.</span><span class="n">LightRed</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">blink</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">tc</span><span class="o">.</span><span class="n">Normal</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">blink</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_print_pos</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Pretty Print the positioners to file&quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+    <span class="n">pos</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">positioners</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">position</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">DisconnectedError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">pos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># Print out header</span>
+    <span class="n">pt</span> <span class="o">=</span> <span class="n">PrettyTable</span><span class="p">([</span><span class="s1">&#39;Positioner&#39;</span><span class="p">,</span> <span class="s1">&#39;Value&#39;</span><span class="p">,</span> <span class="s1">&#39;Low Limit&#39;</span><span class="p">,</span> <span class="s1">&#39;High Limit&#39;</span><span class="p">])</span>
+    <span class="n">pt</span><span class="o">.</span><span class="n">align</span> <span class="o">=</span> <span class="s1">&#39;r&#39;</span>
+    <span class="n">pt</span><span class="o">.</span><span class="n">align</span><span class="p">[</span><span class="s1">&#39;Positioner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;l&#39;</span>
+    <span class="n">pt</span><span class="o">.</span><span class="n">float_format</span> <span class="o">=</span> <span class="s1">&#39;8.5&#39;</span>
+
+    <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">positioners</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">pos</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">prec</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">precision</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="n">DisconnectedError</span><span class="p">):</span>
+                <span class="n">prec</span> <span class="o">=</span> <span class="n">FMT_PREC</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">decimals</span><span class="o">=</span><span class="n">prec</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">DISCONNECTED</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">low_limit</span><span class="p">,</span> <span class="n">high_limit</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">low_limit</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">high_limit</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="n">low_limit</span> <span class="o">=</span> <span class="n">high_limit</span> <span class="o">=</span> <span class="n">DISCONNECTED</span>
+
+        <span class="n">pt</span><span class="o">.</span><span class="n">add_row</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">low_limit</span><span class="p">,</span> <span class="n">high_limit</span><span class="p">])</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">pt</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

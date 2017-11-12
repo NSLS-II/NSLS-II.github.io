@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.scaler &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.scaler</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.scaler</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span>
+
+<span class="kn">from</span> <span class="nn">.signal</span> <span class="k">import</span> <span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="n">Device</span>
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="p">(</span><span class="n">Component</span> <span class="k">as</span> <span class="n">C</span><span class="p">,</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDC</span><span class="p">)</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_scaler_fields</span><span class="p">(</span><span class="n">attr_base</span><span class="p">,</span> <span class="n">field_base</span><span class="p">,</span> <span class="n">range_</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">defn</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">range_</span><span class="p">:</span>
+        <span class="n">attr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{attr}{i}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attr</span><span class="o">=</span><span class="n">attr_base</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{field}{i}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">field</span><span class="o">=</span><span class="n">field_base</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">defn</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">EpicsSignalRO</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">defn</span>
+
+
+<div class="viewcode-block" id="EpicsScaler"><a class="viewcode-back" href="../../builtin-devices.html#ophyd.scaler.EpicsScaler">[docs]</a><span class="k">class</span> <span class="nc">EpicsScaler</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;SynApps Scaler Record interface&#39;&#39;&#39;</span>
+
+    <span class="n">count</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.CNT&#39;</span><span class="p">,</span> <span class="n">trigger_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">count_mode</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.CONT&#39;</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.T&#39;</span><span class="p">)</span>
+    <span class="n">preset_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.TP&#39;</span><span class="p">)</span>
+    <span class="n">auto_count_time</span> <span class="o">=</span> <span class="n">C</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;.TP1&#39;</span><span class="p">)</span>
+    <span class="n">channels</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">_scaler_fields</span><span class="p">(</span><span class="s1">&#39;chan&#39;</span><span class="p">,</span> <span class="s1">&#39;.S&#39;</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">33</span><span class="p">)))</span>
+    <span class="n">presets</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">_scaler_fields</span><span class="p">(</span><span class="s1">&#39;preset&#39;</span><span class="p">,</span> <span class="s1">&#39;.PR&#39;</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">33</span><span class="p">)))</span>
+    <span class="n">gates</span> <span class="o">=</span> <span class="n">DDC</span><span class="p">(</span><span class="n">_scaler_fields</span><span class="p">(</span><span class="s1">&#39;gate&#39;</span><span class="p">,</span> <span class="s1">&#39;.G&#39;</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">33</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">configuration_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">read_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">read_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;channels&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">configuration_attrs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">configuration_attrs</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;preset_time&#39;</span><span class="p">,</span> <span class="s1">&#39;presets&#39;</span><span class="p">,</span> <span class="s1">&#39;gates&#39;</span><span class="p">]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="n">read_attrs</span><span class="p">,</span>
+                         <span class="n">configuration_attrs</span><span class="o">=</span><span class="n">configuration_attrs</span><span class="p">,</span>
+                         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="o">.</span><span class="n">update</span><span class="p">([(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_mode</span><span class="p">,</span> <span class="mi">0</span><span class="p">)])</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

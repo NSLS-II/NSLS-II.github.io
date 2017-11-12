@@ -1,0 +1,824 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Live Feedback and Processing &mdash; bluesky 0.0.1 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+    <link rel="top" title="bluesky 0.0.1 documentation" href="index.html"/>
+        <link rel="next" title="Interruptions" href="state-machine.html"/>
+        <link rel="prev" title="bluesky.plans.Tweak" href="bluesky.plans.Tweak.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="plans.html">Plans</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Live Feedback and Processing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview-of-callbacks">Overview of Callbacks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#simplest-example">Simplest Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ways-to-invoke-callbacks">Ways to Invoke Callbacks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#subscribe-on-a-per-run-basis">Subscribe on a per-run basis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subscribe-each-time-a-certain-plan-is-used">Subscribe each time a certain plan is used</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#subscribe-for-every-run">Subscribe for every run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#running-callbacks-on-saved-data">Running Callbacks on Saved Data</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#live-table">Live Table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#live-plot-for-scalar-data">Live Plot for Scalar Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#live-image-plot">Live Image Plot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#live-raster-plot-heat-map">Live Raster Plot (Heat Map)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#automated-data-export">Automated Data Export</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#exporting-image-data-as-tiff-files">Exporting Image Data as TIFF Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#export-all-data-and-metadata-in-an-hdf5-file">Export All Data and Metadata in an HDF5 File</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#verify-data-has-been-saved">Verify Data Has Been Saved</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#writing-custom-callbacks">Writing Custom Callbacks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#two-simple-custom-callbacks">Two Simple Custom Callbacks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-multiple-document-types">Using multiple document types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lossless-subscriptions-for-critical-functions">Lossless Subscriptions for Critical Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simple_api.html">(Optional) SPEC-like Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">bluesky</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Live Feedback and Processing</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/callbacks.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="live-feedback-and-processing">
+<h1>Live Feedback and Processing<a class="headerlink" href="#live-feedback-and-processing" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview-of-callbacks">
+<h2>Overview of Callbacks<a class="headerlink" href="#overview-of-callbacks" title="Permalink to this headline">¶</a></h2>
+<p>As the RunEngine processes instructions, it creates <em>Documents,</em> plain Python
+dictionaries organized in a <a class="reference external" href="http://nsls-ii.github.io/architecture-overview.html">specified but flexible</a> way. These Documents
+contain the data and metadata generated during the plan&#8217;s execution. Each time
+a new Document is created, the RunEngine passes it to a list of functions.
+These functions can do anyting: store the data to disk, print a line of text
+to the scren, add a point to a plot, or even transfer the data to a cluster
+for immediate processing. These functions are called &#8220;callbacks.&#8221;</p>
+<p>We subscribe callbacks to the live stream of Documents. You can think of a
+callback as a self-addressed stamped envelope. It tells the RunEngine,
+&#8220;When you create a Document, send it to this function for processing.&#8221;</p>
+<p>In order to keep up with the scan and avoiding slowing down data collection,
+most subscriptions skip some Documents when they fall behind. A table might
+skip a row, a plot might skip a point. But <em>critical</em> subscriptions &#8211; like
+saving the data &#8211; are run in a lossless mode guananteed to process all
+the Docuemnts.</p>
+</div>
+<div class="section" id="simplest-example">
+<h2>Simplest Example<a class="headerlink" href="#simplest-example" title="Permalink to this headline">¶</a></h2>
+<p>This example passes every Document to the <code class="docutils literal"><span class="pre">print</span></code> function, printing
+each Document as it is generated during data collection.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="k">print</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We will not show the lenthy output of this command here; the documents are not
+so nice to read in their raw form. See <code class="docutils literal"><span class="pre">LiveTable</span></code> below for a more refined
+implementation of this basic example.</p>
+</div>
+<div class="section" id="ways-to-invoke-callbacks">
+<h2>Ways to Invoke Callbacks<a class="headerlink" href="#ways-to-invoke-callbacks" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="subscribe-on-a-per-run-basis">
+<h3>Subscribe on a per-run basis<a class="headerlink" href="#subscribe-on-a-per-run-basis" title="Permalink to this headline">¶</a></h3>
+<p>As in the simple example above, pass a second argument to the RunEngine.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="n">dets</span> <span class="o">=</span> <span class="p">[</span><span class="n">det1</span><span class="p">,</span> <span class="n">det2</span><span class="p">,</span> <span class="n">det3</span><span class="p">]</span>
+
+<span class="gp">In [2]: </span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">))</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |       det1 |       det2 |       det3 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|         1 | 21:16:08.4 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         2 | 21:16:08.4 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         3 | 21:16:08.4 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         4 | 21:16:08.4 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">Scan scan [&#39;9837eb&#39;] (scan num: 1)</span>
+<span class="gh">Out[2]: </span><span class="go">[&#39;9837eb45-0666-4a71-a30e-00b7d3c6cfb7&#39;]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">LiveTable</span></code> takes a list of objects or names to tell it which data columns to
+show. It prints the lines one at a time, as data collection proceeds.</p>
+<p>To use multiple callbacks, you may pass a list of them.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [3]: </span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="p">[</span><span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">),</span> <span class="n">LivePlot</span><span class="p">(</span><span class="n">det1</span><span class="p">)])</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |       det1 |       det2 |       det3 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|         1 | 21:16:08.7 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         2 | 21:16:08.9 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         3 | 21:16:08.9 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         4 | 21:16:09.0 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">Scan scan [&#39;cbde5c&#39;] (scan num: 2)</span>
+<span class="gh">Out[3]: </span><span class="go">[&#39;cbde5c03-8bfb-47af-9b82-4e06f2d24ce5&#39;]</span>
+</pre></div>
+</div>
+<p>Use this more verbose form to filter the Documents by type, feeding only
+certain document types to certain callbacks.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Give all documents to LiveTable and LivePlot.</span>
+<span class="c1"># Send only &#39;start&#39; Documents to the print function.</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;all&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">),</span> <span class="n">LivePlot</span><span class="p">(</span><span class="n">det1</span><span class="p">)],</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="k">print</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>The allowed keys are &#8216;all&#8217;, &#8216;start&#8217;, &#8216;stop&#8217;, &#8216;descriptor&#8217;, and &#8216;event&#8217;,
+corresponding to the names of the Documents.</p>
+</div>
+<div class="section" id="subscribe-each-time-a-certain-plan-is-used">
+<h3>Subscribe each time a certain plan is used<a class="headerlink" href="#subscribe-each-time-a-certain-plan-is-used" title="Permalink to this headline">¶</a></h3>
+<p>Often, the same subscriptions are useful each time a certain kind of plan is
+run. To associate particular callbacks with a given plan, give the plan
+a <code class="docutils literal"><span class="pre">subs</span></code> attribute. All the built-in plans already have a <code class="docutils literal"><span class="pre">subs</span></code>
+attribute, primed with a dictionary of empty lists.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [4]: </span><span class="n">plan</span><span class="o">.</span><span class="n">subs</span>
+<span class="gh">Out[4]: </span><span class="go">{&#39;all&#39;: [], &#39;descriptor&#39;: [], &#39;event&#39;: [], &#39;start&#39;: [], &#39;stop&#39;: []}</span>
+</pre></div>
+</div>
+<p>Append functions to these lists to route Documents to them every time the plan
+is executed.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [5]: </span><span class="n">plan</span><span class="o">.</span><span class="n">subs</span><span class="p">[</span><span class="s1">&#39;all&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Now our <code class="docutils literal"><span class="pre">plan</span></code> will invoke <code class="docutils literal"><span class="pre">LiveTable</span></code> every time.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [6]: </span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |       det1 |       det2 |       det3 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|         1 | 21:16:09.2 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         2 | 21:16:09.2 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         3 | 21:16:09.2 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">|         4 | 21:16:09.2 |      5.000 |      1.765 |      1.213 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">Scan scan [&#39;3da7da&#39;] (scan num: 3)</span>
+<span class="gh">Out[6]: </span><span class="go">[&#39;3da7da37-e6a2-46d0-a8c4-9b3d9b3e5551&#39;]</span>
+</pre></div>
+</div>
+<p>Now suppose we change the detectors used by the plan.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [7]: </span><span class="n">plan</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">det3</span><span class="p">)</span>
+
+<span class="gp">In [8]: </span><span class="n">plan</span><span class="o">.</span><span class="n">detectors</span>
+<span class="gh">Out[8]: </span><span class="go">[reader: det, reader: det1, reader: det2]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">LiveTable</span></code> callback is now out of date; it still includes
+<code class="docutils literal"><span class="pre">[det1,</span> <span class="pre">det2,</span> <span class="pre">det3]</span></code>. How can we make this more convenient?</p>
+<p>To customize the callback based on the content of the plan, use a subscription
+factory: a function that takes in a plan and returns a callback function.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">make_table_with_detectors</span><span class="p">(</span><span class="n">plan</span><span class="p">):</span>
+    <span class="n">dets</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">detectors</span>
+    <span class="k">return</span> <span class="n">LiveTable</span><span class="p">(</span><span class="n">dets</span><span class="p">)</span>
+
+<span class="n">plan</span><span class="o">.</span><span class="n">sub_factories</span><span class="p">[</span><span class="s1">&#39;all&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">make_table_with_detectors</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When the plan is executed, it passes <em>itself</em> as an argument to its own
+<code class="docutils literal"><span class="pre">sub_factories</span></code>, producing customized callbacks. In this examples, a new
+<code class="docutils literal"><span class="pre">LiveTable</span></code> is made on the fly. Each time the plan is executed, new
+callbacks are made via factory functions like this one.</p>
+<p>A plan can have both normal subscriptions in <code class="docutils literal"><span class="pre">plan.subs</span></code> and subscription
+factories in <code class="docutils literal"><span class="pre">plan.sub_factories</span></code>. All will be used.</p>
+</div>
+<div class="section" id="subscribe-for-every-run">
+<h3>Subscribe for every run<a class="headerlink" href="#subscribe-for-every-run" title="Permalink to this headline">¶</a></h3>
+<p>The RunEngine itself can store a collection of subscriptions to be applied to
+every single scan it executes.</p>
+<p>Usually, if a subscription is useful for every single run, it should be added
+to a IPython configuration file and subscribed automatically at startup.</p>
+<p>The method <code class="docutils literal"><span class="pre">RE.subscribe</span></code> passes through to this method:</p>
+<dl class="method">
+<dt id="bluesky.run_engine.Dispatcher.subscribe">
+<code class="descclassname">Dispatcher.</code><code class="descname">subscribe</code><span class="sig-paren">(</span><em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.Dispatcher.subscribe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to consume documents.</p>
+<p>The Run Engine can execute callback functions at the start and end
+of a scan, and after the insertion of new Event Descriptors
+and Events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>{'start', 'descriptor', 'event', 'stop', 'all'}</em>) &#8211; </li>
+<li><strong>func</strong> (<em>callable</em>) &#8211; expecting signature like <code class="docutils literal"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
+where name is a string and document is a dict</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>token</strong> &#8211; an integer token that can be used to unsubscribe</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="bluesky.run_engine.Dispatcher.unsubscribe">
+<code class="descclassname">Dispatcher.</code><code class="descname">unsubscribe</code><span class="sig-paren">(</span><em>token</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unregister a callback function using its integer ID.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>token</strong> (<em>int</em>) &#8211; the integer token issued by <cite>subscribe</cite></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="running-callbacks-on-saved-data">
+<h3>Running Callbacks on Saved Data<a class="headerlink" href="#running-callbacks-on-saved-data" title="Permalink to this headline">¶</a></h3>
+<p>Callbacks are designed to work live, but they also work retroactively on
+completed runs with data that has been saved to disk.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This subsection documents a feature that has not been released yet.</p>
+</div>
+<p>If the data is accessible from the Data Broker (as it is if you use the standard
+configuration) then you can feed data from the Data Broker in the callbacks.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">dataportal</span> <span class="kn">import</span> <span class="n">DataBroker</span><span class="p">,</span> <span class="n">stream</span>
+<span class="n">stream</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">callback_func</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="live-table">
+<h2>Live Table<a class="headerlink" href="#live-table" title="Permalink to this headline">¶</a></h2>
+<p>As each data point is collected (i.e., as each Event Document is generated) a
+row is added to the table. For nonscalar detectors, such as area detectors,
+the sum is shown. (See LiveImage, below, to view the images themselves.)</p>
+<p>The only crucial parameter is the first one, which specifies which fields to
+include in the table. These can include specific fields (e.g., the string
+<code class="docutils literal"><span class="pre">'sclr_chan4'</span></code>) or readable objects (e.g., the object <code class="docutils literal"><span class="pre">sclr</span></code>).</p>
+<p>Numerous other parameters allow you to customize the display style.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveTable">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveTable</code><span class="sig-paren">(</span><em>fields</em>, <em>*</em>, <em>stream_name='primary'</em>, <em>print_header_interval=50</em>, <em>min_width=12</em>, <em>default_prec=3</em>, <em>extra_pad=1</em>, <em>logbook=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveTable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Live updating table</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>fields</strong> (<em>list</em>) &#8211; List of fields to add to the table.</li>
+<li><strong>stream_name</strong> (<em>str, optional</em>) &#8211; The event stream to watch for</li>
+<li><strong>print_header_interval</strong> (<em>int, optional</em>) &#8211; Reprint the header every this many lines, defaults to 50</li>
+<li><strong>min_width</strong> (<em>int, optional</em>) &#8211; The minimum width is spaces of the data columns.  Defaults to 12</li>
+<li><strong>default_prec</strong> (<em>int, optional</em>) &#8211; Precision to use if it can not be found in descriptor, defaults to 3</li>
+<li><strong>extra_pad</strong> (<em>int, optional</em>) &#8211; Number of extra spaces to put around the printed data, defaults to 1</li>
+<li><strong>logbook</strong> (<em>callable, optional</em>) &#8211; <p>Must take a sting as the first positional argument</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>def logbook(input_str):</dt>
+<dd>pass</dd>
+</dl>
+</div></blockquote>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="live-plot-for-scalar-data">
+<h2>Live Plot for Scalar Data<a class="headerlink" href="#live-plot-for-scalar-data" title="Permalink to this headline">¶</a></h2>
+<p>Plot scalars.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.LivePlot">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LivePlot</code><span class="sig-paren">(</span><em>y</em>, <em>x=None</em>, <em>legend_keys=None</em>, <em>xlim=None</em>, <em>ylim=None</em>, <em>fig=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LivePlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a function that updates a plot from a stream of Events.</p>
+<p>Note: If your figure blocks the main thread when you are trying to
+scan with this callback, call <cite>plt.ion()</cite> in your IPython session.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>y</strong> (<em>str</em>) &#8211; the name of a data field in an Event</li>
+<li><strong>x</strong> (<em>str, optional</em>) &#8211; the name of a data field in an Event
+If None, use the Event&#8217;s sequence number.</li>
+<li><strong>legend_keys</strong> (<em>list, optional</em>) &#8211; The list of keys to extract from the RunStart document and format
+in the legend of the plot. The legend will always show the
+scan_id followed by a colon (&#8220;1: &#8221;).  Each</li>
+<li><strong>xlim</strong> (<em>tuple</em>) &#8211; passed to Axes.set_xlim</li>
+<li><strong>ylim</strong> (<em>tuple</em>) &#8211; passed to Axes.set_ylim</li>
+<li><strong>additional keyword arguments are passed through to Axes.plot.</strong> (<em>All</em>) &#8211; </li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">my_plotter</span> <span class="o">=</span> <span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="n">legend_keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sample&#39;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span><span class="p">(</span><span class="n">my_scan</span><span class="p">,</span> <span class="n">my_plotter</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="live-image-plot">
+<h2>Live Image Plot<a class="headerlink" href="#live-image-plot" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="bluesky.callbacks.broker.LiveImage">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.broker.</code><code class="descname">LiveImage</code><span class="sig-paren">(</span><em>field</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.broker.LiveImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stream 2D images in a cross-section viewer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>field</strong> (<em>string</em>) &#8211; name of data field in an Event</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Requires a matplotlib fix that is not released as of this writing. The
+relevant commit is a951b7.</p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="live-raster-plot-heat-map">
+<h2>Live Raster Plot (Heat Map)<a class="headerlink" href="#live-raster-plot-heat-map" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="bluesky.callbacks.LiveRaster">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.</code><code class="descname">LiveRaster</code><span class="sig-paren">(</span><em>raster_shape</em>, <em>I</em>, <em>*</em>, <em>clim=None</em>, <em>cmap='viridis'</em>, <em>xlabel='x'</em>, <em>ylabel='y'</em>, <em>extent=None</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.LiveRaster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simple callback that fills in values based on a raster</p>
+<p>This simply wraps around a <cite>AxesImage</cite>.  seq_num is used to
+determine which pixel to fill in</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>raster_shap</strong> (<em>tuple</em>) &#8211; The (row, col) shape of the raster</li>
+<li><strong>I</strong> (<em>str</em>) &#8211; The field to use for the color of the markers</li>
+<li><strong>clim</strong> (<em>tuple, optional</em>) &#8211; The color limits</li>
+<li><strong>cmap</strong> (<em>str or colormap, optional</em>) &#8211; The color map to use</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="automated-data-export">
+<h2>Automated Data Export<a class="headerlink" href="#automated-data-export" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="exporting-image-data-as-tiff-files">
+<h3>Exporting Image Data as TIFF Files<a class="headerlink" href="#exporting-image-data-as-tiff-files" title="Permalink to this headline">¶</a></h3>
+<p>First, compose a filename template. This is a simple working example.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;output_dir/{start.scan_id}_{event.seq_num}.tiff&quot;</span>
+</pre></div>
+</div>
+<p>The template can include metadata or event data from the scan.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">template</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;output_dir/{start.scan_id}_{start.sample_name}_&quot;</span>
+            <span class="s2">&quot;{event.data.temperature}_{event.seq_num}.tiff&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It can be handy to use the metadata to sort the images into directories.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;{start.user}/{start.scan_id}/{event.seq_num}.tiff&quot;</span>
+</pre></div>
+</div>
+<p>If each image data point is actually a stack of 2D image planes, the template
+must also include <code class="docutils literal"><span class="pre">{i}</span></code>, which will count through the iamge planes in the
+stack.</p>
+<p>(Most metadata comes from the &#8220;start&#8221; document, hence <code class="docutils literal"><span class="pre">start.scan_id</span></code> above.
+See
+<a class="reference external" href="https://nsls-ii.github.io/architecture-overview.html">here</a> for a more
+comprehensive explanation of what is in the different documents.)</p>
+<p>Next, create an exporter.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">LiveTiffExporter</span>
+
+<span class="n">exporter</span> <span class="o">=</span> <span class="n">LiveTiffExporter</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">template</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally, to export all the images from a run when it finishes running, wrap the
+exporter in <code class="docutils literal"><span class="pre">post_run</span></code> and subscribe.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">post_run</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">post_run</span><span class="p">(</span><span class="n">exporter</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>It also possible to write TIFFs live, hence the name <code class="docutils literal"><span class="pre">LiveTiffExporter</span></code>, but
+there is an important disadvantage to this: in order to ensure that every image
+is saved, a lossless subscription must be used. And, as a consequence, the
+progress of the experiment may be intermittently slowed while data is written
+to disk. In some circumstances, this affect on the timing of the experiment may
+not be acceptable.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">subscribe_lossless</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">exporter</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are more configuration options avaiable, as given in detail below.</p>
+<dl class="class">
+<dt id="bluesky.callbacks.broker.LiveTiffExporter">
+<em class="property">class </em><code class="descclassname">bluesky.callbacks.broker.</code><code class="descname">LiveTiffExporter</code><span class="sig-paren">(</span><em>field</em>, <em>template</em>, <em>dryrun=False</em>, <em>overwrite=False</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.callbacks.broker.LiveTiffExporter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save TIFF files.</p>
+<p>Incorporate metadata and data from individual data points in the filenames.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>field</strong> (<em>str</em>) &#8211; a data key, e.g., &#8216;image&#8217;</li>
+<li><strong>template</strong> (<em>str</em>) &#8211; A templated file path, where curly brackets will be filled in with
+the attributes of &#8216;start&#8217;, &#8216;event&#8217;, and (for image stacks) &#8216;i&#8217;,
+a sequential number.
+e.g., &#8220;dir/scan{start.scan_id}_by_{start.experimenter}_{i}.tiff&#8221;</li>
+<li><strong>dryrun</strong> (<em>bool</em>) &#8211; default to False; if True, do not write any files</li>
+<li><strong>overwrite</strong> (<em>bool</em>) &#8211; default to False, raising an OSError if file exists</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="LiveTiffExporter.filenames">
+<code class="descname">filenames</code><a class="headerlink" href="#LiveTiffExporter.filenames" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>list of filenames written in ongoing or most recent run</em></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="export-all-data-and-metadata-in-an-hdf5-file">
+<h3>Export All Data and Metadata in an HDF5 File<a class="headerlink" href="#export-all-data-and-metadata-in-an-hdf5-file" title="Permalink to this headline">¶</a></h3>
+<p>A Stop Document is emitted at the end of every run. Subscribe to it, using it
+as a cue to load the dataset via the DataBroker and export an HDF5 file
+using <a class="reference external" href="https://nsls-ii.github.io/suitcase">suitcase</a>.</p>
+<p>Working example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">databroker</span> <span class="kn">import</span> <span class="n">DataBroker</span> <span class="k">as</span> <span class="n">db</span>
+<span class="kn">import</span> <span class="nn">suitcase</span>
+
+<span class="k">def</span> <span class="nf">suitcase_as_callback</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">]</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="s1">&#39;{}.h5&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">run_start_uid</span><span class="p">)</span>
+    <span class="n">suitcase</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">suitcase_as_callback</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="verify-data-has-been-saved">
+<h2>Verify Data Has Been Saved<a class="headerlink" href="#verify-data-has-been-saved" title="Permalink to this headline">¶</a></h2>
+<p>The following verifies that all Documents and external files from a run have
+been saved to disk and are accessible from the DataBroker.  It prints a message
+indicating success or failure.</p>
+<p>Note: If the data collection machine is not able to access the machine where
+some external data is being saved, it will indicate failure. This can be a
+false alarm.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks.broker</span> <span class="kn">import</span> <span class="n">post_run</span><span class="p">,</span> <span class="n">verify_files_saved</span>
+
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">post_run</span><span class="p">(</span><span class="n">verify_files_saved</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="writing-custom-callbacks">
+<h2>Writing Custom Callbacks<a class="headerlink" href="#writing-custom-callbacks" title="Permalink to this headline">¶</a></h2>
+<p>Any function that accepts a Python dictionary as its argument can be used as
+a callback. Refer to simple examples above to get started.</p>
+<div class="section" id="two-simple-custom-callbacks">
+<h3>Two Simple Custom Callbacks<a class="headerlink" href="#two-simple-custom-callbacks" title="Permalink to this headline">¶</a></h3>
+<p>These simple examples illustrate the concept and the usage.</p>
+<p>First, we define a function that takes two arguments</p>
+<ol class="arabic simple">
+<li>the name of the Document type (&#8216;start&#8217;, &#8216;stop&#8217;, &#8216;event&#8217;, or &#8216;descriptor&#8217;)</li>
+<li>the Document itself, a dictionary</li>
+</ol>
+<p>This is the <em>callback</em>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [9]: </span><span class="k">def</span> <span class="nf">print_data</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+<span class="gp">   ...: </span>    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Measured: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])</span>
+<span class="gp">   ...: </span>
+</pre></div>
+</div>
+<p>Then, we tell the RunEngine to call this function on each Event Document.
+We are setting up a <em>subscription</em>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="n">s</span> <span class="o">=</span> <span class="n">Count</span><span class="p">([</span><span class="n">det</span><span class="p">])</span>
+
+<span class="gp">In [11]: </span><span class="n">RE</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="n">print_data</span><span class="p">})</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |       det1 |       det2 |       det3 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|         1 | 21:16:09.9 |            |            |            |</span>
+<span class="go">Measured: {&#39;det&#39;: 0.00033546262790251185}</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">Count count [&#39;cfa3ce&#39;] (scan num: 4)</span>
+<span class="gh">Out[11]: </span><span class="go">[&#39;cfa3ce23-c584-471b-94a0-79e51e9ee60a&#39;]</span>
+</pre></div>
+</div>
+<p>Each time the RunEngine generates a new Event Doucment (i.e., data point)
+<code class="docutils literal"><span class="pre">print_data</span></code> is called.</p>
+<p>There are five kinds of subscriptions matching the four kinds of Documents plus
+an &#8216;all&#8217; subscription that receives all Documents.</p>
+<ul class="simple">
+<li>&#8216;start&#8217;</li>
+<li>&#8216;descriptor&#8217;</li>
+<li>&#8216;event&#8217;</li>
+<li>&#8216;stop&#8217;</li>
+<li>&#8216;all&#8217;</li>
+</ul>
+<p>We can use the &#8216;stop&#8217; subscription to trigger automatic end-of-run activities.
+For example:</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [12]: </span><span class="k">def</span> <span class="nf">celebrate</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="k">print</span><span class="p">(</span><span class="s2">&quot;The run is finished!&quot;</span><span class="p">)</span>
+<span class="gp">   ....: </span>
+</pre></div>
+</div>
+<p>Let&#8217;s use both <code class="docutils literal"><span class="pre">print_data</span></code> and <code class="docutils literal"><span class="pre">celebrate</span></code> at once.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [13]: </span><span class="n">RE</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="n">print_data</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="n">celebrate</span><span class="p">})</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|   seq_num |       time |       det1 |       det2 |       det3 |</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">|         1 | 21:16:10.1 |            |            |            |</span>
+<span class="go">Measured: {&#39;det&#39;: 0.00033546262790251185}</span>
+<span class="go">The run is finished!</span>
+<span class="go">+-----------+------------+------------+------------+------------+</span>
+<span class="go">Count count [&#39;20daf8&#39;] (scan num: 5)</span>
+<span class="gh">Out[13]: </span><span class="go">[&#39;20daf835-0748-49ae-9fdf-6877d2abf4aa&#39;]</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="using-multiple-document-types">
+<h3>Using multiple document types<a class="headerlink" href="#using-multiple-document-types" title="Permalink to this headline">¶</a></h3>
+<p>Some tasks use only one Document type, but we often need to use more than one.
+For example, LiveTable uses &#8216;start&#8217; kick off the creation of a fresh table,
+it uses &#8216;event&#8217; to see the data, and it uses &#8216;stop&#8217; to draw the bottom border.</p>
+<p>A convenient pattern for this kind of subscription is a class with a method
+for each Document type.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.callbacks</span> <span class="kn">import</span> <span class="n">CallbackBase</span>
+<span class="k">class</span> <span class="nc">MyCallback</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;start&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;descriptor&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;event&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;I got a new &#39;stop&#39; Document&quot;</span><span class="p">)</span>
+        <span class="c1"># Do something</span>
+</pre></div>
+</div>
+<p>The base class, <code class="docutils literal"><span class="pre">CallbackBase</span></code>, takes care of dispatching each Document to
+the corresponding method. If your application does not need all four, you may
+simple omit methods that aren&#8217;t required.</p>
+</div>
+</div>
+<div class="section" id="lossless-subscriptions-for-critical-functions">
+<h2>Lossless Subscriptions for Critical Functions<a class="headerlink" href="#lossless-subscriptions-for-critical-functions" title="Permalink to this headline">¶</a></h2>
+<p>Because subscriptions are processed during a scan, it&#8217;s possible that they
+can slow down data collection. We mitigate this by making the subscriptions
+<em>lossy</em>. That is, some Documents will be skipped if the subscription
+functions take too long and fall behind. For the purposes of real-time
+feedback, this is usually acceptable. For other purposes, like saving data to
+metadatastore, it is not.</p>
+<p>Critical subscriptions are subscriptions that are executed on every Document
+no matter how long they take to run, potentially slowing down data collection
+but guaranteeing that all tasks are completed but the scan proceeds.</p>
+<p>For example, in the standard configuration, metadatastore insertion functions
+are registered as critical subscriptions.</p>
+<p>If your subscription requires the complete, lossless stream of Documents
+and you are will to accept the possibility of slowing down data
+collection while that stream in processed, you can register your own critical
+subscriptions.</p>
+<dl class="method">
+<dt id="bluesky.run_engine.RunEngine.subscribe_lossless">
+<code class="descclassname">RunEngine.</code><code class="descname">subscribe_lossless</code><span class="sig-paren">(</span><em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.RunEngine.subscribe_lossless" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a callback function to consume documents.</p>
+<p>Functions registered here are considered &#8220;critical.&#8221; They receive
+a lossless stream of Event documents. If they generate an exception
+they always abort the run. (In contrast, exceptions from normal
+subscriptions are ignored by default.)</p>
+<p>The Run Engine can execute callback functions at the start and end
+of a scan, and after the insertion of new Event Descriptors
+and Events.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>{'start', 'descriptor', 'event', 'stop', 'all'}</em>) &#8211; </li>
+<li><strong>func</strong> (<em>callable</em>) &#8211; expecting signature like <code class="docutils literal"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
+where name is a string and document is a dict</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>token</strong> &#8211; an integer token that can be used to unsubscribe</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="bluesky.run_engine.RunEngine.unsubscribe_lossless">
+<code class="descclassname">RunEngine.</code><code class="descname">unsubscribe_lossless</code><span class="sig-paren">(</span><em>token</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.RunEngine.unsubscribe_lossless" title="Permalink to this definition">¶</a></dt>
+<dd><p>Un-register a &#8216;critical&#8217; callback function.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>token</strong> (<em>int</em>) &#8211; an integer token returned by _subscribe_lossless</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="state-machine.html" class="btn btn-neutral float-right" title="Interruptions" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="bluesky.plans.Tweak.html" class="btn btn-neutral" title="bluesky.plans.Tweak" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

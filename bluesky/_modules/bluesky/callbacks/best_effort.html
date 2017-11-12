@@ -1,0 +1,763 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>bluesky.callbacks.best_effort &mdash; bluesky 1.0.0.post4+ga3f23fa documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../../genindex.html"/>
+        <link rel="search" title="Search" href="../../../search.html"/>
+    <link rel="top" title="bluesky 1.0.0.post4+ga3f23fa documentation" href="../../../index.html"/>
+        <link rel="up" title="Module code" href="../../index.html"/> 
+
+  
+  <script src="../../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0.post4+ga3f23fa
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../plans_intro.html">Basic Usage &amp; Intro to Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../documents.html">Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../plans.html">Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../callbacks.html">Live Visualization and Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../simulation.html">Simulation and Error Checking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../progress-bar.html">Progress Bar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../event_descriptors.html">Event Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../debugging.html">Debugging and Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../run_engine_api.html">RunEngine API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../magics.html">IPython ‘Magics’ [Experimental]</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../comparison-with-spec.html">Comparison with SPEC</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../hardware.html">How Bluesky Interfaces with Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../msg.html">Message Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../run_engine.html">The RunEngine run loop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">bluesky</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>bluesky.callbacks.best_effort</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for bluesky.callbacks.best_effort</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">cycler</span> <span class="k">import</span> <span class="n">cycler</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="k">import</span> <span class="n">StringIO</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">pprint</span> <span class="k">import</span> <span class="n">pformat</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="k">import</span> <span class="n">warn</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
+
+<span class="kn">from</span> <span class="nn">.core</span> <span class="k">import</span> <span class="n">CallbackBase</span><span class="p">,</span> <span class="n">LiveTable</span>
+<span class="kn">from</span> <span class="nn">.mpl_plotting</span> <span class="k">import</span> <span class="n">LivePlot</span><span class="p">,</span> <span class="n">LiveGrid</span><span class="p">,</span> <span class="n">LiveScatter</span>
+<span class="kn">from</span> <span class="nn">.fitting</span> <span class="k">import</span> <span class="n">PeakStats</span>
+
+
+<span class="k">class</span> <span class="nc">BestEffortCallback</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># internal state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_table</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_heading_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="c1"># maps descriptor uid to dict which maps data key to LivePlot instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># same structure as live_plots</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_motor_heuristic</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_names_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># public options</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">overplot</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">noplot_streams</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;baseline&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">omit_single_point_plot</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># public data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks</span> <span class="o">=</span> <span class="n">PeakResults</span><span class="p">()</span>
+
+        <span class="c1"># hack to handle the bottom border of the table</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="BestEffortCallback.enable_heading"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.enable_heading.html#bluesky.callbacks.best_effort.BestEffortCallback.enable_heading">[docs]</a>    <span class="k">def</span> <span class="nf">enable_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Print timestamp and IDs at the top of a run.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_heading_enabled</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.disable_heading"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.disable_heading.html#bluesky.callbacks.best_effort.BestEffortCallback.disable_heading">[docs]</a>    <span class="k">def</span> <span class="nf">disable_heading</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Opposite of enable_heading()&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_heading_enabled</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.enable_table"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.enable_table.html#bluesky.callbacks.best_effort.BestEffortCallback.enable_table">[docs]</a>    <span class="k">def</span> <span class="nf">enable_table</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Print hinted readings from the &#39;primary&#39; stream in a LiveTable.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.disable_table"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.disable_table.html#bluesky.callbacks.best_effort.BestEffortCallback.disable_table">[docs]</a>    <span class="k">def</span> <span class="nf">disable_table</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Opposite of enable_table()&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.enable_baseline"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.enable_baseline.html#bluesky.callbacks.best_effort.BestEffortCallback.enable_baseline">[docs]</a>    <span class="k">def</span> <span class="nf">enable_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Print hinted fields from the &#39;baseline&#39; stream.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.disable_baseline"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.disable_baseline.html#bluesky.callbacks.best_effort.BestEffortCallback.disable_baseline">[docs]</a>    <span class="k">def</span> <span class="nf">disable_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Opposite of enable_baseline()&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.enable_plots"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.enable_plots.html#bluesky.callbacks.best_effort.BestEffortCallback.enable_plots">[docs]</a>    <span class="k">def</span> <span class="nf">enable_plots</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Plot hinted fields from all streams not in ``noplot_streams``.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="BestEffortCallback.disable_plots"><a class="viewcode-back" href="../../../generated/bluesky.callbacks.best_effort.BestEffortCallback.disable_plots.html#bluesky.callbacks.best_effort.BestEffortCallback.disable_plots">[docs]</a>    <span class="k">def</span> <span class="nf">disable_plots</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Do not plot anything.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span> <span class="ow">or</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="o">=</span> <span class="n">doc</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plan_hints</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="c1"># Prepare a guess about the dimensions (independent variables) in case</span>
+        <span class="c1"># we need it.</span>
+        <span class="n">motors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;motors&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">motors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">GUESS</span> <span class="o">=</span> <span class="p">[([</span><span class="n">motor</span><span class="p">],</span> <span class="s1">&#39;primary&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">motor</span> <span class="ow">in</span> <span class="n">motors</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">GUESS</span> <span class="o">=</span> <span class="p">[([</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="s1">&#39;primary&#39;</span><span class="p">)]</span>
+
+        <span class="c1"># Ues the guess if there is not hint about dimensions.</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan_hints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dimensions&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">dimensions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_motor_heuristic</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">dimensions</span> <span class="o">=</span> <span class="n">GUESS</span>
+
+        <span class="c1"># We can only cope with all the dimensions belonging to the same</span>
+        <span class="c1"># stream unless we resample. We are not doing to handle that yet.</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">dimensions</span><span class="p">))</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_motor_heuristic</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">dimensions</span> <span class="o">=</span> <span class="n">GUESS</span>  <span class="c1"># Fall back on our GUESS.</span>
+            <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;We are ignoring the dimensions hinted because we cannot &quot;</span>
+                 <span class="s2">&quot;combine streams.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span>
+                           <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="n">dimensions</span>
+                           <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">field</span><span class="p">]</span>
+        <span class="n">_</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span> <span class="o">=</span> <span class="n">dimensions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Print heading.</span>
+        <span class="n">tt</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">utctimetuple</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_heading_enabled</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Transient Scan ID: </span><span class="si">{0}</span><span class="s2">     Time: </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">],</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y/%m/</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">,</span> <span class="n">tt</span><span class="p">)))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Persistent Unique Scan ID: &#39;</span><span class="si">{0}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]))</span>
+
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
+        <span class="n">stream_name</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;primary&#39;</span><span class="p">)</span>  <span class="c1"># fall back for old docs</span>
+
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_names_seen</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stream_names_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stream_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;New stream: </span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stream_name</span><span class="p">))</span>
+
+        <span class="n">columns</span> <span class="o">=</span> <span class="n">hinted_fields</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># ## This deals with old documents. ## #</span>
+
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="o">==</span> <span class="s1">&#39;primary&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_motor_heuristic</span><span class="p">:</span>
+            <span class="c1"># We stashed object names in self.dim_fields, which we now need to</span>
+            <span class="c1"># look up the actual fields for.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_motor_heuristic</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">fixed_dim_fields</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">obj_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">fields</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">obj_name</span><span class="p">,</span> <span class="p">{})[</span><span class="s1">&#39;fields&#39;</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">fields</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;object_keys&#39;</span><span class="p">][</span><span class="n">obj_name</span><span class="p">]</span>
+                <span class="n">fixed_dim_fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span> <span class="o">=</span> <span class="n">fixed_dim_fields</span>
+
+        <span class="c1"># ## TABLE ## #</span>
+
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">:</span>
+            <span class="c1"># Ensure that no independent variables (&#39;dimensions&#39;) are</span>
+            <span class="c1"># duplicated here.</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_table_enabled</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_table</span> <span class="o">=</span> <span class="n">LiveTable</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span><span class="p">)</span> <span class="o">+</span> <span class="n">columns</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_table</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_table</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># ## DECIDE WHICH KIND OF PLOT CAN BE USED ## #</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">noplot_streams</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_points&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="p">(</span><span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">omit_single_point_plot</span><span class="p">):</span>
+            <span class="k">return</span>
+
+        <span class="c1"># This is a heuristic approach until we think of how to hint this in a</span>
+        <span class="c1"># generalizable way.</span>
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">:</span>
+            <span class="n">dim_fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dim_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>  <span class="c1"># &#39;time&#39; once LivePlot can do that</span>
+
+        <span class="c1"># Create a figure or reuse an existing one.</span>
+
+        <span class="n">fig_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> vs </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">columns</span><span class="p">)),</span>
+                                     <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overplot</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># If any open figure matches &#39;figname {number}&#39;, use it. If there</span>
+            <span class="c1"># are multiple, the most recently touched one will be used.</span>
+            <span class="n">pat1</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="s1">&#39;$&#39;</span><span class="p">)</span>
+            <span class="n">pat2</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="s1">&#39; \d+$&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_figlabels</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">pat1</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pat2</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+                    <span class="n">fig_name</span> <span class="o">=</span> <span class="n">label</span>
+                    <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">fig_name</span><span class="p">):</span>
+                <span class="c1"># Generate a unique name by appending a number.</span>
+                <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+                    <span class="n">new_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fig_name</span><span class="p">,</span> <span class="n">number</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">new_name</span><span class="p">):</span>
+                        <span class="n">fig_name</span> <span class="o">=</span> <span class="n">new_name</span>
+                        <span class="k">break</span>
+        <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">ndims</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="c1"># we need 1 or 2 dims to do anything, do not make empty figures</span>
+            <span class="k">return</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fig_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span><span class="p">:</span>
+            <span class="c1"># This is apparently a fresh figure. Make axes.</span>
+            <span class="c1"># The complexity here is due to making a shared x axis. This can be</span>
+            <span class="c1"># simplified when Figure supports the `subplots` method in a future</span>
+            <span class="c1"># release of matplotlib.</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mf">6.4</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">950</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="o">*</span> <span class="mi">400</span><span class="p">)</span> <span class="o">/</span> <span class="n">fig</span><span class="o">.</span><span class="n">dpi</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
+                    <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">,</span> <span class="s1">&#39;sharey&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we now support 3D?!&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span>
+                                         <span class="o">**</span><span class="n">share_kwargs</span><span class="p">)</span>
+        <span class="n">axes</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span>
+
+        <span class="c1"># ## LIVE PLOT AND PEAK ANALYSIS ## #</span>
+
+        <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">x_key</span><span class="p">,</span> <span class="o">=</span> <span class="n">dim_fields</span>
+            <span class="k">for</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">y_key</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;number&#39;</span><span class="p">,):</span>
+                    <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Omitting </span><span class="si">{}</span><span class="s2"> from plot because dtype is </span><span class="si">{}</span><span class="s2">&quot;</span>
+                         <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">y_key</span><span class="p">,</span> <span class="n">dtype</span><span class="p">))</span>
+                    <span class="k">continue</span>
+                <span class="c1"># Create an instance of LivePlot and an instance of PeakStats.</span>
+                <span class="n">live_plot</span> <span class="o">=</span> <span class="n">LivePlotPlusPeaks</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                                              <span class="n">peak_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="p">)</span>
+                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="n">peak_stats</span> <span class="o">=</span> <span class="n">PeakStats</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">)</span>
+                <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+                <span class="c1"># Stash them in state.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_plot</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">peak_stats</span>
+
+            <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="c1"># Decide whether to use LiveGrid or LiveScatter. LiveScatter is the</span>
+            <span class="c1"># safer one to use, so it is the fallback..</span>
+            <span class="n">gridding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gridding&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gridding</span> <span class="o">==</span> <span class="s1">&#39;rectilinear&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span> <span class="o">=</span> <span class="n">dim_fields</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">extents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;extents&#39;</span><span class="p">]</span>
+                    <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Need both &#39;shape&#39; and &#39;extents&#39; in plan metadata to &quot;</span>
+                         <span class="s2">&quot;create LiveGrid.&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">data_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extents</span><span class="p">])</span>
+                    <span class="n">y_step</span><span class="p">,</span> <span class="n">x_step</span> <span class="o">=</span> <span class="n">data_range</span> <span class="o">/</span> <span class="p">[</span><span class="n">s</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
+                    <span class="n">adjusted_extent</span> <span class="o">=</span> <span class="p">[</span><span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                       <span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                       <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                       <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                        <span class="c1"># MAGIC NUMBERS based on what tacaswell thinks looks OK</span>
+                        <span class="n">data_aspect_ratio</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">data_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="n">MAR</span> <span class="o">=</span> <span class="mi">2</span>
+                        <span class="k">if</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">MAR</span> <span class="o">&lt;</span> <span class="n">data_aspect_ratio</span> <span class="o">&lt;</span> <span class="n">MAR</span><span class="p">):</span>
+                            <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;equal&#39;</span>
+                            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;box-forced&#39;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;auto&#39;</span>
+                            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;datalim&#39;</span><span class="p">)</span>
+
+                        <span class="n">live_grid</span> <span class="o">=</span> <span class="n">LiveGrid</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
+                                             <span class="n">xlabel</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span>
+                                             <span class="n">extent</span><span class="o">=</span><span class="n">adjusted_extent</span><span class="p">,</span>
+                                             <span class="n">aspect</span><span class="o">=</span><span class="n">aspect</span><span class="p">,</span>
+                                             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+
+                        <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                        <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_grid</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span> <span class="o">=</span> <span class="n">dim_fields</span>
+                <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">extents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;extents&#39;</span><span class="p">]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                        <span class="n">xlim</span> <span class="o">=</span> <span class="n">ylim</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span> <span class="o">=</span> <span class="n">extents</span>
+                    <span class="n">live_scatter</span> <span class="o">=</span> <span class="n">LiveScatter</span><span class="p">(</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
+                                               <span class="n">xlim</span><span class="o">=</span><span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="n">ylim</span><span class="p">,</span>
+                                               <span class="c1"># Let clim autoscale.</span>
+                                               <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+                    <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                    <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_scatter</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we do not support 3D+ in BEC yet &quot;</span>
+                                      <span class="s2">&quot;(and it should have bailed above)&quot;</span><span class="p">)</span>
+
+        <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;primary&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_table</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># Show the baseline readings.</span>
+        <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;baseline&#39;</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="n">hinted_fields</span><span class="p">(</span><span class="n">descriptor</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span><span class="p">:</span>
+                <span class="n">file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span>
+                <span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;End-of-run&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">file</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+                <span class="n">subject</span> <span class="o">=</span> <span class="s1">&#39;Start-of-run&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> baseline readings:&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">subject</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+                <span class="n">border</span> <span class="o">=</span> <span class="s1">&#39;+&#39;</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="mi">32</span> <span class="o">+</span> <span class="s1">&#39;+&#39;</span> <span class="o">+</span> <span class="s1">&#39;-&#39;</span> <span class="o">*</span> <span class="mi">32</span> <span class="o">+</span> <span class="s1">&#39;+&#39;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">border</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;| </span><span class="si">{:&gt;30}</span><span class="s1"> | </span><span class="si">{:&lt;30}</span><span class="s1"> |&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">),</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">border</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">y_key</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]:</span>
+            <span class="n">live_plot</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">y_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">live_plot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="n">live_grid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">y_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">live_grid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="n">live_sc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">y_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">live_sc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">live_sc</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="n">peak_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">y_key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">peak_stats</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_table</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># Compute peak stats and build results container.</span>
+        <span class="n">ps_by_key</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># map y_key to PeakStats instance</span>
+        <span class="k">for</span> <span class="n">peak_stats</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">ps</span> <span class="ow">in</span> <span class="n">peak_stats</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">ps</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="n">ps_by_key</span><span class="p">[</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">ps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ps_by_key</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">live_plots</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">live_plot</span> <span class="ow">in</span> <span class="n">live_plots</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">live_grids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">live_grid</span> <span class="ow">in</span> <span class="n">live_grids</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">live_scatters</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">live_scatter</span> <span class="ow">in</span> <span class="n">live_scatters</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_enabled</span><span class="p">:</span>
+            <span class="c1"># Print baseline below bottom border of table.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_names_seen</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_table</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="k">class</span> <span class="nc">PeakResults</span><span class="p">:</span>
+    <span class="n">ATTRS</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;com&#39;</span><span class="p">,</span> <span class="s1">&#39;cen&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;fwhm&#39;</span><span class="p">,</span> <span class="s1">&#39;nlls&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">:</span>
+            <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ps_dict</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">ps</span> <span class="ow">in</span> <span class="n">ps_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">:</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)[</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Keys are: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This is a proper eval-able repr, but with some manually-tweaked</span>
+        <span class="c1"># whitespace to make it easier to prase.</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;{&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ATTRS</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">{}</span><span class="s2">&#39;:&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attr</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pformat</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">),</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">):</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;    </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">line</span><span class="p">))</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;}&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">LivePlotPlusPeaks</span><span class="p">(</span><span class="n">LivePlot</span><span class="p">):</span>
+    <span class="c1"># Track state of axes, which may share instances of LivePlotPlusPeaks.</span>
+    <span class="n">__labeled</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>  <span class="c1"># map ax to True/False</span>
+    <span class="n">__visible</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>  <span class="c1"># map ax to True/False</span>
+    <span class="n">__instances</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>  <span class="c1"># map ax to list of instances</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">peak_results</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peak_results</span> <span class="o">=</span> <span class="n">peak_results</span>
+
+        <span class="n">ax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span>  <span class="c1"># for brevity</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__visible</span><span class="p">:</span>
+            <span class="c1"># This is the first instance of LivePlotPlusPeaks on these axes.</span>
+            <span class="c1"># Set up matplotlib event handling.</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">__visible</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="k">def</span> <span class="nf">toggle</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">event</span><span class="o">.</span><span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;P&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__visible</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span> <span class="o">=</span> <span class="o">~</span><span class="bp">self</span><span class="o">.</span><span class="n">__visible</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">instance</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__instances</span><span class="p">[</span><span class="n">ax</span><span class="p">]:</span>
+                        <span class="n">instance</span><span class="o">.</span><span class="n">check_visibility</span><span class="p">()</span>
+
+            <span class="n">ax</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">mpl_connect</span><span class="p">(</span><span class="s1">&#39;key_press_event&#39;</span><span class="p">,</span> <span class="n">toggle</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__instances</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__instances</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__instances</span><span class="p">[</span><span class="n">ax</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">check_visibility</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__visible</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">plot_annotations</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">artist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span><span class="p">:</span>
+                    <span class="n">artist</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">artist</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span><span class="p">:</span>
+                    <span class="n">artist</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;best&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw_idle</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">plot_annotations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">styles</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="s1">&#39;color&#39;</span><span class="p">,</span> <span class="s1">&#39;kr&#39;</span><span class="p">))</span>
+        <span class="n">vlines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">style</span><span class="p">,</span> <span class="n">attr</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">styles</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;cen&#39;</span><span class="p">,</span> <span class="s1">&#39;com&#39;</span><span class="p">]):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">peak_results</span><span class="p">[</span><span class="n">attr</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">]</span>
+            <span class="c1"># Only put labels in this legend once per axis.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__labeled</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;_no_legend_&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="n">attr</span>
+            <span class="n">vlines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span> <span class="o">**</span><span class="n">style</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__labeled</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__arts</span> <span class="o">=</span> <span class="n">vlines</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_visibility</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">hinted_fields</span><span class="p">(</span><span class="n">descriptor</span><span class="p">):</span>
+    <span class="c1"># Figure out which columns to put in the table.</span>
+    <span class="n">obj_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;object_keys&#39;</span><span class="p">])</span>
+    <span class="c1"># We will see if these objects hint at whether</span>
+    <span class="c1"># a subset of their data keys (&#39;fields&#39;) are interesting. If they</span>
+    <span class="c1"># did, we&#39;ll use those. If these didn&#39;t, we know that the RunEngine</span>
+    <span class="c1"># *always* records their complete list of fields, so we can use</span>
+    <span class="c1"># them all unselectively.</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">obj_name</span> <span class="ow">in</span> <span class="n">obj_names</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">obj_name</span><span class="p">,</span> <span class="p">{})[</span><span class="s1">&#39;fields&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">fields</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;object_keys&#39;</span><span class="p">][</span><span class="n">obj_name</span><span class="p">]</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">columns</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../../',
+            VERSION:'1.0.0.post4+ga3f23fa',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

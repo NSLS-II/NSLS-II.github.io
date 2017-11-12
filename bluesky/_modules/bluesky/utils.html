@@ -1,0 +1,1464 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>bluesky.utils &mdash; bluesky 1.0.0.post4+ga3f23fa documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="bluesky 1.0.0.post4+ga3f23fa documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0.post4+ga3f23fa
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">User Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../plans_intro.html">Basic Usage &amp; Intro to Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../documents.html">Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../plans.html">Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../callbacks.html">Live Visualization and Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulation.html">Simulation and Error Checking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../progress-bar.html">Progress Bar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../event_descriptors.html">Event Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../debugging.html">Debugging and Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../run_engine_api.html">RunEngine API Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../magics.html">IPython ‘Magics’ [Experimental]</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../comparison-with-spec.html">Comparison with SPEC</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../hardware.html">How Bluesky Interfaces with Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../msg.html">Message Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../run_engine.html">The RunEngine run loop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">bluesky</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>bluesky.utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for bluesky.utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">signal</span>
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">reduce</span>
+<span class="kn">from</span> <span class="nn">weakref</span> <span class="k">import</span> <span class="n">ref</span><span class="p">,</span> <span class="n">WeakKeyDictionary</span>
+<span class="kn">import</span> <span class="nn">types</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Iterable</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">cycler</span> <span class="k">import</span> <span class="n">cycler</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span><span class="p">,</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">tqdm._utils</span> <span class="k">import</span> <span class="n">_environ_cols_wrapper</span><span class="p">,</span> <span class="n">_term_move_up</span><span class="p">,</span> <span class="n">_unicode</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># cytools is a drop-in replacement for toolz, implemented in Cython</span>
+    <span class="kn">from</span> <span class="nn">cytools</span> <span class="k">import</span> <span class="n">groupby</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">toolz</span> <span class="k">import</span> <span class="n">groupby</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Msg</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Msg_base&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;command&#39;</span><span class="p">,</span> <span class="s1">&#39;obj&#39;</span><span class="p">,</span> <span class="s1">&#39;args&#39;</span><span class="p">,</span> <span class="s1">&#39;kwargs&#39;</span><span class="p">])):</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Msg</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">: (</span><span class="si">{}</span><span class="s1">), </span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">command</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">RunEngineControlException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">RequestAbort</span><span class="p">(</span><span class="n">RunEngineControlException</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">RequestStop</span><span class="p">(</span><span class="n">RunEngineControlException</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">RunEngineInterrupted</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">NoReplayAllowed</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">IllegalMessageSequence</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">FailedPause</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">FailedStatus</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="s1">&#39;Exception to be raised if a SatusBase object reports done but failed&#39;</span>
+
+
+<span class="k">class</span> <span class="nc">InvalidCommand</span><span class="p">(</span><span class="ne">KeyError</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">PlanHalt</span><span class="p">(</span><span class="ne">GeneratorExit</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">RampFail</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="n">PLAN_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">GeneratorType</span><span class="p">,)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">CoroutineType</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="c1"># &lt; py35</span>
+    <span class="k">pass</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">PLAN_TYPES</span> <span class="o">=</span> <span class="n">PLAN_TYPES</span> <span class="o">+</span> <span class="p">(</span><span class="n">CoroutineType</span><span class="p">,</span> <span class="p">)</span>
+    <span class="k">del</span> <span class="n">CoroutineType</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_generator</span><span class="p">(</span><span class="n">plan</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensure that the input is a generator.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    plan : iterable or iterator</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    gen : coroutine</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">Msg</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">single_gen</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>
+    <span class="n">gen</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span>  <span class="c1"># no-op on generators; needed for classes</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="n">PLAN_TYPES</span><span class="p">):</span>
+        <span class="c1"># If plan does not support .send, we must wrap it in a generator.</span>
+        <span class="n">gen</span> <span class="o">=</span> <span class="p">(</span><span class="n">msg</span> <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">gen</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">gen</span>
+
+
+<div class="viewcode-block" id="single_gen"><a class="viewcode-back" href="../../generated/bluesky.preprocessors.single_gen.html#bluesky.preprocessors.single_gen">[docs]</a><span class="k">def</span> <span class="nf">single_gen</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Turn a single message into a plan</span>
+
+<span class="sd">    If ``lambda x: yield x`` were valid Python, this would be equivalent.</span>
+<span class="sd">    In Python 3.6 or 3.7 we might get lambda generators.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    msg : Msg</span>
+<span class="sd">        a single message</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    msg : Msg</span>
+<span class="sd">        the input message</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield</span> <span class="n">msg</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">SignalHandler</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sig</span> <span class="o">=</span> <span class="n">sig</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">released</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">original_handler</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">getsignal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sig</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">handler</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;SignalHandler caught SIGINT; count is </span><span class="si">%r</span><span class="s1">&#39;</span><span class="p">,</span>
+                               <span class="bp">self</span><span class="o">.</span><span class="n">count</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="n">orig_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_handler</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+                <span class="n">orig_func</span><span class="p">(</span><span class="n">signum</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
+
+        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sig</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">released</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sig</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_handler</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">released</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">class</span> <span class="nc">CallbackRegistry</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    See matplotlib.cbook.CallbackRegistry. This is a simplified since</span>
+<span class="sd">    ``bluesky`` is python3.4+ only!</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ignore_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allowed_sigs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ignore_exceptions</span> <span class="o">=</span> <span class="n">ignore_exceptions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span> <span class="o">=</span> <span class="n">allowed_sigs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cid</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># We cannot currently pickle the callables in the registry, so</span>
+        <span class="c1"># return an empty dictionary.</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="c1"># re-initialise an empty callback registry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Register ``func`` to be called when ``sig`` is generated</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sig</span>
+<span class="sd">        func</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cid : int</span>
+<span class="sd">            The callback index. To be used with ``disconnect`` to deregister</span>
+<span class="sd">            ``func`` so that it will no longer be called when ``sig`` is</span>
+<span class="sd">            generated</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sig</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Allowed signals are </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">WeakKeyDictionary</span><span class="p">())</span>
+        <span class="c1"># Note proxy not needed in python 3.</span>
+        <span class="c1"># TODO rewrite this when support for python2.x gets dropped.</span>
+        <span class="n">proxy</span> <span class="o">=</span> <span class="n">_BoundMethodProxy</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">proxy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">proxy</span><span class="p">]</span>
+
+        <span class="n">proxy</span><span class="o">.</span><span class="n">add_destroy_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_remove_proxy</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cid</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">cid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">proxy</span><span class="p">]</span> <span class="o">=</span> <span class="n">cid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="nb">dict</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="n">proxy</span>
+        <span class="k">return</span> <span class="n">cid</span>
+
+    <span class="k">def</span> <span class="nf">_remove_proxy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">proxy</span><span class="p">):</span>
+        <span class="c1"># need the list because `del self._func_cid_map[sig]` mutates the dict</span>
+        <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">proxies</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">proxies</span><span class="p">[</span><span class="n">proxy</span><span class="p">]]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">]</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cid</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Disconnect the callback registered with callback id *cid*</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cid : int</span>
+<span class="sd">            The callback index and return value from ``connect``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">eventname</span><span class="p">,</span> <span class="n">callbackd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">callbackd</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">functions</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">for</span> <span class="n">function</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">functions</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                        <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">cid</span><span class="p">:</span>
+                            <span class="k">del</span> <span class="n">functions</span><span class="p">[</span><span class="n">function</span><span class="p">]</span>
+                <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Process ``sig``</span>
+
+<span class="sd">        All of the functions registered to receive callbacks on ``sig``</span>
+<span class="sd">        will be called with ``args`` and ``kwargs``</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sig</span>
+<span class="sd">        args</span>
+<span class="sd">        kwargs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sig</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Allowed signals are </span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span><span class="p">))</span>
+        <span class="n">exceptions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">sig</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cid</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ReferenceError</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_remove_proxy</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignore_exceptions</span><span class="p">:</span>
+                        <span class="n">exceptions</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">e</span><span class="p">,</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()[</span><span class="mi">2</span><span class="p">]))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span>
+        <span class="k">return</span> <span class="n">exceptions</span>
+
+
+<span class="k">class</span> <span class="nc">_BoundMethodProxy</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Our own proxy object which enables weak references to bound and unbound</span>
+<span class="sd">    methods and arbitrary callables. Pulls information about the function,</span>
+<span class="sd">    class, and instance out of a bound method. Stores a weak reference to the</span>
+<span class="sd">    instance to support garbage collection.</span>
+<span class="sd">    @organization: IBM Corporation</span>
+<span class="sd">    @copyright: Copyright (c) 2005, 2006 IBM Corporation</span>
+<span class="sd">    @license: The BSD License</span>
+<span class="sd">    Minor bugfixes by Michael Droettboom</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_destroy_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="n">ref</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="vm">__self__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_destroy</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="vm">__func__</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">klass</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="vm">__self__</span><span class="o">.</span><span class="vm">__class__</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">cb</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">klass</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">add_destroy_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_destroy_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_BoundMethodProxy</span><span class="p">(</span><span class="n">callback</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_destroy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wk</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_destroy_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ReferenceError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># de-weak reference inst</span>
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;inst&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">inst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">d</span><span class="p">[</span><span class="s1">&#39;inst&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">inst</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">d</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">statedict</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">=</span> <span class="n">statedict</span>
+        <span class="n">inst</span> <span class="o">=</span> <span class="n">statedict</span><span class="p">[</span><span class="s1">&#39;inst&#39;</span><span class="p">]</span>
+        <span class="c1"># turn inst back into a weakref</span>
+        <span class="k">if</span> <span class="n">inst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="n">ref</span><span class="p">(</span><span class="n">inst</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Proxy for a call to the weak referenced object. Take</span>
+<span class="sd">        arbitrary params to pass to the callable.</span>
+<span class="sd">        Raises `ReferenceError`: When the weak reference refers to</span>
+<span class="sd">        a dead object</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ReferenceError</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># build a new instance method with a strong reference to the</span>
+            <span class="c1"># instance</span>
+
+            <span class="n">mtd</span> <span class="o">=</span> <span class="n">types</span><span class="o">.</span><span class="n">MethodType</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">func</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span><span class="p">())</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># not a bound method, just return the func</span>
+            <span class="n">mtd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span>
+        <span class="c1"># invoke the callable and return the result</span>
+        <span class="k">return</span> <span class="n">mtd</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Compare the held function and instance with that held by</span>
+<span class="sd">        another proxy.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">func</span> <span class="ow">and</span> <span class="n">other</span><span class="o">.</span><span class="n">inst</span> <span class="ow">is</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">func</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">inst</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        Inverse of __eq__.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span>
+
+
+<span class="c1"># The following two code blocks are adapted from David Beazley&#39;s</span>
+<span class="c1"># &#39;Python 3 Metaprogramming&#39; https://www.youtube.com/watch?v=sPiWg5jSoZI</span>
+
+
+<span class="k">class</span> <span class="nc">StructMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">clsdict</span><span class="p">):</span>
+        <span class="n">clsobj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">clsdict</span><span class="p">)</span>
+        <span class="n">args_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">clsobj</span><span class="o">.</span><span class="n">_fields</span><span class="p">]</span>
+        <span class="n">kwargs_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">KEYWORD_ONLY</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+                         <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;md&#39;</span><span class="p">]]</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">Signature</span><span class="p">(</span><span class="n">args_params</span> <span class="o">+</span> <span class="n">kwargs_params</span><span class="p">)</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">clsobj</span><span class="p">,</span> <span class="s1">&#39;__signature__&#39;</span><span class="p">,</span> <span class="n">sig</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">clsobj</span>
+
+
+<span class="k">class</span> <span class="nc">Struct</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">StructMeta</span><span class="p">):</span>
+    <span class="s2">&quot;The _fields of any subclass become its attritubes and __init__ args.&quot;</span>
+    <span class="n">_fields</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Now bind default values of optional arguments.</span>
+        <span class="c1"># If it seems like there should be a cleaner way to do this, see</span>
+        <span class="c1"># http://bugs.python.org/msg221104</span>
+        <span class="n">bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__signature__</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__signature__</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">bound</span><span class="o">.</span><span class="n">arguments</span> <span class="ow">and</span>
+                    <span class="n">param</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">_empty</span><span class="p">):</span>
+                <span class="n">bound</span><span class="o">.</span><span class="n">arguments</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">default</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">bound</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flyers</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="s2">&quot;Update attributes as keyword arguments.&quot;</span>
+        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+
+<span class="n">SUBS_NAMES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">normalize_subs_input</span><span class="p">(</span><span class="n">subs</span><span class="p">):</span>
+    <span class="s2">&quot;Accept a callable, a list, or a dict. Normalize to a dict of lists.&quot;</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">SUBS_NAMES</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">subs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">elif</span> <span class="n">callable</span><span class="p">(</span><span class="n">subs</span><span class="p">):</span>
+        <span class="n">normalized</span><span class="p">[</span><span class="s1">&#39;all&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="s1">&#39;items&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">funcs</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">subs</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SUBS_NAMES</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;Keys must be one of </span><span class="si">{!r:0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">SUBS_NAMES</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">funcs</span><span class="p">):</span>
+                <span class="n">normalized</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">funcs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">normalized</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">funcs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subs</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+        <span class="n">normalized</span><span class="p">[</span><span class="s1">&#39;all&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Subscriptions should be a callable, a list of &quot;</span>
+                         <span class="s2">&quot;callables, or a dictionary mapping subscription &quot;</span>
+                         <span class="s2">&quot;names to lists of callables.&quot;</span><span class="p">)</span>
+    <span class="c1"># Validates that all entries are callables.</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">funcs</span> <span class="ow">in</span> <span class="n">normalized</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">funcs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;subs values must be functions or lists &quot;</span>
+                                 <span class="s2">&quot;of functions. The offending entry is</span><span class="se">\n</span><span class="s2"> &quot;</span>
+                                 <span class="s2">&quot;</span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">func</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">normalized</span>
+
+
+<span class="k">class</span> <span class="nc">DefaultSubs</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;a class-level descriptor&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Subs</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;a &#39;reusable&#39; property&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">WeakKeyDictionary</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">snake_cyclers</span><span class="p">(</span><span class="n">cyclers</span><span class="p">,</span> <span class="n">snake_booleans</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combine cyclers with a &#39;snaking&#39; back-and-forth order.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cyclers : cycler.Cycler</span>
+<span class="sd">        or any iterable that yields dictionaries of lists</span>
+<span class="sd">    snake_booleans : list</span>
+<span class="sd">        a list of the same length as cyclers indicating whether each cycler</span>
+<span class="sd">        should &#39;snake&#39; (True) or not (False). Note that the first boolean</span>
+<span class="sd">        does not make a difference because the first (slowest) dimension</span>
+<span class="sd">        does not repeat.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : cycler</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cyclers</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">snake_booleans</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;number of cyclers does not match number of booleans&quot;</span><span class="p">)</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">new_cyclers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cyclers</span><span class="p">:</span>
+        <span class="n">lengths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">c</span><span class="p">))</span>
+    <span class="n">total_length</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">snake</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">cyclers</span><span class="p">,</span> <span class="n">snake_booleans</span><span class="p">)):</span>
+        <span class="n">num_tiles</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">lengths</span><span class="p">[:</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">num_repeats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="n">lengths</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">:])</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">c</span><span class="o">.</span><span class="n">_transpose</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">snake</span><span class="p">:</span>
+                <span class="n">v</span> <span class="o">=</span> <span class="n">v</span> <span class="o">+</span> <span class="n">v</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">num_repeats</span><span class="p">),</span> <span class="n">num_tiles</span><span class="p">)</span>
+            <span class="n">expanded</span> <span class="o">=</span> <span class="n">v2</span><span class="p">[:</span><span class="n">total_length</span><span class="p">]</span>
+            <span class="n">new_cyclers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">expanded</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">new_cyclers</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">first_key_heuristic</span><span class="p">(</span><span class="n">device</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the fully-qualified data key for the first entry in describe().</span>
+
+<span class="sd">    This will raise is that entry&#39;s `describe()` method does not return a</span>
+<span class="sd">    dictionary with exactly one key.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">describe</span><span class="p">()))</span>
+
+
+<span class="k">def</span> <span class="nf">ancestry</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    List self, parent, grandparent, ... back to ultimate ancestor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : object</span>
+<span class="sd">        must have a `parent` attribute</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ancestry : list</span>
+<span class="sd">        list of objects, starting with obj and tracing parents recursively</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ancestry</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ancestor</span> <span class="o">=</span> <span class="n">obj</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">ancestry</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ancestor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ancestor</span><span class="o">.</span><span class="n">parent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ancestry</span>
+        <span class="n">ancestor</span> <span class="o">=</span> <span class="n">ancestor</span><span class="o">.</span><span class="n">parent</span>
+
+
+<span class="k">def</span> <span class="nf">root_ancestor</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Traverse ancestry to obtain root ancestor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj : object</span>
+<span class="sd">        must have a `parent` attribute</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    root : object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ancestry</span><span class="p">(</span><span class="n">obj</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">share_ancestor</span><span class="p">(</span><span class="n">obj1</span><span class="p">,</span> <span class="n">obj2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check whether obj1 and obj2 have a common ancestor.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    obj1 : object</span>
+<span class="sd">        must have a `parent` attribute</span>
+<span class="sd">    obj2 : object</span>
+<span class="sd">        must have a `parent` attribute</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : boolean</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ancestry</span><span class="p">(</span><span class="n">obj1</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ancestry</span><span class="p">(</span><span class="n">obj2</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">separate_devices</span><span class="p">(</span><span class="n">devices</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter out elements that have other elements as their ancestors.</span>
+
+<span class="sd">    If A is an ancestor of B, [A, B, C] -&gt; [A, C].</span>
+
+<span class="sd">    Paremeters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    devices : list</span>
+<span class="sd">        All elements must have a `parent` attribute.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : list</span>
+<span class="sd">        subset of input, with order retained</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">existing_det</span> <span class="ow">in</span> <span class="n">result</span><span class="p">[:]:</span>
+            <span class="k">if</span> <span class="n">existing_det</span> <span class="ow">in</span> <span class="n">ancestry</span><span class="p">(</span><span class="n">det</span><span class="p">):</span>
+                <span class="c1"># known issue: here we assume that det is in the read_attrs</span>
+                <span class="c1"># of existing_det -- to be addressed after plans.py refactor</span>
+                <span class="k">break</span>
+            <span class="k">elif</span> <span class="n">det</span> <span class="ow">in</span> <span class="n">ancestry</span><span class="p">(</span><span class="n">existing_det</span><span class="p">):</span>
+                <span class="c1"># existing_det is redundant; use det in its place</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">existing_det</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">det</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span> <span class="nf">all_safe_rewind</span><span class="p">(</span><span class="n">devices</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;If all devices can have their trigger method re-run on resume.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    devices : list</span>
+<span class="sd">        List of devices</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    safe_rewind : bool</span>
+<span class="sd">       If all the device can safely re-triggered</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="s1">&#39;rewindable&#39;</span><span class="p">):</span>
+            <span class="n">rewindable</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">rewindable</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">rewindable</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="n">SEARCH_PATH</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">ENV_VAR</span> <span class="o">=</span> <span class="s1">&#39;BLUESKY_HISTORY_PATH&#39;</span>
+<span class="k">if</span> <span class="n">ENV_VAR</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+    <span class="n">SEARCH_PATH</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">ENV_VAR</span><span class="p">])</span>
+<span class="n">SEARCH_PATH</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~/.config/bluesky/bluesky_history.db&#39;</span><span class="p">),</span>
+                    <span class="s1">&#39;/etc/bluesky/bluesky_history.db&#39;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="get_history"><a class="viewcode-back" href="../../metadata.html#bluesky.preprocessors.get_history">[docs]</a><span class="k">def</span> <span class="nf">get_history</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a dict-like object for stashing metadata.</span>
+
+<span class="sd">    If historydict is not installed, return a dict.</span>
+
+<span class="sd">    If historydict is installed, look for a sqlite file in:</span>
+<span class="sd">      - $BLUESKY_HISTORY_PATH, if defined</span>
+<span class="sd">      - ~/.config/bluesky/bluesky_history.db</span>
+<span class="sd">      - /etc/bluesky/bluesky_history.db</span>
+
+<span class="sd">    If no existing file is found, create a new sqlite file in:</span>
+<span class="sd">      - $BLUESKY_HISTORY_PATH, if defined</span>
+<span class="sd">      - ~/.config/bluesky/bluesky_history.db, otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">historydict</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;You do not have historydict installed, your metadata &quot;</span>
+              <span class="s2">&quot;will not be persistent or have any history of the &quot;</span>
+              <span class="s2">&quot;values.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">SEARCH_PATH</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loading metadata history from </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">historydict</span><span class="o">.</span><span class="n">HistoryDict</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="c1"># No existing file was found. Try creating one.</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">SEARCH_PATH</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">path</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Storing metadata history in a new file at </span><span class="si">%s</span><span class="s2">.&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">historydict</span><span class="o">.</span><span class="n">HistoryDict</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Failed to create metadata history file at </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">path</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Storing HistoryDict in memory; it will not persist &quot;</span>
+                  <span class="s2">&quot;when session is ended.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">historydict</span><span class="o">.</span><span class="n">HistoryDict</span><span class="p">(</span><span class="s1">&#39;:memory:&#39;</span><span class="p">)</span></div>
+
+
+<span class="n">_QT_KICKER_INSTALLED</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">_NB_KICKER_INSTALLED</span> <span class="o">=</span> <span class="p">{}</span>
+
+
+<span class="k">def</span> <span class="nf">install_qt_kicker</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update_rate</span><span class="o">=</span><span class="mf">0.03</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Install a periodic callback to integrate qt and asyncio event loops</span>
+
+<span class="sd">    If a version of the qt bindings are not already imported, this function</span>
+<span class="sd">    will do nothing.</span>
+
+<span class="sd">    It is safe to call this function multiple times.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="k">global</span> <span class="n">_QT_KICKER_INSTALLED</span>
+    <span class="k">if</span> <span class="n">loop</span> <span class="ow">in</span> <span class="n">_QT_KICKER_INSTALLED</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="n">p</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;PyQt4&#39;</span><span class="p">,</span> <span class="s1">&#39;pyside&#39;</span><span class="p">,</span> <span class="s1">&#39;PyQt5&#39;</span><span class="p">]):</span>
+        <span class="k">return</span>
+    <span class="kn">import</span> <span class="nn">matplotlib.backends.backend_qt5</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.backends.backend_qt5</span> <span class="k">import</span> <span class="n">_create_qApp</span>
+    <span class="kn">from</span> <span class="nn">matplotlib._pylab_helpers</span> <span class="k">import</span> <span class="n">Gcf</span>
+
+    <span class="n">_create_qApp</span><span class="p">()</span>
+    <span class="n">qApp</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">backend_qt5</span><span class="o">.</span><span class="n">qApp</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_draw_all</span> <span class="o">=</span> <span class="n">Gcf</span><span class="o">.</span><span class="n">draw_all</span>  <span class="c1"># mpl version &gt;= 1.5</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="c1"># slower, but backward-compatible</span>
+        <span class="k">def</span> <span class="nf">_draw_all</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">f_mgr</span> <span class="ow">in</span> <span class="n">Gcf</span><span class="o">.</span><span class="n">get_all_fig_managers</span><span class="p">():</span>
+                <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw_idle</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_qt_kicker</span><span class="p">():</span>
+        <span class="c1"># The RunEngine Event Loop interferes with the qt event loop. Here we</span>
+        <span class="c1"># kick it to keep it going.</span>
+        <span class="n">_draw_all</span><span class="p">()</span>
+
+        <span class="n">qApp</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span><span class="n">update_rate</span><span class="p">,</span> <span class="n">_qt_kicker</span><span class="p">)</span>
+
+    <span class="n">_QT_KICKER_INSTALLED</span><span class="p">[</span><span class="n">loop</span><span class="p">]</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="n">_qt_kicker</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">install_nb_kicker</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">update_rate</span><span class="o">=</span><span class="mf">0.03</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The RunEngine Event Loop interferes with the qt event loop. Here we</span>
+<span class="sd">    kick it to keep it going.</span>
+
+<span class="sd">    This works with the notebook, where `install_qt_kicker` does not.</span>
+
+<span class="sd">    Calling this function multiple times has no effect.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">matplotlib</span>
+    <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="k">global</span> <span class="n">_NB_KICKER_INSTALLED</span>
+    <span class="k">if</span> <span class="n">loop</span> <span class="ow">in</span> <span class="n">_NB_KICKER_INSTALLED</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_nbagg_kicker</span><span class="p">():</span>
+        <span class="c1"># This is more brute-force variant of the _qt_kicker function used</span>
+        <span class="c1"># inside install_qt_kicker.</span>
+        <span class="k">for</span> <span class="n">f_mgr</span> <span class="ow">in</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">_pylab_helpers</span><span class="o">.</span><span class="n">Gcf</span><span class="o">.</span><span class="n">get_all_fig_managers</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">stale</span><span class="p">:</span>
+                <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+        <span class="n">loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span><span class="n">update_rate</span><span class="p">,</span> <span class="n">_nbagg_kicker</span><span class="p">)</span>
+
+    <span class="n">_NB_KICKER_INSTALLED</span><span class="p">[</span><span class="n">loop</span><span class="p">]</span> <span class="o">=</span> <span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="n">_nbagg_kicker</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">apply_sub_factories</span><span class="p">(</span><span class="n">factories</span><span class="p">,</span> <span class="n">plan</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Run sub factory functions for a plan</span>
+
+<span class="sd">    Factory functions should return lists, which will be added onto the</span>
+<span class="sd">    subscription key (e.g., &#39;all&#39; or &#39;start&#39;) specified in the factory</span>
+<span class="sd">    definition.</span>
+
+<span class="sd">    If the factory function returns None, the list will not be modified.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">factories</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">factories</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">filterfalse</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span>
+                                         <span class="p">(</span><span class="n">sf</span><span class="p">(</span><span class="n">plan</span><span class="p">)</span> <span class="k">for</span> <span class="n">sf</span> <span class="ow">in</span> <span class="n">v</span><span class="p">)))</span>
+           <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">factories</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span> <span class="nf">update_sub_lists</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">inp</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extends dictionary `out` lists with those in `inp`</span>
+
+<span class="sd">    Assumes dictionaries where all values are lists</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">inp</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">register_transform</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&lt;&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Register RunEngine IPython magic convenience transform</span>
+
+<span class="sd">    Assuming the default parameters</span>
+
+<span class="sd">    This maps `&lt; stuff(*args, **kwargs)` -&gt; `RE(stuff(*args, **kwargs))`</span>
+
+<span class="sd">    RE is assumed to be available in the global namespace</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    RE : str</span>
+<span class="sd">        The name of a valid RunEngine instance in the global IPython namespace</span>
+
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        The prefix to trigger this transform on.  If this collides with</span>
+<span class="sd">        valid python syntax or an existing transform you are on your own.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="kn">import</span> <span class="nn">IPython</span>
+    <span class="kn">from</span> <span class="nn">IPython.core.inputtransformer</span> <span class="k">import</span> <span class="n">StatelessInputTransformer</span>
+
+    <span class="nd">@StatelessInputTransformer</span><span class="o">.</span><span class="n">wrap</span>
+    <span class="k">def</span> <span class="nf">tr_re</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">):]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">line</span>
+    <span class="n">ip</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">get_ipython</span><span class="p">()</span>
+    <span class="n">ip</span><span class="o">.</span><span class="n">input_splitter</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
+    <span class="n">ip</span><span class="o">.</span><span class="n">input_transformer_manager</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
+
+
+<span class="k">class</span> <span class="nc">AsyncInput</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;a input prompt that allows event loop to run in the background</span>
+
+<span class="sd">    adapted from http://stackoverflow.com/a/35514777/1221924</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">loop</span> <span class="ow">or</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">add_reader</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">got_input</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">got_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">readline</span><span class="p">()),</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="n">flush</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">get</span><span class="p">())</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">new_uid</span><span class="p">():</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">sanitize_np</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="s2">&quot;Convert any numpy objects into built-in Python types.&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">generic</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">val</span>
+
+
+<span class="k">def</span> <span class="nf">expiring_function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">loop</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If timeout has not occurred, call func(*args, **kwargs).</span>
+
+<span class="sd">    This is meant to used with the event loop&#39;s run_in_executor</span>
+<span class="sd">    method. Outside that context, it doesn&#39;t make any sense.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">dummy</span><span class="p">(</span><span class="n">start_time</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">loop</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">start_time</span> <span class="o">+</span> <span class="n">timeout</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">return</span> <span class="n">dummy</span>
+
+
+<span class="k">def</span> <span class="nf">short_uid</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">truncate</span><span class="o">=</span><span class="mi">6</span><span class="p">):</span>
+    <span class="s2">&quot;Return a readable but unique id like &#39;label-fjfi5a&#39;&quot;</span>
+    <span class="k">if</span> <span class="n">label</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;-&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">label</span><span class="p">,</span> <span class="n">new_uid</span><span class="p">()[:</span><span class="n">truncate</span><span class="p">]])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">new_uid</span><span class="p">()[:</span><span class="n">truncate</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_uid</span><span class="p">(</span><span class="n">doc_or_uid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Accept a uid or a dict with a &#39;uid&#39; key. Return the uid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">doc_or_uid</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">doc_or_uid</span>
+
+
+<span class="k">def</span> <span class="nf">ts_msg_hook</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="s1">&#39;{:%H:%m:%S}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
+    <span class="n">msg_fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{: &lt;17s}</span><span class="s1"> -&gt; </span><span class="si">{!s: &lt;15s}</span><span class="s1"> args: </span><span class="si">{}</span><span class="s1">, kwargs: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">command</span><span class="p">,</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span>
+        <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">msg_fmt</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="make_decorator"><a class="viewcode-back" href="../../generated/bluesky.preprocessors.make_decorator.html#bluesky.preprocessors.make_decorator">[docs]</a><span class="k">def</span> <span class="nf">make_decorator</span><span class="p">(</span><span class="n">wrapper</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Turn a generator instance wrapper into a generator function decorator.</span>
+
+<span class="sd">    The functions named &lt;something&gt;_wrapper accept a generator instance and</span>
+<span class="sd">    return a mutated generator instance.</span>
+
+<span class="sd">    Example of a &#39;wrapper&#39;:</span>
+<span class="sd">    &gt;&gt;&gt; plan = count([det])  # returns a generator instance</span>
+<span class="sd">    &gt;&gt;&gt; revised_plan = some_wrapper(plan)  # returns a new instance</span>
+
+<span class="sd">    Example of a decorator:</span>
+<span class="sd">    &gt;&gt;&gt; some_decorator = make_decorator(some_wrapper)  # returns decorator</span>
+<span class="sd">    &gt;&gt;&gt; customized_count = some_decorator(count)  # returns generator func</span>
+<span class="sd">    &gt;&gt;&gt; plan = customized_count([det])  # returns a generator instance</span>
+
+<span class="sd">    This turns a &#39;wrapper&#39; into a decorator, which accepts a generator</span>
+<span class="sd">    function and returns a generator function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nd">@wraps</span><span class="p">(</span><span class="n">wrapper</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">dec_outer</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">dec</span><span class="p">(</span><span class="n">gen_func</span><span class="p">):</span>
+            <span class="nd">@wraps</span><span class="p">(</span><span class="n">gen_func</span><span class="p">)</span>
+            <span class="k">def</span> <span class="nf">dec_inner</span><span class="p">(</span><span class="o">*</span><span class="n">inner_args</span><span class="p">,</span> <span class="o">**</span><span class="n">inner_kwargs</span><span class="p">):</span>
+                <span class="n">plan</span> <span class="o">=</span> <span class="n">gen_func</span><span class="p">(</span><span class="o">*</span><span class="n">inner_args</span><span class="p">,</span> <span class="o">**</span><span class="n">inner_kwargs</span><span class="p">)</span>
+                <span class="n">plan</span> <span class="o">=</span> <span class="n">wrapper</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">plan</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">dec_inner</span>
+        <span class="k">return</span> <span class="n">dec</span>
+    <span class="k">return</span> <span class="n">dec_outer</span></div>
+
+
+<span class="k">def</span> <span class="nf">apply_to_dict_recursively</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Recursively apply function to a document</span>
+
+<span class="sd">    This modifies the dict in place and returns it.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    d: dict</span>
+<span class="sd">        e.g. event_model Document</span>
+<span class="sd">    f: function</span>
+<span class="sd">       any func to be performed on d recursively</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s1">&#39;items&#39;</span><span class="p">):</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply_to_dict_recursively</span><span class="p">(</span><span class="n">d</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">d</span>
+
+
+<span class="k">class</span> <span class="nc">ProgressBar</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represent status objects with a progress bars.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        status_objs : list</span>
+<span class="sd">            Status objects</span>
+<span class="sd">        delay_draw : float, optional</span>
+<span class="sd">            To avoid flashing progress bars that will complete quickly after</span>
+<span class="sd">            they are displayed, delay drawing until the progress bar has been</span>
+<span class="sd">            around for awhile. Default is 0.2 seconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">meters</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_objs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Determine terminal width.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">=</span> <span class="n">_environ_cols_wrapper</span><span class="p">()(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">79</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fp</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">creation_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span> <span class="o">=</span> <span class="n">delay_draw</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drawn</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+        <span class="c1"># If the ProgressBar is not finished before the delay_draw time but</span>
+        <span class="c1"># never again updated after the delay_draw time, we need to draw it</span>
+        <span class="c1"># once.</span>
+        <span class="k">if</span> <span class="n">delay_draw</span><span class="p">:</span>
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_ensure_draw</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="c1"># Create a closure over self.update for each status object that</span>
+        <span class="c1"># implemets the &#39;watch&#39; method.</span>
+        <span class="k">for</span> <span class="n">st</span> <span class="ow">in</span> <span class="n">status_objs</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="s1">&#39;watch&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">st</span><span class="o">.</span><span class="n">done</span><span class="p">:</span>
+                    <span class="n">pos</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">status_objs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">st</span><span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">watch</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">,</span> <span class="n">pos</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+               <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">current</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">initial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;units&#39;</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">fraction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">time_elapsed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time_remaining</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">initial</span><span class="p">,</span> <span class="n">target</span><span class="p">)):</span>
+            <span class="c1"># Display a proper progress bar.</span>
+            <span class="n">total</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">_L2norm</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">initial</span><span class="p">),</span> <span class="n">precision</span> <span class="ow">or</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">_L2norm</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">initial</span><span class="p">),</span> <span class="n">precision</span> <span class="ow">or</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="c1"># Compute this only if the status object did not provide it.</span>
+            <span class="k">if</span> <span class="n">time_elapsed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">time_elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">creation_time</span>
+            <span class="c1"># TODO Account for &#39;fraction&#39;, which might in some special cases</span>
+            <span class="c1"># differ from the naive computation above.</span>
+            <span class="c1"># TODO Account for &#39;time_remaining&#39; which might in some special</span>
+            <span class="c1"># cases differ from the naive computaiton performed by</span>
+            <span class="c1"># format_meter.</span>
+            <span class="n">meter</span> <span class="o">=</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">format_meter</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">total</span><span class="p">,</span> <span class="n">elapsed</span><span class="o">=</span><span class="n">time_elapsed</span><span class="p">,</span>
+                                      <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                                      <span class="n">prefix</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                                      <span class="n">ncols</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Simply display completeness.</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_objs</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span><span class="o">.</span><span class="n">done</span><span class="p">:</span>
+                <span class="n">meter</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39; [Complete.]&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">meter</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="s1">&#39; [In progress. No progress bar available.]&#39;</span>
+            <span class="n">meter</span> <span class="o">+=</span> <span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">meter</span><span class="p">))</span>
+            <span class="n">meter</span> <span class="o">=</span> <span class="n">meter</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">[</span><span class="n">pos</span><span class="p">]</span> <span class="o">=</span> <span class="n">meter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">draw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">creation_time</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">done</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">for</span> <span class="n">meter</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">:</span>
+                <span class="n">tqdm</span><span class="o">.</span><span class="n">status_printer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="p">)(</span><span class="n">meter</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_unicode</span><span class="p">(</span><span class="n">_term_move_up</span><span class="p">()</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">)))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">drawn</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_ensure_draw</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Ensure that the progress bar is drawn at least once after the delay.</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">done</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">drawn</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">done</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">drawn</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">meter</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\r</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39; &#39;</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ncols</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\r</span><span class="s1">&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">_unicode</span><span class="p">(</span><span class="n">_term_move_up</span><span class="p">()</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">meters</span><span class="p">)))</span>
+
+
+<span class="k">class</span> <span class="nc">ProgressBarManager</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span> <span class="o">=</span> <span class="n">delay_draw</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs_or_none</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">status_objs_or_none</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Start a new ProgressBar.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Previous ProgressBar never competed.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="o">=</span> <span class="n">ProgressBar</span><span class="p">(</span><span class="n">status_objs_or_none</span><span class="p">,</span>
+                                    <span class="n">delay_draw</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Clean up an old one.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;There is no Progress bar to clean up.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">_L2norm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="s2">&quot;works on (3, 5) and ((0, 3), (4, 0))&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">y</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">merge_axis</span><span class="p">(</span><span class="n">objs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Merge possibly related axis</span>
+
+<span class="sd">    This function will take a list of objects and separate it into</span>
+
+<span class="sd">     - list of completely independent objects (most settable things and</span>
+<span class="sd">       detectors) that do not have coupled motion.</span>
+<span class="sd">     - list of devices who have children who are coupled (PseudoPositioner</span>
+<span class="sd">       ducked by looking for &#39;RealPosition&#39; as an attribute)</span>
+
+<span class="sd">    Both of these lists will only contain objects directly passed in</span>
+<span class="sd">    in objs</span>
+
+<span class="sd">     - map between parents and objects passed in.  Each value</span>
+<span class="sd">       of the map is a map between the strings</span>
+<span class="sd">       {&#39;real&#39;, &#39;pseudo&#39;, &#39;independent&#39;} and a list of objects.  All</span>
+<span class="sd">       of the objects in the (doubly nested) map are in the input.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    objs : Iterable[OphydObj]</span>
+<span class="sd">        The input devices</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    independent_objs : List[OphydObj]</span>
+<span class="sd">        Independent &#39;simple&#39; axis</span>
+
+<span class="sd">    complex_objs : List[PseudoPositioner]</span>
+<span class="sd">        Independent objects which have interdependent children</span>
+
+<span class="sd">    coupled : Dict[PseudoPositioner, Dict[str, List[OphydObj]]]</span>
+<span class="sd">        Mapping of interdependent axis passed in.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">get_parent</span><span class="p">(</span><span class="n">o</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s1">&#39;parent&#39;</span><span class="p">)</span>
+
+    <span class="n">independent_objs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">maybe_coupled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">complex_objs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">objs</span><span class="p">:</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="s1">&#39;RealPosition&#39;</span><span class="p">):</span>
+            <span class="n">complex_objs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="s1">&#39;RealPosition&#39;</span><span class="p">)):</span>
+            <span class="n">maybe_coupled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">independent_objs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+    <span class="n">coupled</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">parent</span><span class="p">,</span> <span class="n">children</span> <span class="ow">in</span> <span class="n">groupby</span><span class="p">(</span><span class="n">get_parent</span><span class="p">,</span> <span class="n">maybe_coupled</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">real_p</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">real_positioners</span><span class="p">)</span>
+        <span class="n">pseudo_p</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">pseudo_positioners</span><span class="p">)</span>
+        <span class="n">type_map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;real&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;pseudo&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;unrelated&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">real_p</span><span class="p">:</span>
+                <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;real&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">pseudo_p</span><span class="p">:</span>
+                <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;pseudo&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;unrelated&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+        <span class="n">coupled</span><span class="p">[</span><span class="n">parent</span><span class="p">]</span> <span class="o">=</span> <span class="n">type_map</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">independent_objs</span><span class="p">,</span> <span class="n">complex_objs</span><span class="p">,</span> <span class="n">coupled</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">merge_cycler</span><span class="p">(</span><span class="n">cyc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Specify movements of sets of interdependent axes atomically.</span>
+
+<span class="sd">    Inspect the keys of ``cyc`` (which are Devices) to indentify those</span>
+<span class="sd">    which are interdependent (part of the same</span>
+<span class="sd">    PseudoPositioner) and merge those independent entries into</span>
+<span class="sd">    a single entry.</span>
+
+<span class="sd">    This also validates that the user has not passed conflicting</span>
+<span class="sd">    interdependent axis (such as a real and pseudo axis from the same</span>
+<span class="sd">    PseudoPositioner)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cyc : Cycler[OphydObj, Sequence]</span>
+<span class="sd">       A cycler as would be passed to :func:`scan_nd`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    Cycler[OphydObj, Sequence]</span>
+<span class="sd">       A cycler as would be passed to :func:`scan_nd` with the same</span>
+<span class="sd">       or fewer keys than the input.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">my_name</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the attribute name of this device on its parent Device</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">parent</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">([</span><span class="n">nm</span> <span class="k">for</span> <span class="n">nm</span> <span class="ow">in</span> <span class="n">parent</span><span class="o">.</span><span class="n">component_names</span>
+                          <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">nm</span><span class="p">)</span> <span class="ow">is</span> <span class="n">obj</span><span class="p">]))</span>
+
+    <span class="n">io</span><span class="p">,</span> <span class="n">co</span><span class="p">,</span> <span class="n">gb</span> <span class="o">=</span> <span class="n">merge_axis</span><span class="p">(</span><span class="n">cyc</span><span class="o">.</span><span class="n">keys</span><span class="p">)</span>
+
+    <span class="c1"># only simple non-coupled objects, declare victory and bail!</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">co</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">gb</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cyc</span>
+
+    <span class="n">input_data</span> <span class="o">=</span> <span class="n">cyc</span><span class="o">.</span><span class="n">by_key</span><span class="p">()</span>
+    <span class="n">output_data</span> <span class="o">=</span> <span class="p">[</span><span class="n">cycler</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">input_data</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">io</span> <span class="o">|</span> <span class="n">co</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">parent</span><span class="p">,</span> <span class="n">type_map</span> <span class="ow">in</span> <span class="n">gb</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+
+        <span class="k">if</span> <span class="n">parent</span> <span class="ow">in</span> <span class="n">co</span> <span class="ow">and</span> <span class="p">(</span><span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;pseudo&#39;</span><span class="p">]</span> <span class="ow">or</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;real&#39;</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A PseudoPostiioner and its children were both &quot;</span>
+                             <span class="s2">&quot;passed in.  We do not yet know how to merge &quot;</span>
+                             <span class="s2">&quot;these inputs, failing.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;real&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;pseudo&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Passed in a mix of real and pseudo axis.  &quot;</span>
+                             <span class="s2">&quot;Can not cope, failing&quot;</span><span class="p">)</span>
+        <span class="n">pseudo_axes</span> <span class="o">=</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;pseudo&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pseudo_axes</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">p_cyc</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span>
+                           <span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="n">my_name</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="n">input_data</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+                            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;pseudo&#39;</span><span class="p">]))</span>
+            <span class="n">output_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">p_cyc</span><span class="p">)))</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">pseudo_axes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">c</span><span class="p">,</span> <span class="o">=</span> <span class="n">pseudo_axes</span>
+            <span class="n">output_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">input_data</span><span class="p">[</span><span class="n">c</span><span class="p">]))</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;real&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">type_map</span><span class="p">[</span><span class="s1">&#39;unrelated&#39;</span><span class="p">]:</span>
+            <span class="n">output_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cycler</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">input_data</span><span class="p">[</span><span class="n">c</span><span class="p">]))</span>
+
+    <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="n">operator</span><span class="o">.</span><span class="n">add</span><span class="p">,</span> <span class="n">output_data</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'1.0.0.post4+ga3f23fa',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

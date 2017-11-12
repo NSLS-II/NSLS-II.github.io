@@ -1,0 +1,1017 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.pseudopos &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.pseudopos</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.pseudopos</h1><div class="highlight"><pre>
+<span></span><span class="c1"># vi: ts=4 sw=4</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">:mod:`ophyd.control.pseudopos` - Pseudo positioners</span>
+<span class="sd">===================================================</span>
+
+<span class="sd">.. module:: ophyd.control.pseudopos</span>
+<span class="sd">   :synopsis: Pseudo positioner support</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="p">(</span><span class="n">OrderedDict</span><span class="p">,</span> <span class="n">namedtuple</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">DisconnectedError</span>
+<span class="kn">from</span> <span class="nn">.positioner</span> <span class="k">import</span> <span class="p">(</span><span class="n">PositionerBase</span><span class="p">,</span> <span class="n">SoftPositioner</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.device</span> <span class="k">import</span> <span class="n">Device</span>
+<span class="kn">from</span> <span class="nn">.status</span> <span class="k">import</span> <span class="p">(</span><span class="n">wait</span> <span class="k">as</span> <span class="n">status_wait</span><span class="p">)</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PseudoSingle"><a class="viewcode-back" href="../../positioners.html#ophyd.pseudopos.PseudoSingle">[docs]</a><span class="k">class</span> <span class="nc">PseudoSingle</span><span class="p">(</span><span class="n">SoftPositioner</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A single axis of a PseudoPositioner</span>
+
+<span class="sd">    This should not be instantiated on its own, but rather used as a Component</span>
+<span class="sd">    in a PseudoPositioner subclass.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        The PV prefix, for compatibility with the Device hierarchy</span>
+<span class="sd">    limits : (low_limit, high_limit)</span>
+<span class="sd">        User-defined limits for this pseudo axis.</span>
+<span class="sd">    egu : str, optional</span>
+<span class="sd">        The engineering units (EGU) for the position</span>
+<span class="sd">    parent : PseudoPositioner instance</span>
+<span class="sd">        The instance of the parent PseudoPositioner</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        The name of the positioner</span>
+<span class="sd">    source : str, optional</span>
+<span class="sd">        Metadata indicating the source of this positioner&#39;s position. Defaults</span>
+<span class="sd">        to &#39;computed&#39;</span>
+<span class="sd">    settle_time : float, optional</span>
+<span class="sd">        The amount of time to wait after moves to report status completion</span>
+<span class="sd">    timeout : float, optional</span>
+<span class="sd">        The default timeout to use for motion requests, in seconds.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;computed&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="n">limits</span><span class="p">,</span>
+                         <span class="n">egu</span><span class="o">=</span><span class="n">egu</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># The index of this PseudoSingle in the parent PseudoPositioner tuple</span>
+        <span class="c1"># will be set post-instantiation:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_proxy</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_START</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_proxy</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_DONE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_proxy_idx</span><span class="p">,</span>
+                               <span class="n">event_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_READBACK</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;idx&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_sub_proxy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Parent callbacks such as start of motion, motion finished, etc. will</span>
+<span class="sd">        be simply passed through.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_sub_proxy_idx</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Parent callbacks including a position value will be filtered through</span>
+<span class="sd">        this function and re-broadcast using only the relevant position to this</span>
+<span class="sd">        pseudo axis.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__getitem__&#39;</span><span class="p">):</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">target</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Last commanded target position&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_target</span>
+
+    <span class="k">def</span> <span class="nf">sync</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Synchronize target position with current readback position&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">check_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">check_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">moving</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The current position of the motor in its engineering units</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        position</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">position</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_idx</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Stop motion on the PseudoPositioner&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_started_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Has motion started since the motion request?</span>
+
+<span class="sd">        This is a property on PseudoSingle, which overrides the default</span>
+<span class="sd">        behavior of Positioner. It reflects the motion status of the</span>
+<span class="sd">        PseudoPositioner as a whole.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">_started_moving</span>
+
+    <span class="nd">@_started_moving</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">_started_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Don&#39;t allow the base class to specify whether it has started moving</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_setup_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;PseudoSingle.move overrides SoftPositioner move implementation, so</span>
+<span class="sd">        this method is not called.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move this pseudo axis to a specific position.</span>
+
+<span class="sd">        See `PseudoPositioner.move_single` for more information.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pos : float</span>
+<span class="sd">            Position to move to</span>
+<span class="sd">        kwargs : dict</span>
+<span class="sd">            Passed onto parent.move_single()</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_target</span> <span class="o">=</span> <span class="n">pos</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parent</span><span class="o">.</span><span class="n">move_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">position_argument_wrapper</span><span class="p">(</span><span class="n">type_</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Wrapper to convert positional arguments to a PositionTuple&#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">type_</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;pseudo&#39;</span><span class="p">,</span> <span class="s1">&#39;real&#39;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;position_type should be either &#39;pseudo&#39; or &#39;real&#39;&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">method</span><span class="p">):</span>
+        <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">method</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">type_</span> <span class="o">==</span> <span class="s1">&#39;pseudo&#39;</span><span class="p">:</span>
+                <span class="n">pos</span><span class="p">,</span> <span class="n">new_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_pseudo_tuple</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">pos</span><span class="p">,</span> <span class="n">new_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_real_tuple</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="o">**</span><span class="n">new_kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wrapped</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+
+<span class="n">real_position_argument</span> <span class="o">=</span> <span class="n">position_argument_wrapper</span><span class="p">(</span><span class="s1">&#39;real&#39;</span><span class="p">)</span>
+<span class="n">pseudo_position_argument</span> <span class="o">=</span> <span class="n">position_argument_wrapper</span><span class="p">(</span><span class="s1">&#39;pseudo&#39;</span><span class="p">)</span>
+
+<span class="n">_to_position_tuple_usage_info</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;Positions can be passed in a number of ways.</span>
+
+<span class="s1">As positional arguments:</span>
+<span class="s1">    pseudo.method(px, py, pz, **kwargs)</span>
+<span class="s1">As a sequence or PseudoPosition/RealPosition:</span>
+<span class="s1">    pseudo.method((px, py, pz), **kwargs)</span>
+<span class="s1">As kwargs:</span>
+<span class="s1">    pseudo.method(px=1, py=2, pz=3, **kwargs)</span>
+
+<span class="s1">&#39;&#39;&#39;</span>
+
+
+<span class="k">def</span> <span class="nf">to_position_tuple</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Convert user-specified arguments to a Position namedtuple and kwargs</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        Tuple = namedtuple(&#39;Tuple&#39;, &#39;px py pz&#39;)</span>
+
+<span class="sd">    All of the following will return the same thing:</span>
+<span class="sd">        t, kwargs = to_position_tuple(Tuple, px, py, pz, a=4)</span>
+<span class="sd">        t, kwargs = to_position_tuple(Tuple, (px, py, pz), a=4)</span>
+<span class="sd">        t, kwargs = to_position_tuple(Tuple, Tuple(px, py, pz), a=4)</span>
+<span class="sd">        t, kwargs = to_position_tuple(Tuple, px=1, py=2, pz=3, a=4)</span>
+
+<span class="sd">    t will be Tuple(px, py, pz), and kwargs will be {&#39;a&#39;: 4}.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cls : namedtuple</span>
+<span class="sd">        The position class to use. This is likely a RealPosition or a</span>
+<span class="sd">        PseudoPosition from a PseudoPositioner.</span>
+<span class="sd">    args :</span>
+<span class="sd">        User-specified positional arguments</span>
+<span class="sd">    kwargs : dict</span>
+<span class="sd">        User-specified keyword arguments</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    position_tuple : cls</span>
+<span class="sd">        The position tuple</span>
+<span class="sd">    kwargs : dict</span>
+<span class="sd">        Keyword arguments not related to the position tuple</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        On an empty or invalid namedtuple</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        On a mismatch of parameters</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fields</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">_fields</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid position tuple&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">fields</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Invalid position tuple&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)):</span>
+        <span class="c1"># Position is in the first positional argument</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">_to_position_tuple_usage_info</span> <span class="o">+</span>
+                             <span class="s1">&#39;Cannot specify more than one positional &#39;</span>
+                             <span class="s1">&#39;argument if the first one is a </span><span class="si">{}</span><span class="s1"> &#39;</span>
+                             <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
+
+        <span class="n">position</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">cls</span><span class="p">):</span>
+            <span class="c1"># Ensure a position tuple is passed back</span>
+            <span class="n">position</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="o">*</span><span class="n">position</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">position</span><span class="p">,</span> <span class="n">kwargs</span>
+
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">):</span>
+        <span class="c1"># Position is in positional arguments</span>
+        <span class="k">return</span> <span class="n">cls</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">),</span> <span class="n">kwargs</span>
+
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Position is in positional arguments</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">_to_position_tuple_usage_info</span> <span class="o">+</span>
+                         <span class="s1">&#39;Wrong number of arguments for </span><span class="si">{}</span><span class="s1">. &#39;</span>
+                         <span class="s1">&#39;Got </span><span class="si">{}</span><span class="s1">, expected </span><span class="si">{}</span><span class="s1">&#39;</span>
+                         <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">kwargs</span><span class="p">:</span>
+        <span class="c1"># no positional arguments or kwargs, just show usage information</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">_to_position_tuple_usage_info</span><span class="p">)</span>
+
+    <span class="c1"># No positional arguments, position described in terms of kwargs</span>
+    <span class="n">missing_fields</span> <span class="o">=</span> <span class="p">[</span><span class="n">field</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span>
+                      <span class="k">if</span> <span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">missing_fields</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">_to_position_tuple_usage_info</span> <span class="o">+</span>
+                         <span class="s1">&#39;Missing keyword arguments for field names of </span><span class="si">{}</span><span class="s1">:&#39;</span>
+                         <span class="s1">&#39; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                                      <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_fields</span><span class="p">)))</span>
+
+    <span class="c1"># separate position tuple kwargs from other kwargs</span>
+    <span class="n">position_kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">field</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">}</span>
+    <span class="n">other_kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">}</span>
+    <span class="n">position</span> <span class="o">=</span> <span class="n">cls</span><span class="p">(</span><span class="o">**</span><span class="n">position_kw</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">position</span><span class="p">,</span> <span class="n">other_kw</span>
+
+
+<div class="viewcode-block" id="PseudoPositioner"><a class="viewcode-back" href="../../positioners.html#ophyd.pseudopos.PseudoPositioner">[docs]</a><span class="k">class</span> <span class="nc">PseudoPositioner</span><span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">SoftPositioner</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A pseudo positioner which can be comprised of multiple positioners</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : str</span>
+<span class="sd">        The PV prefix for all components of the device</span>
+<span class="sd">    concurrent : bool, optional</span>
+<span class="sd">        If set, all real motors will be moved concurrently. If not, they will</span>
+<span class="sd">        be moved in order of how they were defined initially</span>
+<span class="sd">    read_attrs : sequence of attribute names</span>
+<span class="sd">        the components to include in a normal reading (i.e., in ``read()``)</span>
+<span class="sd">    configuration_attrs : sequence of attribute names</span>
+<span class="sd">        the components to be read less often (i.e., in</span>
+<span class="sd">        ``read_configuration()``) and to adjust via ``configure()``</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        The name of the device</span>
+<span class="sd">    parent : instance or None</span>
+<span class="sd">        The instance of the parent device, if applicable</span>
+<span class="sd">    settle_time : float, optional</span>
+<span class="sd">        The amount of time to wait after moves to report status completion</span>
+<span class="sd">    timeout : float, optional</span>
+<span class="sd">        The default timeout to use for motion requests, in seconds.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">concurrent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">configuration_attrs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_finished_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_concurrent</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">concurrent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_finish_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_queue</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="ow">is</span> <span class="n">PseudoPositioner</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;PseudoPositioner must be subclassed with the &#39;</span>
+                            <span class="s1">&#39;correct signals set in the class definition.&#39;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">read_attrs</span><span class="o">=</span><span class="n">read_attrs</span><span class="p">,</span>
+                         <span class="n">configuration_attrs</span><span class="o">=</span><span class="n">configuration_attrs</span><span class="p">,</span>
+                         <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">egu</span><span class="o">=</span><span class="n">egu</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real</span> <span class="o">=</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+                      <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_real_positioners</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span> <span class="o">=</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+                        <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_pseudo_positioners</span><span class="p">()]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Must have at least 1 positioner and &#39;</span>
+                             <span class="s1">&#39;pseudo-positioner&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_egu</span><span class="p">:</span>
+            <span class="c1"># Make the PseudoPositioner units based on the PseudoSingle</span>
+            <span class="c1"># units</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_egu</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">composite_egu</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">RealPosition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_position_tuple</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo_position_tuple</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Real positioners: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Pseudo positioners: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">):</span>
+            <span class="n">pseudo</span><span class="o">.</span><span class="n">_idx</span> <span class="o">=</span> <span class="n">idx</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_cur_pos</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">((</span><span class="n">real</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">for</span> <span class="n">real</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">real</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">:</span>
+            <span class="c1"># Subscribe to events from all the real motors and update the</span>
+            <span class="c1"># internal state of their position</span>
+            <span class="n">real</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real_pos_update</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="n">real</span><span class="o">.</span><span class="n">SUB_READBACK</span><span class="p">,</span>
+                           <span class="n">run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">composite_egu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The composite engineering units (EGU) from all PseudoSingles&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pseudo</span><span class="o">.</span><span class="n">egu</span> <span class="k">for</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span>
+                         <span class="k">if</span> <span class="n">pseudo</span><span class="o">.</span><span class="n">egu</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pseudo_positioners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Pseudo positioners instances in a namedtuple</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        positioner_instances : PseudoPosition</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">real_positioners</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Real positioners instances in a namedtuple</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        positioner_instances : RealPosition</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">RealPosition</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_real_position_tuple</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;A namedtuple for a real motor position</span>
+
+<span class="sd">        This is automatically generated at the class-level for all</span>
+<span class="sd">        non-PseudoSingle-based positioners.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="s1">&#39;RealPos&#39;</span>
+        <span class="k">return</span> <span class="n">namedtuple</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span>
+                                 <span class="n">cls</span><span class="o">.</span><span class="n">_get_real_positioners</span><span class="p">()])</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_pseudo_position_tuple</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;A namedtuple for a pseudo motor position</span>
+
+<span class="sd">        This is automatically generated at the class-level for all</span>
+<span class="sd">        PseudoSingle-based positioners.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">cls</span><span class="o">.</span><span class="n">__name__</span> <span class="o">+</span> <span class="s1">&#39;PseudoPos&#39;</span>
+        <span class="k">return</span> <span class="n">namedtuple</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span>
+                                 <span class="n">cls</span><span class="o">.</span><span class="n">_get_pseudo_positioners</span><span class="p">()])</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_get_pseudo_positioners</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Inspect the components and find the pseudo positioners</span>
+
+<span class="sd">        All `PseudoSingle` (and subclassed) components will be returned, by</span>
+<span class="sd">        default.</span>
+
+<span class="sd">        The built-in mechanism to override the list of pseudo positioners on a</span>
+<span class="sd">        PseudoPositioner is to define &#39;_pseudo&#39; on the class-level.  It should</span>
+<span class="sd">        be a list of attribute names.</span>
+
+<span class="sd">        Yields</span>
+<span class="sd">        ------</span>
+<span class="sd">        (attr, component)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="s1">&#39;_pseudo&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">pseudo</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">pseudo</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_sig_attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">cpt</span><span class="o">.</span><span class="n">cls</span><span class="p">,</span> <span class="n">PseudoSingle</span><span class="p">):</span>
+                    <span class="k">yield</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_get_real_positioners</span><span class="p">(</span><span class="n">cls</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Inspect the components and find the real positioners</span>
+
+<span class="sd">        All `Positioner` components which are not `PseudoSingle`s will be</span>
+<span class="sd">        returned, by default.</span>
+
+<span class="sd">        The built-in mechanism to override the list of real positioners on a</span>
+<span class="sd">        PseudoPositioner is to define &#39;_real&#39; on the class-level.  It should be</span>
+<span class="sd">        a list of attribute names. This allows you to group real motors</span>
+<span class="sd">        logically on the device but not have them included in motions or</span>
+<span class="sd">        calculations.</span>
+
+<span class="sd">        Yields</span>
+<span class="sd">        ------</span>
+<span class="sd">        (attr, component)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="s1">&#39;_real&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">real</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_real</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">real</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">real</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">_sig_attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">is_pseudo</span> <span class="o">=</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">cpt</span><span class="o">.</span><span class="n">cls</span><span class="p">,</span> <span class="n">PseudoSingle</span><span class="p">)</span>
+                <span class="n">is_positioner</span> <span class="o">=</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">cpt</span><span class="o">.</span><span class="n">cls</span><span class="p">,</span> <span class="n">PositionerBase</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_positioner</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_pseudo</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">attr</span><span class="p">,</span> <span class="n">cpt</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;concurrent&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_concurrent</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">mtr</span><span class="o">.</span><span class="n">connected</span> <span class="k">for</span> <span class="n">mtr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_move_queue</span><span class="p">[:]</span>
+
+        <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">pos</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> failed to stop positioner: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                             <span class="n">pos</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">ex</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">check_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo_single</span><span class="p">,</span> <span class="n">single_pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Check if a new position for a single pseudo positioner is valid&#39;&#39;&#39;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">pseudo_single</span><span class="o">.</span><span class="n">_idx</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+        <span class="n">target</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">single_pos</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="n">target</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">to_pseudo_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Convert arguments to a PseudoPosition namedtuple and kwargs&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">to_position_tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_real_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Convert arguments to a RealPosition namedtuple and kwargs&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">to_position_tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">RealPosition</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">check_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo_pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Check if a new position for all pseudo positioners is valid</span>
+
+<span class="sd">        First checks limits against those set for individual pseudo axes.</span>
+<span class="sd">        Second, calculates forward(pseudo_pos) =&gt; real_pos and checks it</span>
+<span class="sd">        against the real positioners.</span>
+
+<span class="sd">        NOTE: If you have limits that are coupled together or are somehow more</span>
+<span class="sd">        complicated than the above procedure, you should redefine this method</span>
+<span class="sd">        in your subclass.</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pseudo_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="n">pseudo_pos</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Not all required values for a PseudoPosition: </span><span class="si">{}</span><span class="s1">&#39;</span>
+                             <span class="s1">&#39;(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="o">.</span><span class="n">_fields</span><span class="p">,</span> <span class="n">ex</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">pseudo</span><span class="p">,</span> <span class="n">pos</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">,</span> <span class="n">pseudo_pos</span><span class="p">):</span>
+            <span class="n">low</span><span class="p">,</span> <span class="n">high</span> <span class="o">=</span> <span class="n">pseudo</span><span class="o">.</span><span class="n">limits</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">high</span> <span class="o">&gt;</span> <span class="n">low</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">low</span> <span class="o">&lt;=</span> <span class="n">pos</span> <span class="o">&lt;=</span> <span class="n">high</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Position is outside of pseudo single limits:&#39;</span>
+                                 <span class="s1">&#39; </span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1"> &lt; </span><span class="si">{}</span><span class="s1"> &lt; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pseudo</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span>
+                                                            <span class="n">pos</span><span class="p">,</span> <span class="n">high</span><span class="p">))</span>
+
+        <span class="n">real_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">pseudo_pos</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">real</span><span class="p">,</span> <span class="n">pos</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">):</span>
+            <span class="n">real</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">pos</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;All PseudoSingle limits as a namedtuple&#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: overrides SoftPositioner implementation</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">pseudo</span><span class="o">.</span><span class="n">limits</span> <span class="k">for</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">low_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;All PseudoSingle low limits as a namedtuple&#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: overrides SoftPositioner implementation</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">pseudo</span><span class="o">.</span><span class="n">low_limit</span>
+                                     <span class="k">for</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">high_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;All PseudoSingle high limits as a namedtuple&#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: overrides SoftPositioner implementation</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">pseudo</span><span class="o">.</span><span class="n">high_limit</span>
+                                     <span class="k">for</span> <span class="n">pseudo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">moving</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">sequential</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;If sequential is set, motors will move in the sequence they were</span>
+<span class="sd">        defined in (i.e., in series)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_concurrent</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">concurrent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;If concurrent is set, motors will move concurrently (in parallel)&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_concurrent</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_started_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">_started_moving</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+    <span class="nd">@_started_moving</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">_started_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Don&#39;t allow the base class to specify whether it has started moving</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Pseudo motor position namedtuple&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">real_position</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">real_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Real motor position namedtuple&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">RealPosition</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_real_cur_pos</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="nf">_update_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Update the internal position based on all of the real positioners&#39;&#39;&#39;</span>
+        <span class="n">real_cur_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_position</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="n">real_cur_pos</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">DisconnectedError</span><span class="p">(</span><span class="s1">&#39;Not all positioners connected&#39;</span><span class="p">)</span>
+
+        <span class="n">calc_pseudo_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">real_cur_pos</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_position</span><span class="p">(</span><span class="n">calc_pseudo_pos</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">calc_pseudo_pos</span>
+
+    <span class="k">def</span> <span class="nf">_real_pos_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Callback: A single real positioner has moved&#39;&#39;&#39;</span>
+        <span class="n">real</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_cur_pos</span><span class="p">[</span><span class="n">real</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="c1"># Only update the position if all real motors are connected</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_position</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">DisconnectedError</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_done_moving</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Call this when motion has completed.  Runs SUB_DONE subscription.&#39;&#39;&#39;</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="p">[:]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_real_finished</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Callback: A single real positioner has finished moving.</span>
+
+<span class="sd">        Used for asynchronous motion, if all have finished moving then fire a</span>
+<span class="sd">        callback (via `Positioner._done_moving`)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finished_lock</span><span class="p">:</span>
+            <span class="n">real</span> <span class="o">=</span> <span class="n">obj</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Real motor </span><span class="si">%s</span><span class="s1"> finished moving&#39;</span><span class="p">,</span> <span class="n">real</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">real</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">real</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">move_single</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move one PseudoSingle axis to a position</span>
+
+<span class="sd">        All other positioners will use their current setpoint/target value, if</span>
+<span class="sd">        available. Failing that, their current readback value will be used (see</span>
+<span class="sd">        `PseudoSingle.sync` and `PseudoSingle.target`).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pseudo : PseudoSingle</span>
+<span class="sd">            PseudoSingle positioner to move</span>
+<span class="sd">        position : float</span>
+<span class="sd">            Position only for the PseudoSingle</span>
+<span class="sd">        kwargs : dict</span>
+<span class="sd">            Passed onto move</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">pseudo</span><span class="o">.</span><span class="n">_idx</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+        <span class="n">target</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">position</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="n">target</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">target</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Last commanded target positions&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">PseudoPosition</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">pos</span><span class="o">.</span><span class="n">target</span> <span class="k">for</span> <span class="n">pos</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_sequential_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move all real positioners to a certain position, in series&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_move_queue</span><span class="p">[:]</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">)</span>
+        <span class="n">pending_status</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">move_next</span><span class="p">(</span><span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="c1"># last motion complete message came from &#39;obj&#39;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">:sequential] move_next called&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finished_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">pending_status</span><span class="p">:</span>
+                    <span class="n">last_status</span> <span class="o">=</span> <span class="n">pending_status</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">last_status</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failing due to last motion&#39;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="k">return</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">real</span><span class="p">,</span> <span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_move_queue</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">return</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">:sequential] Moving next motor: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">real</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+                <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
+                <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">sub_timeout</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">sub_timeout</span> <span class="o">=</span> <span class="n">timeout</span> <span class="o">-</span> <span class="n">elapsed</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">:sequential] Moving </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1"> (timeout=</span><span class="si">%s</span><span class="s1">)&#39;</span><span class="p">,</span>
+                             <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">real</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">sub_timeout</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">sub_timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">sub_timeout</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Motion timeout&#39;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_done_moving</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">status</span> <span class="o">=</span> <span class="n">real</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                       <span class="n">timeout</span><span class="o">=</span><span class="n">sub_timeout</span><span class="p">,</span>
+                                       <span class="n">moved_cb</span><span class="o">=</span><span class="n">move_next</span><span class="p">,</span>
+                                       <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="n">pending_status</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">:sequential] waiting on </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span>
+                                 <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">real</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">:sequential] started&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">move_next</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_concurrent_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move all real positioners to a certain position, in parallel&#39;&#39;&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">real</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_real</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;[concurrent] Moving </span><span class="si">%s</span><span class="s1"> to </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">real</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="n">real</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">moved_cb</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_real_finished</span><span class="p">,</span>
+                      <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@pseudo_position_argument</span>
+    <span class="k">def</span> <span class="nf">move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">moved_cb</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move to a specified position, optionally waiting for motion to</span>
+<span class="sd">        complete.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        position</span>
+<span class="sd">            Pseudo position to move to</span>
+<span class="sd">        moved_cb : callable</span>
+<span class="sd">            Call this callback when movement has finished. This callback must</span>
+<span class="sd">            accept one keyword argument: &#39;obj&#39; which will be set to this</span>
+<span class="sd">            positioner instance.</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            Maximum time to wait for the motion. If None, the default timeout</span>
+<span class="sd">            for this positioner is used.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        status : MoveStatus</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TimeoutError</span>
+<span class="sd">            When motion takes longer than `timeout`</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            On invalid positions</span>
+<span class="sd">        RuntimeError</span>
+<span class="sd">            If motion fails other than timing out</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="n">wait</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
+                            <span class="n">moved_cb</span><span class="o">=</span><span class="n">moved_cb</span><span class="p">)</span>
+
+    <span class="n">move</span><span class="o">.</span><span class="n">__doc__</span> <span class="o">=</span> <span class="n">SoftPositioner</span><span class="o">.</span><span class="n">move</span><span class="o">.</span><span class="n">__doc__</span>
+
+    <span class="k">def</span> <span class="nf">_setup_move</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">status</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move requested to position</span>
+
+<span class="sd">        This is a customization of SoftPositioner&#39;s _setup_move method which</span>
+<span class="sd">        is what gets called when a motion request happens.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        position : PseudoPosition</span>
+<span class="sd">            Position to move to (already verified by `check_value`)</span>
+<span class="sd">        status : MoveStatus</span>
+<span class="sd">            Status object created by PositionerBase.move()</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># Clear all old statuses for not yet completed real motions</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_real_waiting</span><span class="p">[:]</span>
+
+        <span class="n">timeout</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">timeout</span>
+        <span class="n">real_pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_finished_lock</span><span class="p">:</span>
+            <span class="c1"># ensure we don&#39;t get any motion complete messages before motion</span>
+            <span class="c1"># setup is finished</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sequential</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_sequential_move</span><span class="p">(</span><span class="n">real_pos</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_concurrent_move</span><span class="p">(</span><span class="n">real_pos</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+
+    <span class="nd">@pseudo_position_argument</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pseudo_pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Calculate a RealPosition from a given PseudoPosition</span>
+
+<span class="sd">        Must be defined on the subclass.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pseudo_pos : PseudoPosition</span>
+<span class="sd">            The pseudo position input</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        real_position : RealPosition</span>
+<span class="sd">            The real position output</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># return self.RealPosition()</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="nd">@real_position_argument</span>
+    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">real_pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Calculate a PseudoPosition from a given RealPosition</span>
+
+<span class="sd">        Must be defined on the subclass.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        real_position : RealPosition</span>
+<span class="sd">            The real position input</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pseudo_pos : PseudoPosition</span>
+<span class="sd">            The pseudo position output</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># return self.PseudoPosition()</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+    <span class="nd">@pseudo_position_argument</span>
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Move to a new position asynchronously</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        position : PseudoPosition</span>
+<span class="sd">            Position for the all of the pseudo axes</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        status : MoveStatus</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">position</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

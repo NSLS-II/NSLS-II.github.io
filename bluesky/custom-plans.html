@@ -1,0 +1,474 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Messages &mdash; bluesky 0.8.0+6.g7402173 documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="bluesky 0.8.0+6.g7402173 documentation" href="index.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.8.0+6.g7402173
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <p class="caption"><span class="caption-text">User Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="plans_intro.html">Basic Usage &amp; Intro to Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="documents.html">Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metadata.html">Recording Metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plans.html">Plans</a></li>
+<li class="toctree-l1"><a class="reference internal" href="callbacks.html">Live Visualization and Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state-machine.html">Interruptions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="event_descriptors.html">Event Descriptors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging and Logging</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="hardware.html">How Bluesky Interfaces with Hardware</a></li>
+<li class="toctree-l1"><a class="reference internal" href="msg.html">Message Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_engine.html">The RunEngine run loop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_changes.html">Release Notes</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">bluesky</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Messages</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/custom-plans.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="messages">
+<h1>Messages<a class="headerlink" href="#messages" title="Permalink to this headline">¶</a></h1>
+<p>The built-in plans are heavily customizable and can satisfy many applications. Most users can find everything they need in <a class="reference internal" href="plans.html"><span class="doc">Plans</span></a>.</p>
+<p>This section explores Messages, the granular instructions that make up a plan,
+in depth.</p>
+<p>A message is comprised of:</p>
+<ul class="simple">
+<li>a command string, such as &#8216;read&#8217;, &#8216;set&#8217;, or &#8216;pause&#8217;</li>
+<li>a target object, such as <code class="docutils literal"><span class="pre">motor</span></code>, if applicable</li>
+<li>positional arguments</li>
+<li>keyword arguments</li>
+</ul>
+<p>Examples:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky</span> <span class="kn">import</span> <span class="n">Msg</span>
+<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span>
+
+<span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+<span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">Msg</span></code> object itself is a namedtuple.</p>
+<p>Below, we build up a collection of example plans demonstrating a variety of
+different commands and use cases.</p>
+<div class="section" id="simplest-scan">
+<h2>Simplest Scan<a class="headerlink" href="#simplest-scan" title="Permalink to this headline">¶</a></h2>
+<p>Messages are passed to the RunEngine through a Python <em>generator</em> (more on
+these below). Here is a very simple scan that sets a motor&#8217;s position to 5
+and reads the position back.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simple_scan</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">):</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The RunEngine processes these messages like so:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">motor</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">motor</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To read from a detector, we also need the &#8216;trigger&#8217; command.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simple_scan</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">):</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="making-scans-responsive">
+<h2>Making Scans Responsive<a class="headerlink" href="#making-scans-responsive" title="Permalink to this headline">¶</a></h2>
+<p>Two-way communication is possible between the generator and the RunEngine.
+For example, the &#8216;read&#8217; command responds with its reading. We can use it to
+make an on-the-fly decision about whether to continue or stop.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">conditional_break</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">threshold</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set, trigger, read until the detector reads intensity &lt; threshold&quot;&quot;&quot;</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;LOOP </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="n">reading</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reading</span><span class="p">[</span><span class="s1">&#39;det&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s1">&#39;DONE&#39;</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>The response from &#8216;read&#8217; &#8211; <code class="docutils literal"><span class="pre">reading</span></code>, above &#8211; is formatted like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">timestamp</span><span class="o">&gt;</span><span class="p">},</span> <span class="o">...</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For a detailed technical description of the messages and their responses,
+see <a class="reference internal" href="msg.html"><span class="doc">Message Protocol</span></a>.</p>
+</div>
+<div class="section" id="sleeping">
+<h2>Sleeping<a class="headerlink" href="#sleeping" title="Permalink to this headline">¶</a></h2>
+<p>Sleeping is as simple as it sounds. It might be used, for example, to add
+extra delay to allow a sample to equilibrate to the temperature set by a
+temperature controller.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">sleepy</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">):</span>
+    <span class="s2">&quot;Set, trigger motor, sleep for a fixed time, trigger detector, read&quot;</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;sleep&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># units: seconds</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Notice that unlike &#8216;set&#8217;, &#8216;read&#8217;, and &#8216;trigger&#8217;, the &#8216;sleep&#8217; command does
+not have a target object. We use <code class="docutils literal"><span class="pre">None</span></code> as a placeholder.</p>
+</div>
+<div class="section" id="waiting">
+<h2>Waiting<a class="headerlink" href="#waiting" title="Permalink to this headline">¶</a></h2>
+<p>Use the &#8216;wait&#8217; command to block progress until an object report that it is
+ready. For example, wait for a motor to finish moving.</p>
+<p>First, give the &#8216;set&#8217; command a <code class="docutils literal"><span class="pre">block_group</span></code>
+keyword argument. This is just a label that we can use to refer to it later.
+Then, use &#8216;wait&#8217; to tell the RunEngine to block progress until everything in
+that <code class="docutils literal"><span class="pre">block_group</span></code> reports that it is ready.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">wait_one</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">):</span>
+    <span class="s2">&quot;Set, trigger, read&quot;</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">block_group</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>  <span class="c1"># Add to group &#39;A&#39;.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">)</span>  <span class="c1"># Wait for everything in group &#39;A&#39;.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>By assigning multiple objects to the same <code class="docutils literal"><span class="pre">block_group</span></code>, you can wait until
+the last one reports it is ready.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">wait_multiple</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motors</span><span class="p">):</span>
+    <span class="s2">&quot;Set motors, trigger all motors, wait for all motors to move.&quot;</span>
+    <span class="k">for</span> <span class="n">motor</span> <span class="ow">in</span> <span class="n">motors</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">block_group</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
+    <span class="c1"># Wait for everything in group &#39;A&#39; to report done.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the above seems unnecessarily complex, here is the payoff. By using
+different <code class="docutils literal"><span class="pre">block_group</span></code> labels, you can wait for different groups at
+different points in the scan.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">wait_complex</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motors</span><span class="p">):</span>
+    <span class="s2">&quot;Set motors, trigger motors, wait for all motors to move in groups.&quot;</span>
+    <span class="c1"># Same as above...</span>
+    <span class="k">for</span> <span class="n">motor</span> <span class="ow">in</span> <span class="n">motors</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">block_group</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
+    <span class="c1"># ...but put the last motor is separate group.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motors</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">5</span><span class="p">,</span> <span class="n">block_group</span><span class="o">=</span><span class="s1">&#39;B&#39;</span><span class="p">)</span>
+    <span class="c1"># Wait for everything in group &#39;A&#39; to report done.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;A&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="c1"># Wait for everything in group &#39;B&#39; to report done.</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s1">&#39;B&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="pauseable-scans">
+<h2>Pauseable Scans<a class="headerlink" href="#pauseable-scans" title="Permalink to this headline">¶</a></h2>
+<p>The &#8216;pause&#8217; command pauses the RunEngine. Details of pausing and resuming were
+addressed <a class="reference internal" href="state-machine.html"><span class="doc">previously</span></a>.</p>
+<p>The &#8216;checkpoint&#8217; command defines where a scan can be safely resumed after an
+interruption.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">conditional_pause</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">defer</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;checkpoint&#39;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="n">reading</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reading</span><span class="p">[</span><span class="s1">&#39;det&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.2</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="n">defer</span><span class="o">=</span><span class="n">defer</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If detector reading dips below 0.2, the scan is paused.</p>
+<p>The next example is a step scan that pauses after each data point is collected.
+(This is the function we used in the
+<span class="xref std std-ref">first pausing example</span>.)</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cautious_stepscan</span><span class="p">(</span><span class="n">det</span><span class="p">,</span> <span class="n">motor</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;checkpoint&#39;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;create&#39;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="n">ret_m</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+        <span class="n">ret_d</span> <span class="o">=</span> <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;save&#39;</span><span class="p">)</span>
+        <span class="k">print</span><span class="p">(</span><span class="s2">&quot;Value at {m} is {d}. Pausing.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">m</span><span class="o">=</span><span class="n">ret_m</span><span class="p">[</span><span class="n">motor</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">],</span> <span class="n">d</span><span class="o">=</span><span class="n">ret_d</span><span class="p">[</span><span class="n">det1</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]))</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="n">hard</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The &#8216;create&#8217; and &#8216;save&#8217; commands bundle and save the readings between them, as
+described just below. Notice that &#8216;checkpoint&#8217; occurs before &#8216;create&#8217;. It is
+illegal to place checkpoints inside a create&#8211;save pair.</p>
+</div>
+<div class="section" id="creating-documents-saving-the-data">
+<h2>Creating Documents (Saving the Data)<a class="headerlink" href="#creating-documents-saving-the-data" title="Permalink to this headline">¶</a></h2>
+<p>Data is bundled into <em>Events</em>, logical groupings of measurements that can be
+considered &#8220;simultaneous&#8221; for practical purposes. (Individual measurement
+times are recorded, but they are usually ignored.) When readings are
+bundled as an Event, an Event Document is created and made available to
+<a class="reference internal" href="callbacks.html"><span class="doc">subscriptions</span></a>.</p>
+<p>To bundle data into an Event, use the &#8216;create&#8217; and &#8216;save&#8217; commands. Any
+&#8216;read&#8217; commands that occur between the two will be bundled into an Event.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">simple_scan_saving</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">det</span><span class="p">):</span>
+    <span class="s2">&quot;Set, trigger, read&quot;</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;open_run&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;create&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;save&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The above generates one Event. By looping through several create&#8211;save pairs,
+we can generate many Events.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">stepscan</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">det</span><span class="p">):</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;open_run&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;create&#39;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;trigger&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">motor</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="n">det</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;save&#39;</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="fly-scans">
+<h2>Fly Scans<a class="headerlink" href="#fly-scans" title="Permalink to this headline">¶</a></h2>
+<p>From the point of view of bluesky, a &#8220;fly scan&#8221; is any object that needs to
+be told to start and then, some time later, to return its data in bulk with
+no supervision in between. These two steps are called &#8220;kickoff&#8221; and &#8220;collect&#8221;
+respectively.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">flyscan</span><span class="p">(</span><span class="n">flyer</span><span class="p">):</span>
+    <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;kickoff&#39;</span><span class="p">,</span> <span class="n">flyer</span><span class="p">)</span>
+    <span class="c1"># some time later...</span>
+    <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;collect&#39;</span><span class="p">,</span> <span class="n">flyer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Obviously, all of the interesting action is up to <code class="docutils literal"><span class="pre">flyer</span></code> &#8211; but that is
+the point.</p>
+</div>
+<div class="section" id="registering-custom-commands">
+<h2>Registering Custom Commands<a class="headerlink" href="#registering-custom-commands" title="Permalink to this headline">¶</a></h2>
+<p>The RunEngine can be taught any new commands. They can be registered using the
+following methods.</p>
+<dl class="method">
+<dt id="bluesky.run_engine.RunEngine.register_command">
+<code class="descclassname">RunEngine.</code><code class="descname">register_command</code><span class="sig-paren">(</span><em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.RunEngine.register_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a new Message command.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>str</em>) &#8211; </li>
+<li><strong>func</strong> (<em>callable</em>) &#8211; This can be a function or a method. The signature is <cite>f(msg)</cite>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="bluesky.run_engine.RunEngine.unregister_command">
+<code class="descclassname">RunEngine.</code><code class="descname">unregister_command</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#bluesky.run_engine.RunEngine.unregister_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>Unregister a Message command.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) &#8211; </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.8.0+6.g7402173',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
