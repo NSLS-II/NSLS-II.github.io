@@ -1,0 +1,1120 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>ophyd.signal &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="ophyd  documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../custom-devices.html">Custom Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../../index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../../index.html">Docs</a> &raquo;</li>
+      
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+      
+    <li>ophyd.signal</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for ophyd.signal</h1><div class="highlight"><pre>
+<span></span><span class="c1"># vi: ts=4 sw=4</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">epics</span>
+
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">ReadOnlyError</span><span class="p">,</span> <span class="n">LimitError</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.utils.epics_pvs</span> <span class="k">import</span> <span class="p">(</span><span class="n">pv_form</span><span class="p">,</span> <span class="n">waveform_to_string</span><span class="p">,</span>
+                              <span class="n">raise_if_disconnected</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">data_shape</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.ophydobj</span> <span class="k">import</span> <span class="n">OphydObject</span>
+<span class="kn">from</span> <span class="nn">.status</span> <span class="k">import</span> <span class="n">Status</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">set_and_wait</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Signal"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal">[docs]</a><span class="k">class</span> <span class="nc">Signal</span><span class="p">(</span><span class="n">OphydObject</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A signal, which can have a read-write or read-only value.</span>
+
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    value : any, optional</span>
+<span class="sd">        The initial value</span>
+<span class="sd">    timestamp : float, optional</span>
+<span class="sd">        The timestamp associated with the initial value. Defaults to the</span>
+<span class="sd">        current local time.</span>
+<span class="sd">    tolerance : any, optional</span>
+<span class="sd">        The absolute tolerance associated with the value</span>
+<span class="sd">    rtolerance : any, optional</span>
+<span class="sd">        The relative tolerance associated with the value, used in</span>
+<span class="sd">        set_and_wait as follows:</span>
+<span class="sd">            absolute(setpoint - readback) &lt;= (tolerance + rtolerance *</span>
+<span class="sd">                                              absolute(readback))</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    rtolerance : any, optional</span>
+<span class="sd">        The relative tolerance associated with the value</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">SUB_VALUE</span> <span class="o">=</span> <span class="s1">&#39;value&#39;</span>
+    <span class="n">_default_sub</span> <span class="o">=</span> <span class="n">SUB_VALUE</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">tolerance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rtolerance</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_readback</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">if</span> <span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span> <span class="o">=</span> <span class="n">timestamp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span> <span class="o">=</span> <span class="n">tolerance</span>
+        <span class="c1"># self.tolerance is a property</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rtolerance</span> <span class="o">=</span> <span class="n">rtolerance</span>
+
+<div class="viewcode-block" id="Signal.trigger"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.trigger">[docs]</a>    <span class="k">def</span> <span class="nf">trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Call that is used by bluesky prior to read()&#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: this is a no-op that exists here for bluesky purposes</span>
+        <span class="c1">#       it may need to be moved in the future</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="n">Status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">_finished</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">d</span></div>
+
+<div class="viewcode-block" id="Signal.wait_for_connection"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.wait_for_connection">[docs]</a>    <span class="k">def</span> <span class="nf">wait_for_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Wait for the underlying signals to initialize or connect&#39;&#39;&#39;</span>
+        <span class="k">pass</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Timestamp of the readback value&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The absolute tolerance associated with the value.&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span>
+
+    <span class="nd">@tolerance</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">tolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span> <span class="o">=</span> <span class="n">tolerance</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tolerance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;tolerance&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tolerance</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rtolerance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;rtolerance&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">rtolerance</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Signal.get"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The readback value&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readback</span></div>
+
+<div class="viewcode-block" id="Signal.put"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.put">[docs]</a>    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Put updates the internal readback value</span>
+
+<span class="sd">        The value is optionally checked first, depending on the value of force.</span>
+<span class="sd">        In addition, VALUE subscriptions are run.</span>
+
+<span class="sd">        Extra kwargs are ignored (for API compatibility with EpicsSignal kwargs</span>
+<span class="sd">        pass through).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : any</span>
+<span class="sd">            Value to set</span>
+<span class="sd">        timestamp : float, optional</span>
+<span class="sd">            The timestamp associated with the value, defaults to time.time()</span>
+<span class="sd">        force : bool, optional</span>
+<span class="sd">            Check the value prior to setting it, defaults to False</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c1"># TODO: consider adding set_and_wait here as a kwarg</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_readback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_readback</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">if</span> <span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span> <span class="o">=</span> <span class="n">timestamp</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">sub_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_VALUE</span><span class="p">,</span> <span class="n">old_value</span><span class="o">=</span><span class="n">old_value</span><span class="p">,</span>
+                       <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Signal.set"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settle_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Set is like `put`, but is here for bluesky compatibility</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        st : Status</span>
+<span class="sd">            This status object will be finished upon return in the</span>
+<span class="sd">            case of basic soft Signals</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">def</span> <span class="nf">set_thread</span><span class="p">():</span>
+            <span class="k">nonlocal</span> <span class="n">timeout</span>
+
+            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">timeout</span> <span class="o">=</span> <span class="mi">10</span>
+                <span class="c1"># TODO set_and_wait does not support a timeout of None</span>
+                <span class="c1">#      and 10 is its default timeout</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">set_and_wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tolerance</span><span class="p">,</span>
+                             <span class="n">rtol</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rtolerance</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set_and_wait(</span><span class="si">%r</span><span class="s1">, </span><span class="si">%s</span><span class="s1">) timed out&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                             <span class="n">value</span><span class="p">)</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set_and_wait(</span><span class="si">%r</span><span class="s1">, </span><span class="si">%s</span><span class="s1">) failed&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span>
+                             <span class="n">exc_info</span><span class="o">=</span><span class="n">ex</span><span class="p">)</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;set_and_wait(</span><span class="si">%r</span><span class="s1">, </span><span class="si">%s</span><span class="s1">) succeeded =&gt; </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                             <span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                <span class="n">success</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">settle_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">settle_time</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">_finished</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Another set() call is still in progress&#39;</span><span class="p">)</span>
+
+        <span class="n">st</span> <span class="o">=</span> <span class="n">Status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_status</span> <span class="o">=</span> <span class="n">st</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">CAThread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">set_thread</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The signal&#39;s value&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+    <span class="nd">@value</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Signal.read"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Put the status of the signal into a simple dictionary format</span>
+<span class="sd">        for data acquisition</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">            dict</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(),</span>
+                            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">}}</span></div>
+
+<div class="viewcode-block" id="Signal.describe"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.describe">[docs]</a>    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the description as a dictionary&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;SIM:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
+                            <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;number&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="p">[]}}</span></div>
+
+<div class="viewcode-block" id="Signal.read_configuration"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.read_configuration">[docs]</a>    <span class="k">def</span> <span class="nf">read_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Subclasses may customize this.&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">read</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Signal.describe_configuration"><a class="viewcode-back" href="../../signals.html#ophyd.signal.Signal.describe_configuration">[docs]</a>    <span class="k">def</span> <span class="nf">describe_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="s2">&quot;Subclasses may customize this.&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Always override, never extend this</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">low_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">high_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span></div>
+
+
+<span class="k">class</span> <span class="nc">DerivedSignal</span><span class="p">(</span><span class="n">Signal</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">derived_from</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;A signal which is derived from another one</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        derived_from : Signal</span>
+<span class="sd">            The signal from which this one is derived</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            The signal name</span>
+<span class="sd">        parent : Device, optional</span>
+<span class="sd">            The parent device</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span> <span class="o">=</span> <span class="n">derived_from</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="c1"># set up the initial timestamp reporting, if connected</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">timestamp</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">derived_from</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Signal that this one is derived from&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span>
+
+    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Description based on the original signal description&#39;&#39;&#39;</span>
+        <span class="n">desc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">describe</span><span class="p">()[</span><span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;derived_from&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">desc</span><span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get the value from the original signal&#39;&#39;&#39;</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">timestamp</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Put the value to the original signal&#39;&#39;&#39;</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">timestamp</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">wait_for_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Wait for the original signal to connect&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Mirrors the connection state of the original signal&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">connected</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Limits from the original signal&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="o">.</span><span class="n">limits</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;derived_from&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_derived_from</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EpicsSignalBase"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignalBase">[docs]</a><span class="k">class</span> <span class="nc">EpicsSignalBase</span><span class="p">(</span><span class="n">Signal</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A read-only EpicsSignal -- that is, one with no `write_pv`</span>
+
+<span class="sd">    Keyword arguments are passed on to the base class (Signal) initializer</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    read_pv : str</span>
+<span class="sd">        The PV to read from</span>
+<span class="sd">    pv_kw : dict, optional</span>
+<span class="sd">        Keyword arguments for epics.PV(**pv_kw)</span>
+<span class="sd">    auto_monitor : bool, optional</span>
+<span class="sd">        Use automonitor with epics.PV</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name of signal.  If not given defaults to read_pv</span>
+<span class="sd">    string : bool, optional</span>
+<span class="sd">        Attempt to cast the EPICS PV value to a string by default</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">read_pv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">pv_kw</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">string</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">auto_monitor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="s1">&#39;rw&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;rw&#39;</span><span class="p">]:</span>
+                <span class="n">new_class</span> <span class="o">=</span> <span class="n">EpicsSignal</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_class</span> <span class="o">=</span> <span class="n">EpicsSignalRO</span>
+
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;rw is no longer an option for EpicsSignal. &#39;</span>
+                               <span class="s1">&#39;Based on your setting of `rw`, you should be &#39;</span>
+                               <span class="s1">&#39;using this class: </span><span class="si">{}</span><span class="s1">&#39;</span>
+                               <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_class</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">pv_kw</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pv_kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_string</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">string</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pv_kw</span> <span class="o">=</span> <span class="n">pv_kw</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_auto_monitor</span> <span class="o">=</span> <span class="n">auto_monitor</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">read_pv</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">PV</span><span class="p">(</span><span class="n">read_pv</span><span class="p">,</span> <span class="n">form</span><span class="o">=</span><span class="n">pv_form</span><span class="p">,</span>
+                                 <span class="n">auto_monitor</span><span class="o">=</span><span class="n">auto_monitor</span><span class="p">,</span>
+                                 <span class="o">**</span><span class="n">pv_kw</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_changed</span><span class="p">,</span>
+                                   <span class="n">run_now</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">as_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Attempt to cast the EPICS PV value to a string by default&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_string</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The precision of the read PV, as reported by EPICS&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">precision</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">enum_strs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;List of strings if PV is an enum type&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">enum_strs</span>
+
+    <span class="k">def</span> <span class="nf">_reinitialize_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">old_instance</span><span class="p">,</span> <span class="o">**</span><span class="n">pv_kw</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Reinitialize a PV instance</span>
+
+<span class="sd">        Takes care of clearing callbacks, setting PV form, and ensuring</span>
+<span class="sd">        connectivity status remains the same</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        old_instance : epics.PV</span>
+<span class="sd">            The old PV instance</span>
+<span class="sd">        pv_kw : kwargs</span>
+<span class="sd">            The parameters to pass to the initializer</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="n">old_instance</span><span class="o">.</span><span class="n">clear_callbacks</span><span class="p">()</span>
+        <span class="n">was_connected</span> <span class="o">=</span> <span class="n">old_instance</span><span class="o">.</span><span class="n">connected</span>
+
+        <span class="n">new_instance</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">PV</span><span class="p">(</span><span class="n">old_instance</span><span class="o">.</span><span class="n">pvname</span><span class="p">,</span> <span class="n">form</span><span class="o">=</span><span class="n">old_instance</span><span class="o">.</span><span class="n">form</span><span class="p">,</span>
+                                <span class="o">**</span><span class="n">pv_kw</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">was_connected</span><span class="p">:</span>
+            <span class="n">new_instance</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">new_instance</span>
+
+    <span class="k">def</span> <span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">event_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_sub</span>
+
+        <span class="c1"># check if this is a setpoint subscription, and we are not explicitly</span>
+        <span class="c1"># auto monitoring</span>
+        <span class="n">obj_mon</span> <span class="o">=</span> <span class="p">(</span><span class="n">event_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">SUB_VALUE</span> <span class="ow">and</span>
+                   <span class="bp">self</span><span class="o">.</span><span class="n">_auto_monitor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># but if the epics.PV has already connected and determined that it</span>
+        <span class="c1"># should automonitor (based on the maximum automonitor length), then we</span>
+        <span class="c1"># don&#39;t need to reinitialize it</span>
+        <span class="k">if</span> <span class="n">obj_mon</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">auto_monitor</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reinitialize_pv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="p">,</span>
+                                                  <span class="n">auto_monitor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                                  <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pv_kw</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_changed</span><span class="p">,</span>
+                                       <span class="n">run_now</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="n">event_type</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">wait_for_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s1">&#39;Failed to connect to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Timestamp of readback PV, according to EPICS&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">auto_monitor</span><span class="p">:</span>
+            <span class="c1"># force updating the timestamp when not using auto monitoring</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">get_timevars</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">timestamp</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">pvname</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The readback PV name&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">pvname</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;read_pv&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;pv_kw&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pv_kw</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;auto_monitor&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auto_monitor</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_string</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The read PV limits&#39;&#39;&#39;</span>
+
+        <span class="c1"># This overrides the base limits</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span>
+        <span class="n">pv</span><span class="o">.</span><span class="n">get_ctrlvars</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">pv</span><span class="o">.</span><span class="n">lower_ctrl_limit</span><span class="p">,</span> <span class="n">pv</span><span class="o">.</span><span class="n">upper_ctrl_limit</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EpicsSignalBase.get"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignalBase.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">as_string</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get the readback value through an explicit call to EPICS</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        count : int, optional</span>
+<span class="sd">            Explicitly limit count for array data</span>
+<span class="sd">        as_string : bool, optional</span>
+<span class="sd">            Get a string representation of the value, defaults to as_string</span>
+<span class="sd">            from this signal, optional</span>
+<span class="sd">        as_numpy : bool</span>
+<span class="sd">            Use numpy array as the return type for array data.</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            maximum time to wait for value to be received.</span>
+<span class="sd">            (default = 0.5 + log10(count) seconds)</span>
+<span class="sd">        use_monitor : bool, optional</span>
+<span class="sd">            to use value from latest monitor callback or to make an</span>
+<span class="sd">            explicit CA call for the value. (default: True)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: in the future this should be improved to grab self._readback</span>
+        <span class="c1">#       instead, when all of the kwargs match up</span>
+        <span class="k">if</span> <span class="n">as_string</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">as_string</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_string</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s1">&#39;Failed to connect to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">as_string</span><span class="o">=</span><span class="n">as_string</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">as_string</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">waveform_to_string</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+    <span class="k">def</span> <span class="nf">_fix_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_string</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">waveform_to_string</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">_read_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;A callback indicating that the read value has changed&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fix_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EpicsSignalBase.describe"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignalBase.describe">[docs]</a>    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the description as a dictionary</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Dictionary of name and formatted description string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">desc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;PV:</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">),</span> <span class="p">}</span>
+
+        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_shape</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+            <span class="k">pass</span>
+        <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">units</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_write_pv&#39;</span><span class="p">):</span>
+            <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;lower_ctrl_limit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">lower_ctrl_limit</span>
+            <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;upper_ctrl_limit&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">upper_ctrl_limit</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enum_strs</span><span class="p">:</span>
+            <span class="n">desc</span><span class="p">[</span><span class="s1">&#39;enum_strs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">enum_strs</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">desc</span><span class="p">}</span></div>
+
+    <span class="nd">@raise_if_disconnected</span>
+<div class="viewcode-block" id="EpicsSignalBase.read"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignalBase.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read the signal and format for data collection</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Dictionary of value timestamp pairs</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">}}</span></div></div>
+
+
+<div class="viewcode-block" id="EpicsSignalRO"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignalRO">[docs]</a><span class="k">class</span> <span class="nc">EpicsSignalRO</span><span class="p">(</span><span class="n">EpicsSignalBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A read-only EpicsSignal -- that is, one with no `write_pv`</span>
+
+<span class="sd">    Keyword arguments are passed on to the base class (Signal) initializer</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    read_pv : str</span>
+<span class="sd">        The PV to read from</span>
+<span class="sd">    pv_kw : dict, optional</span>
+<span class="sd">        Keyword arguments for epics.PV(**pv_kw)</span>
+<span class="sd">    limits : bool, optional</span>
+<span class="sd">        Check limits prior to writing value</span>
+<span class="sd">    auto_monitor : bool, optional</span>
+<span class="sd">        Use automonitor with epics.PV</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name of signal.  If not given defaults to read_pv</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ReadOnlyError</span><span class="p">(</span><span class="s1">&#39;Read-only signals cannot be put to&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ReadOnlyError</span><span class="p">(</span><span class="s1">&#39;Read-only signals cannot be set&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EpicsSignal"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignal">[docs]</a><span class="k">class</span> <span class="nc">EpicsSignal</span><span class="p">(</span><span class="n">EpicsSignalBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;An EPICS signal, comprised of either one or two EPICS PVs</span>
+
+<span class="sd">    Keyword arguments are passed on to the base class (Signal) initializer</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    read_pv : str</span>
+<span class="sd">        The PV to read from</span>
+<span class="sd">    write_pv : str, optional</span>
+<span class="sd">        The PV to write to if different from the read PV</span>
+<span class="sd">    pv_kw : dict, optional</span>
+<span class="sd">        Keyword arguments for epics.PV(**pv_kw)</span>
+<span class="sd">    limits : bool, optional</span>
+<span class="sd">        Check limits prior to writing value</span>
+<span class="sd">    auto_monitor : bool, optional</span>
+<span class="sd">        Use automonitor with epics.PV</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name of signal.  If not given defaults to read_pv</span>
+<span class="sd">    put_complete : bool, optional</span>
+<span class="sd">        Use put completion when writing the value</span>
+<span class="sd">    tolerance : any, optional</span>
+<span class="sd">        The absolute tolerance associated with the value.</span>
+<span class="sd">        If specified, this overrides any precision information calculated from</span>
+<span class="sd">        the write PV</span>
+<span class="sd">    rtolerance : any, optional</span>
+<span class="sd">        The relative tolerance associated with the value</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">SUB_SETPOINT</span> <span class="o">=</span> <span class="s1">&#39;setpoint&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">read_pv</span><span class="p">,</span> <span class="n">write_pv</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pv_kw</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">put_complete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">limits</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                 <span class="n">auto_monitor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_use_limits</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">limits</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_put_complete</span> <span class="o">=</span> <span class="n">put_complete</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint_ts</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">write_pv</span> <span class="o">==</span> <span class="n">read_pv</span><span class="p">:</span>
+            <span class="n">write_pv</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">read_pv</span><span class="p">,</span> <span class="n">pv_kw</span><span class="o">=</span><span class="n">pv_kw</span><span class="p">,</span> <span class="n">string</span><span class="o">=</span><span class="n">string</span><span class="p">,</span>
+                         <span class="n">auto_monitor</span><span class="o">=</span><span class="n">auto_monitor</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">write_pv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">PV</span><span class="p">(</span><span class="n">write_pv</span><span class="p">,</span> <span class="n">form</span><span class="o">=</span><span class="n">pv_form</span><span class="p">,</span>
+                                      <span class="n">auto_monitor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_auto_monitor</span><span class="p">,</span>
+                                      <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pv_kw</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_write_changed</span><span class="p">,</span>
+                                        <span class="n">run_now</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span>
+
+    <span class="k">def</span> <span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">event_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_sub</span>
+
+        <span class="c1"># check if this is a setpoint subscription, and we are not explicitly</span>
+        <span class="c1"># auto monitoring</span>
+        <span class="n">obj_mon</span> <span class="o">=</span> <span class="p">(</span><span class="n">event_type</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">SUB_SETPOINT</span> <span class="ow">and</span>
+                   <span class="bp">self</span><span class="o">.</span><span class="n">_auto_monitor</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># but if the epics.PV has already connected and determined that it</span>
+        <span class="c1"># should automonitor (based on the maximum automonitor length), then we</span>
+        <span class="c1"># don&#39;t need to reinitialize it</span>
+        <span class="k">if</span> <span class="n">obj_mon</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">auto_monitor</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reinitialize_pv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="p">,</span>
+                                                   <span class="n">auto_monitor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                                   <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">_pv_kw</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_write_changed</span><span class="p">,</span>
+                                        <span class="n">run_now</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">event_type</span><span class="o">=</span><span class="n">event_type</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">wait_for_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s1">&#39;Failed to connect to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">tolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The tolerance of the write PV, as reported by EPICS</span>
+
+<span class="sd">        Can be overidden by the user at the EpicsSignal level.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tolerance : float or None</span>
+<span class="sd">        Using the write PV&#39;s precision:</span>
+<span class="sd">            If precision == 0, tolerance will be None</span>
+<span class="sd">            If precision &gt; 0, calculated to be 10**(-precision)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># NOTE: overrides Signal.tolerance property</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span>
+
+        <span class="n">precision</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">precision</span>
+        <span class="k">if</span> <span class="n">precision</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">precision</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="mf">10.</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="n">precision</span><span class="p">)</span>
+
+    <span class="nd">@tolerance</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">tolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tolerance</span> <span class="o">=</span> <span class="n">tolerance</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">setpoint_ts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Timestamp of setpoint PV, according to EPICS&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">auto_monitor</span><span class="p">:</span>
+            <span class="c1"># force updating the timestamp when not using auto monitoring</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">get_timevars</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">timestamp</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">setpoint_pvname</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The setpoint PV name&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">pvname</span>
+
+    <span class="k">def</span> <span class="nf">_repr_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_repr_info</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;write_pv&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;limits&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_limits</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;put_complete&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_put_complete</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">connected</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span><span class="o">.</span><span class="n">connected</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">connected</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@raise_if_disconnected</span>
+    <span class="k">def</span> <span class="nf">limits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The write PV limits&#39;&#39;&#39;</span>
+        <span class="c1"># read_pv_limits = super().limits</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span>
+        <span class="n">pv</span><span class="o">.</span><span class="n">get_ctrlvars</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">pv</span><span class="o">.</span><span class="n">lower_ctrl_limit</span><span class="p">,</span> <span class="n">pv</span><span class="o">.</span><span class="n">upper_ctrl_limit</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EpicsSignal.check_value"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignal.check_value">[docs]</a>    <span class="k">def</span> <span class="nf">check_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Check if the value is within the setpoint PV&#39;s control limits</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Cannot write None to epics PVs&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_limits</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">low_limit</span><span class="p">,</span> <span class="n">high_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span>
+        <span class="k">if</span> <span class="n">low_limit</span> <span class="o">&gt;=</span> <span class="n">high_limit</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">low_limit</span> <span class="o">&lt;=</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">high_limit</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">LimitError</span><span class="p">(</span><span class="s1">&#39;Value </span><span class="si">{}</span><span class="s1"> outside of range: [</span><span class="si">{}</span><span class="s1">, </span><span class="si">{}</span><span class="s1">]&#39;</span>
+                             <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">low_limit</span><span class="p">,</span> <span class="n">high_limit</span><span class="p">))</span></div>
+
+    <span class="nd">@raise_if_disconnected</span>
+<div class="viewcode-block" id="EpicsSignal.get_setpoint"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignal.get_setpoint">[docs]</a>    <span class="k">def</span> <span class="nf">get_setpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Get the setpoint value (use only if the setpoint PV and the readback</span>
+<span class="sd">        PV differ)</span>
+
+<span class="sd">        Keyword arguments are passed on to epics.PV.get()</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">setpoint</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fix_type</span><span class="p">(</span><span class="n">setpoint</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_write_changed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;A callback indicating that the write value has changed&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="n">timestamp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fix_type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint_ts</span> <span class="o">=</span> <span class="n">timestamp</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">sub_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_SETPOINT</span><span class="p">,</span>
+                           <span class="n">old_value</span><span class="o">=</span><span class="n">old_value</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+                           <span class="n">timestamp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_setpoint_ts</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EpicsSignal.put"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignal.put">[docs]</a>    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Using channel access, set the write PV to `value`.</span>
+
+<span class="sd">        Keyword arguments are passed on to callbacks</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : any</span>
+<span class="sd">            The value to set</span>
+<span class="sd">        force : bool, optional</span>
+<span class="sd">            Skip checking the value in Python first</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">connected</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">wait_for_connection</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s1">&#39;Failed to connect to </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span>
+                                   <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">pvname</span><span class="p">)</span>
+
+        <span class="n">use_complete</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_complete&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_put_complete</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">use_complete</span><span class="o">=</span><span class="n">use_complete</span><span class="p">,</span>
+                           <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setpoint</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_pv</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write_pv</span><span class="p">:</span>
+            <span class="c1"># readback and setpoint PV are one in the same, so update the</span>
+            <span class="c1"># readback as well</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">force</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_subs</span><span class="p">(</span><span class="n">sub_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">SUB_SETPOINT</span><span class="p">,</span>
+                           <span class="n">old_value</span><span class="o">=</span><span class="n">old_value</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+                           <span class="n">timestamp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="EpicsSignal.set"><a class="viewcode-back" href="../../signals.html#ophyd.signal.EpicsSignal.set">[docs]</a>    <span class="k">def</span> <span class="nf">set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settle_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Set is like `EpicsSignal.put`, but is here for bluesky compatibility</span>
+
+<span class="sd">        If put completion is used for this EpicsSignal, the status object will</span>
+<span class="sd">        complete once EPICS reports the put has completed.</span>
+
+<span class="sd">        Otherwise, set_and_wait will be used (as in `Signal.set`)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : any</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            Maximum time to wait. Note that set_and_wait does not support</span>
+<span class="sd">            an infinite timeout.</span>
+<span class="sd">        settle_time: float, optional</span>
+<span class="sd">            Delay after the set() has completed to indicate completion</span>
+<span class="sd">            to the caller</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        st : Status</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        `Signal.set`</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_put_complete</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">settle_time</span><span class="o">=</span><span class="n">settle_time</span><span class="p">)</span>
+
+        <span class="c1"># using put completion:</span>
+        <span class="c1"># timeout and settle time is handled by the status object.</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">Status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">settle_time</span><span class="o">=</span><span class="n">settle_time</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">put_callback</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">_finished</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">use_complete</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">put_callback</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">st</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">setpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The setpoint PV value&#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setpoint</span><span class="p">()</span>
+
+    <span class="nd">@setpoint</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">setpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AttributeSignal"><a class="viewcode-back" href="../../signals.html#ophyd.signal.AttributeSignal">[docs]</a><span class="k">class</span> <span class="nc">AttributeSignal</span><span class="p">(</span><span class="n">Signal</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Signal derived from a Python object instance&#39;s attribute</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    attr : str</span>
+<span class="sd">        The dotted attribute name, relative to this signal&#39;s parent.</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        The signal name</span>
+<span class="sd">    parent : Device, optional</span>
+<span class="sd">        The parent device instance</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">attr</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">attr</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">full_attr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The full attribute name&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">base</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;The parent instance which has the final attribute&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span>
+
+        <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">part</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_base</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">attr</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent_attr</span><span class="p">[:</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+                <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> (</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span> <span class="n">ex</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">describe</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">desc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;PY:</span><span class="si">{}</span><span class="s1">.</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">full_attr</span><span class="p">),</span>
+                <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="n">data_type</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+                <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="n">data_shape</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+                <span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">desc</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="ArrayAttributeSignal"><a class="viewcode-back" href="../../signals.html#ophyd.signal.ArrayAttributeSignal">[docs]</a><span class="k">class</span> <span class="nc">ArrayAttributeSignal</span><span class="p">(</span><span class="n">AttributeSignal</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;An AttributeSignal which is cast to an ndarray on get</span>
+
+<span class="sd">    This is used where data_type and data_shape may otherwise fail to determine</span>
+<span class="sd">    how to store the data into metadatastore.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">))</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

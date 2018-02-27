@@ -1,0 +1,263 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Custom Devices &mdash; ophyd  documentation</title>
+  
+
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="genindex.html"/>
+        <link rel="search" title="Search" href="search.html"/>
+    <link rel="top" title="ophyd  documentation" href="index.html"/>
+        <link rel="next" title="Signals" href="signals.html"/>
+        <link rel="prev" title="Positioners" href="positioners.html"/> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.2.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+                <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="device-overview.html">Overview of a Device</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Interactive Command Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="builtin-devices.html">Ready-to-Use Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="positioners.html">Positioners</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Custom Devices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#devices-and-bluesky-count-time">Devices and bluesky count_time</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Project Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">ophyd</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+ 
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Custom Devices</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/custom-devices.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="custom-devices">
+<h1>Custom Devices<a class="headerlink" href="#custom-devices" title="Permalink to this headline">¶</a></h1>
+<p>A Device is made from Components, which encapsulate other Devices or Signals.
+See examples.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span>
+<span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">Cpt</span>
+<span class="kn">from</span> <span class="nn">ophyd.utils</span> <span class="kn">import</span> <span class="n">set_and_wait</span>
+
+<span class="k">class</span> <span class="nc">Robot</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">sample_number</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ID:Tgt-SP&#39;</span><span class="p">)</span>
+    <span class="n">load_cmd</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Cmd:Load-Cmd.PROC&#39;</span><span class="p">)</span>
+    <span class="n">unload_cmd</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Cmd:Unload-Cmd.PROC&#39;</span><span class="p">)</span>
+    <span class="n">execute_cmd</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Cmd:Exec-Cmd&#39;</span><span class="p">)</span>
+    <span class="n">status</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;Sts-Sts&#39;</span><span class="p">)</span>
+
+<span class="n">my_robot</span> <span class="o">=</span> <span class="n">Robot</span><span class="p">(</span><span class="s1">&#39;pv_prefix:&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;my_robot&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this case, <code class="docutils literal"><span class="pre">my_robot.load_cmd</span></code> would be an <code class="docutils literal"><span class="pre">EpicsSignal</span></code> that points to
+the PV <code class="docutils literal"><span class="pre">pv_prefix:Cmd:Load-Cmd.PROC</span></code>.  Each of the components can be used as
+<code class="docutils literal"><span class="pre">stage_sigs</span></code>, added to the list of <code class="docutils literal"><span class="pre">read_attrs</span></code> or <code class="docutils literal"><span class="pre">configuration_attrs</span></code>,
+or simply as <code class="docutils literal"><span class="pre">EpicsSignals</span></code> on their own.</p>
+<div class="section" id="devices-and-bluesky-count-time">
+<h2>Devices and bluesky count_time<a class="headerlink" href="#devices-and-bluesky-count-time" title="Permalink to this headline">¶</a></h2>
+<p>When a <code class="docutils literal"><span class="pre">Device</span></code> is used as a bluesky detector in a scan, a <code class="docutils literal"><span class="pre">count_time</span></code>
+component will be checked for prior to staging.  For example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Device</span><span class="p">,</span> <span class="n">Signal</span><span class="p">,</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">Cpt</span><span class="p">,</span> <span class="n">EpicsSignal</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">DetectorWithCountTime</span><span class="p">(</span><span class="n">Device</span><span class="p">):</span>
+    <span class="n">count_time</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">Signal</span><span class="p">)</span>
+    <span class="n">exposure_time</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">EpicsSignal</span><span class="p">,</span> <span class="s1">&#39;ExposureTime-SP&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_time</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">actual_exposure_time</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_time</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stage_sigs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">]</span> <span class="o">=</span> <span class="n">actual_exposure_time</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stage</span><span class="p">()</span>
+
+<span class="n">det</span> <span class="o">=</span> <span class="n">DetectorWithCountTime</span><span class="p">(</span><span class="s1">&#39;prefix:&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;det&#39;</span><span class="p">)</span>
+<span class="n">gs</span><span class="o">.</span><span class="n">DETS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">det</span><span class="p">)</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">dscan</span><span class="p">(</span><span class="n">mtr</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mf">5.0</span><span class="p">))</span>
+<span class="c1"># count_time would be set to 5.0 here, prior to the scan starting</span>
+</pre></div>
+</div>
+<p>Using the approach of a soft Signal on detectors allows <code class="docutils literal"><span class="pre">stage</span></code> to process
+the value that comes directly from the user.  A slightly less flexible
+alternative would be to define <code class="docutils literal"><span class="pre">count_time</span></code> just as the <code class="docutils literal"><span class="pre">EpicsSignal</span></code>
+<code class="docutils literal"><span class="pre">exposure_time</span></code> below it, if those values should always be the same.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="signals.html" class="btn btn-neutral float-right" title="Signals" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="positioners.html" class="btn btn-neutral" title="Positioners" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
