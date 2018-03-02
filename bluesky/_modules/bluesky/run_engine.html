@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post10+g1a7f3e9 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post13+g48556b6 documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="bluesky 1.2.0.post10+g1a7f3e9 documentation" href="../../index.html"/>
+    <link rel="top" title="bluesky 1.2.0.post13+g48556b6 documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0.post10+g1a7f3e9
+                1.2.0.post13+g48556b6
               </div>
             
           
@@ -428,6 +428,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True if paused, aborted, or failed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># objects read in one Event</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># cache of obj.read() in one Event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># cache of obj.collect_asset_docs()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># objects staged, not yet unstaged</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># all objects seen</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_movable_objs_touched</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># objects we moved at any point</span>
@@ -589,6 +590,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_config_desc_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -1548,6 +1550,7 @@
                                          <span class="s2">&quot;bundle is closed with a &#39;save&#39; or &quot;</span>
                                          <span class="s1">&#39;drop&#39;</span> <span class="s2">&quot;message.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># default</span>
@@ -1570,6 +1573,11 @@
         <span class="n">obj</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span>
         <span class="c1"># actually _read_ the object</span>
         <span class="n">ret</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># Ask the object for any datum documents is has cached.</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;collect_asset_docs&#39;</span><span class="p">):</span>
+            <span class="n">datum_docs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">collect_asset_docs</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">datum_docs</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
             <span class="c1"># if the object is not in the _describe_cache, cache it</span>
@@ -1596,6 +1604,7 @@
 
             <span class="c1"># stash the results</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">datum_docs</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ret</span>
 
@@ -1719,7 +1728,7 @@
         <span class="c1"># read in this Event grouping.</span>
         <span class="n">objs_read</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="p">)</span>
 
-        <span class="c1"># Event Descriptor</span>
+        <span class="c1"># Event Descriptor documents</span>
         <span class="n">desc_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span>
         <span class="n">d_objs</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">desc_key</span><span class="p">,</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">d_objs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">d_objs</span> <span class="o">!=</span> <span class="n">objs_read</span><span class="p">:</span>
@@ -1768,7 +1777,14 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># Events</span>
+        <span class="c1"># Resource and Datum documents</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="p">:</span>
+            <span class="c1"># Add a &#39;run_start&#39; field to the resource document on its way out.</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
+                <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
+            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># Event documents</span>
         <span class="n">seq_num</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">seq_num_key</span><span class="p">])</span>
         <span class="n">event_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
         <span class="c1"># Merge list of readings into single dict.</span>
@@ -1777,7 +1793,8 @@
             <span class="n">readings</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">readings</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
         <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span> <span class="o">=</span> <span class="n">_rearrange_into_parallel_dicts</span><span class="p">(</span><span class="n">readings</span><span class="p">)</span>
         <span class="c1"># Mark all externally-stored data as not filled so that consumers</span>
-        <span class="c1"># know that the corresponding data are identifies, not deferenced data.</span>
+        <span class="c1"># know that the corresponding data are identifies, not dereferenced</span>
+        <span class="c1"># data.</span>
         <span class="n">filled</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="kc">False</span>
                   <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span>
                   <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">desc_key</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -2560,7 +2577,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'1.2.0.post10+g1a7f3e9',
+            VERSION:'1.2.0.post13+g48556b6',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
