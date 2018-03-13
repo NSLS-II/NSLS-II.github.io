@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.fitting &mdash; bluesky 1.2.0.post13+g48556b6 documentation</title>
+  <title>bluesky.callbacks.fitting &mdash; bluesky 1.2.0.post20+g36446ef documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../../genindex.html"/>
         <link rel="search" title="Search" href="../../../search.html"/>
-    <link rel="top" title="bluesky 1.2.0.post13+g48556b6 documentation" href="../../../index.html"/>
+    <link rel="top" title="bluesky 1.2.0.post20+g36446ef documentation" href="../../../index.html"/>
         <link rel="up" title="Module code" href="../../index.html"/> 
 
   
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0.post13+g48556b6
+                1.2.0.post20+g36446ef
               </div>
             
           
@@ -396,6 +396,12 @@
 <span class="sd">    cen : mid-point between half-max points on each side of the peak</span>
 <span class="sd">    max : x location of y maximum</span>
 <span class="sd">    min : x location of y minimum</span>
+<span class="sd">    crossings : crosses between y and middle line, which is</span>
+<span class="sd">          ((np.max(y) + np.min(y)) / 2). Users can estimate FWHM based</span>
+<span class="sd">          on those info.</span>
+<span class="sd">    fwhm : the computed full width half maximum (fwhm) of a peak.</span>
+<span class="sd">           The distance between the first and last crossing is taken to</span>
+<span class="sd">           be the fwhm.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">edge_count</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -406,6 +412,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nlls</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crossings</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lin_bkg</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_edge_count</span> <span class="o">=</span> <span class="n">edge_count</span>
@@ -425,6 +432,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nlls</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crossings</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lin_bkg</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -470,20 +478,19 @@
             <span class="n">_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">cr</span><span class="p">:</span><span class="n">cr</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span>
             <span class="n">_y</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">cr</span><span class="p">:</span><span class="n">cr</span><span class="o">+</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> <span class="n">mid</span>
 
-            <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">_x</span><span class="p">)</span>
-            <span class="n">dy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">_y</span><span class="p">)</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">_x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">_y</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
             <span class="n">m</span> <span class="o">=</span> <span class="n">dy</span> <span class="o">/</span> <span class="n">dx</span>
             <span class="n">_cen_list</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="o">-</span><span class="n">_y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">m</span><span class="p">)</span> <span class="o">+</span> <span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
         <span class="k">if</span> <span class="n">_cen_list</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">cen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">_cen_list</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_cen_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">_cen_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">_cen_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
+            <span class="bp">self</span><span class="o">.</span><span class="n">crossings</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">_cen_list</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">_cen_list</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">fwhm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">crossings</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">crossings</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                   <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
         <span class="c1"># reset y data</span>
         <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_data</span></div>
-        <span class="c1"># insert lmfit</span>
 </pre></div>
 
            </div>
@@ -520,7 +527,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../../',
-            VERSION:'1.2.0.post13+g48556b6',
+            VERSION:'1.2.0.post20+g36446ef',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
