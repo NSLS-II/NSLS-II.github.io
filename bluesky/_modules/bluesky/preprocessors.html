@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.preprocessors &mdash; bluesky 1.2.0.post20+g36446ef documentation</title>
+  <title>bluesky.preprocessors &mdash; bluesky 1.2.0.post27+gb12b94e documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="bluesky 1.2.0.post20+g36446ef documentation" href="../../index.html"/>
+    <link rel="top" title="bluesky 1.2.0.post27+gb12b94e documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0.post20+g36446ef
+                1.2.0.post27+gb12b94e
               </div>
             
           
@@ -195,7 +195,7 @@
            <div itemprop="articleBody">
             
   <h1>Source code for bluesky.preprocessors</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">deque</span><span class="p">,</span> <span class="n">ChainMap</span>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">deque</span><span class="p">,</span> <span class="n">ChainMap</span><span class="p">,</span> <span class="n">Iterable</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">normalize_subs_input</span><span class="p">,</span> <span class="n">root_ancestor</span><span class="p">,</span>
                     <span class="n">separate_devices</span><span class="p">,</span>
@@ -547,6 +547,42 @@
 
     <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">finalize_wrapper</span><span class="p">(</span><span class="n">_inner_plan</span><span class="p">(),</span>
                                         <span class="n">_unsubscribe</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="suspend_wrapper"><a class="viewcode-back" href="../../generated/bluesky.preprocessors.suspend_wrapper.html#bluesky.preprocessors.suspend_wrapper">[docs]</a><span class="k">def</span> <span class="nf">suspend_wrapper</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">suspenders</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Install suspenders to the RunEngine, and remove them at the end.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    plan : iterable or iterator</span>
+<span class="sd">        a generator, list, or similar containing `Msg` objects</span>
+<span class="sd">    suspenders : suspender or list of suspenders</span>
+<span class="sd">        Suspenders to use for the duration of the wrapper</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    msg : Msg</span>
+<span class="sd">        messages from plan, with &#39;install_suspender&#39; and &#39;remove_suspender&#39;</span>
+<span class="sd">        messages inserted and appended</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">suspenders</span><span class="p">,</span> <span class="n">Iterable</span><span class="p">):</span>
+        <span class="n">suspenders</span> <span class="o">=</span> <span class="p">[</span><span class="n">suspenders</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_install</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">susp</span> <span class="ow">in</span> <span class="n">suspenders</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;install_suspender&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">susp</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_remove</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">susp</span> <span class="ow">in</span> <span class="n">suspenders</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;remove_suspender&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">susp</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_inner_plan</span><span class="p">():</span>
+        <span class="k">yield from</span> <span class="n">_install</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">plan</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">finalize_wrapper</span><span class="p">(</span><span class="n">_inner_plan</span><span class="p">(),</span>
+                                        <span class="n">_remove</span><span class="p">()))</span></div>
 
 
 <span class="k">def</span> <span class="nf">configure_count_time_wrapper</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">time</span><span class="p">):</span>
@@ -1294,6 +1330,7 @@
 <span class="c1"># Make generator function decorator for each generator instance wrapper.</span>
 <span class="n">baseline_decorator</span> <span class="o">=</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">baseline_wrapper</span><span class="p">)</span>
 <span class="n">subs_decorator</span> <span class="o">=</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">subs_wrapper</span><span class="p">)</span>
+<span class="n">suspend_decorator</span> <span class="o">=</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">suspend_wrapper</span><span class="p">)</span>
 <span class="n">relative_set_decorator</span> <span class="o">=</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">relative_set_wrapper</span><span class="p">)</span>
 <span class="n">reset_positions_decorator</span> <span class="o">=</span> <span class="n">make_decorator</span><span class="p">(</span><span class="n">reset_positions_wrapper</span><span class="p">)</span>
 <span class="c1"># finalize_decorator is custom-made since it takes a plan as its</span>
@@ -1469,7 +1506,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'1.2.0.post20+g36446ef',
+            VERSION:'1.2.0.post27+gb12b94e',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

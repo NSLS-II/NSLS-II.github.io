@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post20+g36446ef documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post27+gb12b94e documentation</title>
   
 
   
@@ -35,7 +35,7 @@
         <link rel="index" title="Index"
               href="../../genindex.html"/>
         <link rel="search" title="Search" href="../../search.html"/>
-    <link rel="top" title="bluesky 1.2.0.post20+g36446ef documentation" href="../../index.html"/>
+    <link rel="top" title="bluesky 1.2.0.post27+gb12b94e documentation" href="../../index.html"/>
         <link rel="up" title="Module code" href="../index.html"/> 
 
   
@@ -65,7 +65,7 @@
             
             
               <div class="version">
-                1.2.0.post20+g36446ef
+                1.2.0.post27+gb12b94e
               </div>
             
           
@@ -383,7 +383,8 @@
     <span class="n">state</span> <span class="o">=</span> <span class="n">LoggingPropertyMachine</span><span class="p">(</span><span class="n">RunEngineStateMachine</span><span class="p">)</span>
     <span class="n">_UNCACHEABLE_COMMANDS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="s1">&#39;unsubscribe&#39;</span><span class="p">,</span> <span class="s1">&#39;stage&#39;</span><span class="p">,</span>
                              <span class="s1">&#39;unstage&#39;</span><span class="p">,</span> <span class="s1">&#39;monitor&#39;</span><span class="p">,</span> <span class="s1">&#39;unmonitor&#39;</span><span class="p">,</span> <span class="s1">&#39;open_run&#39;</span><span class="p">,</span>
-                             <span class="s1">&#39;close_run&#39;</span><span class="p">]</span>
+                             <span class="s1">&#39;close_run&#39;</span><span class="p">,</span> <span class="s1">&#39;install_suspender&#39;</span><span class="p">,</span>
+                             <span class="s1">&#39;remove_suspender&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -487,7 +488,9 @@
             <span class="s1">&#39;open_run&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_open_run</span><span class="p">,</span>
             <span class="s1">&#39;close_run&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_run</span><span class="p">,</span>
             <span class="s1">&#39;wait_for&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for</span><span class="p">,</span>
-            <span class="s1">&#39;input&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input</span><span class="p">,</span> <span class="p">}</span>
+            <span class="s1">&#39;input&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input</span><span class="p">,</span>
+            <span class="s1">&#39;install_suspender&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_install_suspender</span><span class="p">,</span>
+            <span class="s1">&#39;remove_suspender&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_suspender</span><span class="p">,</span> <span class="p">}</span>
 
         <span class="c1"># public dispatcher for callbacks</span>
         <span class="c1"># The Dispatcher&#39;s public methods are exposed through the</span>
@@ -965,6 +968,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_suspenders</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">suspender</span><span class="p">)</span>
         <span class="n">suspender</span><span class="o">.</span><span class="n">install</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
 
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_install_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        See :meth: `RunEngine.install_suspender`</span>
+
+<span class="sd">        Expected message object is:</span>
+
+<span class="sd">            Msg(&#39;install_suspender&#39;, None, suspender)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">suspender</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">install_suspender</span><span class="p">(</span><span class="n">suspender</span><span class="p">)</span>
+
 <div class="viewcode-block" id="RunEngine.remove_suspender"><a class="viewcode-back" href="../../state-machine.html#bluesky.run_engine.RunEngine.remove_suspender">[docs]</a>    <span class="k">def</span> <span class="nf">remove_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suspender</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Uninstall a suspender.</span>
@@ -981,6 +996,18 @@
         <span class="k">if</span> <span class="n">suspender</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_suspenders</span><span class="p">:</span>
             <span class="n">suspender</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_suspenders</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">suspender</span><span class="p">)</span></div>
+
+    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
+    <span class="k">def</span> <span class="nf">_remove_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        See :meth: `RunEngine.remove_suspender`</span>
+
+<span class="sd">        Expected message object is:</span>
+
+<span class="sd">            Msg(&#39;remove_suspender&#39;, None, suspender)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">suspender</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">remove_suspender</span><span class="p">(</span><span class="n">suspender</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.clear_suspenders"><a class="viewcode-back" href="../../state-machine.html#bluesky.run_engine.RunEngine.clear_suspenders">[docs]</a>    <span class="k">def</span> <span class="nf">clear_suspenders</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -2577,7 +2604,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'1.2.0.post20+g36446ef',
+            VERSION:'1.2.0.post27+gb12b94e',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
