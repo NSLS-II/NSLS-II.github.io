@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post42+g05e78d8 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post46+gdd243ae documentation</title>
   
 
   
@@ -57,7 +57,7 @@
             
             
               <div class="version">
-                1.2.0.post42+g05e78d8
+                1.2.0.post46+gdd243ae
               </div>
             
           
@@ -195,11 +195,10 @@
 <span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">count</span><span class="p">,</span> <span class="n">tee</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">ChainMap</span>
-<span class="kn">import</span> <span class="nn">signal</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
-
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">ExitStack</span>
 
 <span class="kn">import</span> <span class="nn">jsonschema</span>
 <span class="kn">from</span> <span class="nn">event_model</span> <span class="k">import</span> <span class="n">DocumentNames</span><span class="p">,</span> <span class="n">schemas</span>
@@ -207,7 +206,7 @@
 <span class="kn">from</span> <span class="nn">super_state_machine.extras</span> <span class="k">import</span> <span class="n">PropertyMachine</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.errors</span> <span class="k">import</span> <span class="n">TransitionError</span>
 
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SignalHandler</span><span class="p">,</span> <span class="n">normalize_subs_input</span><span class="p">,</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span> <span class="n">normalize_subs_input</span><span class="p">,</span>
                     <span class="n">AsyncInput</span><span class="p">,</span> <span class="n">new_uid</span><span class="p">,</span> <span class="n">NoReplayAllowed</span><span class="p">,</span>
                     <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">,</span> <span class="n">RunEngineInterrupted</span><span class="p">,</span>
                     <span class="n">IllegalMessageSequence</span><span class="p">,</span> <span class="n">FailedPause</span><span class="p">,</span> <span class="n">FailedStatus</span><span class="p">,</span>
@@ -295,12 +294,21 @@
 <span class="sd">    loop : asyncio event loop</span>
 <span class="sd">        e.g., ``asyncio.get_event_loop()`` or ``asyncio.new_event_loop()``</span>
 
-<span class="sd">    preprocessors : list</span>
+<span class="sd">    preprocessors : list, optional</span>
 <span class="sd">        Generator functions that take in a plan (generator instance) and</span>
 <span class="sd">        modify its messages on the way out. Suitable examples include</span>
 <span class="sd">        the functions in the module ``bluesky.plans`` with names ending in</span>
 <span class="sd">        &#39;wrapper&#39;.  Functions are composed in order: the preprocessors</span>
 <span class="sd">        ``[f, g]`` are applied like ``f(g(plan))``.</span>
+
+<span class="sd">    context_managers : list, optional</span>
+<span class="sd">        Context managers that will be entered when we run a plan. The context</span>
+<span class="sd">        managers will be composed in order, much like the preprocessors. If</span>
+<span class="sd">        this argument is omitted, we will use a user-oriented handler for</span>
+<span class="sd">        SIGINT. The elements of this list will be passed this ``RunEngine``</span>
+<span class="sd">        instance as their only argument. You may pass an empty list if you</span>
+<span class="sd">        would like a ``RunEngine`` with no signal handling and no context</span>
+<span class="sd">        managers.</span>
 
 <span class="sd">    md_validator : callable, optional</span>
 <span class="sd">        a function that raises and prevents starting a run if it deems</span>
@@ -378,7 +386,7 @@
                              <span class="s1">&#39;remove_suspender&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
@@ -396,6 +404,9 @@
         <span class="k">if</span> <span class="n">preprocessors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">preprocessors</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">preprocessors</span> <span class="o">=</span> <span class="n">preprocessors</span>
+        <span class="k">if</span> <span class="n">context_managers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">context_managers</span> <span class="o">=</span> <span class="p">[</span><span class="n">SigintHandler</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span> <span class="o">=</span> <span class="n">context_managers</span>
         <span class="k">if</span> <span class="n">md_validator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">md_validator</span> <span class="o">=</span> <span class="n">_default_md_validator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md_validator</span> <span class="o">=</span> <span class="n">md_validator</span>
@@ -413,9 +424,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># if we are in the middle of bundling readings</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># name given to event descriptor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># pause at next &#39;checkpoint&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># intercepts Ctrl+C</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># time most recent SIGINT was processed</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># count SIGINTs processed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># stored and then raised in the _run loop</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True if paused, aborted, or failed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># objects read in one Event</span>
@@ -495,8 +503,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">unsubscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">unsubscribe</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">subscribe</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_unsubscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">unsubscribe</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_check_for_signals</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.subscribe"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.subscribe">[docs]</a>    <span class="k">def</span> <span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -618,8 +624,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Unsubscribe for per-run callbacks.</span>
         <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_temp_callback_ids</span><span class="p">:</span>
@@ -845,8 +849,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">single_gen</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait_for&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">futs</span><span class="p">)))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 
-        <span class="c1"># Intercept ^C.</span>
-        <span class="k">with</span> <span class="n">SignalHandler</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">)</span> <span class="k">as</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span><span class="p">:</span>
+        <span class="c1"># Handle all context managers</span>
+        <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">stack</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">mgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span><span class="p">:</span>
+                <span class="n">stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">mgr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">())</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">()</span>
@@ -924,10 +930,11 @@
     <span class="k">def</span> <span class="nf">_resume_event_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># may be called by &#39;resume&#39; or &#39;abort&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="c1"># Intercept ^C</span>
-        <span class="k">with</span> <span class="n">SignalHandler</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">)</span> <span class="k">as</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span><span class="p">:</span>
+
+        <span class="c1"># Handle all context managers</span>
+        <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">stack</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">mgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span><span class="p">:</span>
+                <span class="n">stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">mgr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
                 <span class="k">return</span>
             <span class="k">try</span><span class="p">:</span>
@@ -1419,43 +1426,6 @@
         <span class="c1"># if the task was cancelled</span>
         <span class="k">if</span> <span class="n">pending_cancel_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">pending_cancel_exception</span>
-
-    <span class="k">def</span> <span class="nf">_check_for_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Check for pause requests from keyboard.</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_running</span> <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">):</span>
-            <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span><span class="o">.</span><span class="n">count</span>
-            <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">=</span> <span class="n">count</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;RunEngine caught a new SIGINT&quot;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">=</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-
-                <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="c1"># Ctrl-C once -&gt; request a deferred pause</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request_pause</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;A &#39;deferred pause&#39; has been requested. The &quot;</span>
-                              <span class="s2">&quot;RunEngine will pause at the next checkpoint. &quot;</span>
-                              <span class="s2">&quot;To pause immediately, hit Ctrl+C again in the &quot;</span>
-                              <span class="s2">&quot;next 10 seconds.&quot;</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="c1"># - Ctrl-C twice within 10 seconds -&gt; hard pause</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;RunEngine detected two SIGINTs. &quot;</span>
-                                   <span class="s2">&quot;A hard pause will be requested.&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">request_pause</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># No new SIGINTs to process.</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;It has been 10 seconds since the &quot;</span>
-                                       <span class="s2">&quot;last SIGINT. Resetting SIGINT &quot;</span>
-                                       <span class="s2">&quot;handler.&quot;</span><span class="p">)</span>
-                        <span class="c1"># It&#39;s been 10 seconds since the last SIGINT. Reset.</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_num_sigints_processed</span> <span class="o">=</span> <span class="mi">0</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_sigint_handler</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">False</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_last_sigint_time</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_later</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_signals</span><span class="p">)</span>
 
     <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
     <span class="k">def</span> <span class="nf">_wait_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -2649,7 +2619,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'1.2.0.post42+g05e78d8',
+            VERSION:'1.2.0.post46+gdd243ae',
             LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
