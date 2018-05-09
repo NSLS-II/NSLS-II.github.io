@@ -1,16 +1,7 @@
-from bluesky import RunEngine
-from bluesky.plans import adaptive_scan
-from bluesky.callbacks.best_effort import BestEffortCallback
-bec = BestEffortCallback()
-from ophyd.sim import motor, det
+from bluesky.simulators import plot_raster_path
+from ophyd.sim import motor1, motor2, det
+from bluesky.plans import spiral_square
 
-RE = RunEngine({})
-RE.subscribe(bec)
-
-RE(adaptive_scan([det], 'det', motor,
-                 start=-15,
-                 stop=10,
-                 min_step=0.01,
-                 max_step=5,
-                 target_delta=.05,
-                 backstep=True))
+plan = spiral_square([det], motor1, motor2, x_center=0.0, y_center=0.0,
+                     x_range=1.0, y_range=1.0, x_num=11, y_num=11)
+plot_raster_path(plan, 'motor1', 'motor2', probe_size=.01)
