@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post102+gb5492d8 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.2.0.post115+ge970134 documentation</title>
   
 
   
@@ -57,7 +57,7 @@
             
             
               <div class="version">
-                1.2.0.post102+gb5492d8
+                1.2.0.post115+ge970134
               </div>
             
           
@@ -379,6 +379,9 @@
 <span class="sd">        It is set to ``bluesky.run_engine.PAUSE_MSG`` by default and</span>
 <span class="sd">        can be modified based on needs.</span>
 
+<span class="sd">    commands:</span>
+<span class="sd">        The list of commands available to Msg.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">state</span> <span class="o">=</span> <span class="n">LoggingPropertyMachine</span><span class="p">(</span><span class="n">RunEngineStateMachine</span><span class="p">)</span>
@@ -505,6 +508,60 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">unsubscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">unsubscribe</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">subscribe</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_unsubscribe_lossless</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">unsubscribe</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">commands</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        The list of commands available to Msg.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        :meth:`RunEngine.register_command`</span>
+<span class="sd">        :meth:`RunEngine.unregister_command`</span>
+<span class="sd">        :meth:`RunEngine.print_command_registry`</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; from bluesky import RunEngine</span>
+<span class="sd">        &gt;&gt;&gt; RE = RunEngine()</span>
+<span class="sd">        &gt;&gt;&gt; # to list commands</span>
+<span class="sd">        &gt;&gt;&gt; RE.commands</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="c1"># return as a list, not lazy loader, no surprises...</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_command_registry</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+<div class="viewcode-block" id="RunEngine.print_command_registry"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.print_command_registry">[docs]</a>    <span class="k">def</span> <span class="nf">print_command_registry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">        This conveniently prints the command registry of available</span>
+<span class="sd">        commands.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Verbose : bool, optional</span>
+<span class="sd">        verbose print. Default is False</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        :meth:`RunEngine.register_command`</span>
+<span class="sd">        :meth:`RunEngine.unregister_command`</span>
+<span class="sd">        :attr:`RunEngine.commands`</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; from bluesky import RunEngine</span>
+<span class="sd">        &gt;&gt;&gt; RE = RunEngine()</span>
+<span class="sd">        &gt;&gt;&gt; # Print a very verbose list of currently registered commands</span>
+<span class="sd">        &gt;&gt;&gt; RE.print_command_registry(verbose=True)</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+        <span class="n">commands</span> <span class="o">=</span> <span class="s2">&quot;List of available commands</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+        <span class="k">for</span> <span class="n">command</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_registry</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">docstring</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__doc__</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="n">docstring</span> <span class="o">=</span> <span class="n">docstring</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">commands</span> <span class="o">=</span> <span class="n">commands</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> : </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">docstring</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">commands</span></div>
 
 <div class="viewcode-block" id="RunEngine.subscribe"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.subscribe">[docs]</a>    <span class="k">def</span> <span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -670,6 +727,8 @@
 <span class="sd">        See Also</span>
 <span class="sd">        --------</span>
 <span class="sd">        :meth:`RunEngine.unregister_command`</span>
+<span class="sd">        :meth:`RunEngine.print_command_registry`</span>
+<span class="sd">        :attr:`RunEngine.commands`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_command_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span></div>
 
@@ -684,6 +743,8 @@
 <span class="sd">        See Also</span>
 <span class="sd">        --------</span>
 <span class="sd">        :meth:`RunEngine.register_command`</span>
+<span class="sd">        :meth:`RunEngine.print_command_registry`</span>
+<span class="sd">        :attr:`RunEngine.commands`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_command_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
 
@@ -2631,7 +2692,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'1.2.0.post102+gb5492d8',
+            VERSION:'1.2.0.post115+ge970134',
             LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
