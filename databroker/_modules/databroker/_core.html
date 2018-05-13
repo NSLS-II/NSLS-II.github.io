@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker._core &mdash; databroker 0.10.0.post39+g0422fda documentation</title>
+  <title>databroker._core &mdash; databroker 0.10.0.post47+g01dde8d documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.10.0.post39+g0422fda
+                0.10.0.post47+g01dde8d
               </div>
             
           
@@ -179,8 +179,22 @@
 <span class="kn">import</span> <span class="nn">humanize</span>
 <span class="kn">import</span> <span class="nn">jinja2</span>
 <span class="kn">import</span> <span class="nn">time</span>
-
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="n">ALL</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">SimpleNamespace</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="k">class</span> <span class="nc">SimpleNamespace</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">)</span>
+            <span class="n">items</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">=</span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">(</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">items</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="vm">__dict__</span>
 
 
 <span class="k">try</span><span class="p">:</span>
@@ -223,11 +237,12 @@
     <span class="n">db</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="nb">cmp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">hash</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
     <span class="n">stop</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="nb">dict</span><span class="p">))</span>
+    <span class="n">ext</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="n">SimpleNamespace</span><span class="p">),</span> <span class="nb">cmp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">hash</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">_cache</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">cmp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">hash</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                      <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Header.from_run_start"><a class="viewcode-back" href="../../generated/databroker.Header.from_run_start.html#databroker.Header.from_run_start">[docs]</a>    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">from_run_start</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">run_start</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">from_run_start</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">db</span><span class="p">,</span> <span class="n">run_start</span><span class="p">,</span> <span class="n">run_stop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Build a Header from a RunStart Document.</span>
 
@@ -242,19 +257,19 @@
 <span class="sd">        -------</span>
 <span class="sd">        header : databroker.core.Header</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">mds</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">hs</span><span class="o">.</span><span class="n">mds</span>
+        <span class="n">hs</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">hs</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">run_start</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
-            <span class="n">run_start</span> <span class="o">=</span> <span class="n">mds</span><span class="o">.</span><span class="n">run_start_given_uid</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span>
-        <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">run_start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+            <span class="n">run_start</span> <span class="o">=</span> <span class="n">hs</span><span class="o">.</span><span class="n">run_start_given_uid</span><span class="p">(</span><span class="n">run_start</span><span class="p">)</span>
 
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">run_stop</span> <span class="o">=</span> <span class="n">mds</span><span class="o">.</span><span class="n">stop_by_start</span><span class="p">(</span><span class="n">run_start_uid</span><span class="p">)</span>
-        <span class="k">except</span> <span class="n">mds</span><span class="o">.</span><span class="n">NoRunStop</span><span class="p">:</span>
-            <span class="n">run_stop</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">run_stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">run_stop</span> <span class="o">=</span> <span class="n">safe_get_stop</span><span class="p">(</span><span class="n">hs</span><span class="p">,</span> <span class="n">run_start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
 
         <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="n">db</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">run_start</span><span class="p">)}</span>
         <span class="k">if</span> <span class="n">run_stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">d</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">run_stop</span> <span class="ow">or</span> <span class="p">{})</span>
+
+        <span class="n">d</span><span class="p">[</span><span class="s1">&#39;ext&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">(</span><span class="o">**</span><span class="n">db</span><span class="o">.</span><span class="n">fetch_external</span><span class="p">(</span><span class="n">run_start</span><span class="p">,</span> <span class="n">run_stop</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;ext&#39;</span><span class="p">])</span>
         <span class="n">h</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="o">**</span><span class="n">d</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">h</span></div>
 
@@ -264,10 +279,10 @@
         <span class="n">template</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="n">_HTML_TEMPLATE</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">template</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">document</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="c1">### dict-like methods ###</span>
+    <span class="c1"># ## dict-like methods ###</span>
 
     <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;ext&#39;</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
@@ -284,7 +299,7 @@
             <span class="k">yield</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Header.keys"><a class="viewcode-back" href="../../generated/databroker.Header.keys.html#databroker.Header.keys">[docs]</a>    <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;ext&#39;</span><span class="p">):</span>
             <span class="k">yield</span> <span class="n">k</span></div>
 
 <div class="viewcode-block" id="Header.to_name_dict_pair"><a class="viewcode-back" href="../../generated/databroker.Header.to_name_dict_pair.html#databroker.Header.to_name_dict_pair">[docs]</a>    <span class="k">def</span> <span class="nf">to_name_dict_pair</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -295,7 +310,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name</span><span class="p">,</span> <span class="n">ret</span></div>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="mi">3</span>
+        <span class="k">return</span> <span class="mi">4</span>
 
     <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
@@ -645,6 +660,7 @@
             <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">specs</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Registering Handler </span><span class="si">%r</span><span class="s2"> for spec </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">cls</span><span class="p">,</span> <span class="n">spec</span><span class="p">)</span>
                 <span class="n">reg</span><span class="o">.</span><span class="n">register_handler</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span>
+
 
 <span class="k">def</span> <span class="nf">get_fields</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -997,9 +1013,7 @@
     <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_res</span><span class="p">,</span> <span class="n">res</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">tee</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_res</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
-            <span class="n">header</span> <span class="o">=</span> <span class="n">Header</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span>
-                            <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">stop</span><span class="p">),</span>
-                            <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">)</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="n">Header</span><span class="o">.</span><span class="n">from_run_start</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_data_key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">yield</span> <span class="n">header</span>
             <span class="k">else</span><span class="p">:</span>
@@ -1016,6 +1030,7 @@
 <span class="c1">#   /etc/databroker</span>
 <span class="c1"># And for Windows we only look in:</span>
 <span class="c1">#   %APPDATA%/databroker</span>
+
 
 <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
     <span class="n">_user_conf</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;APPDATA&#39;</span><span class="p">],</span> <span class="s1">&#39;databroker&#39;</span><span class="p">)</span>
@@ -1223,14 +1238,17 @@
 <span class="sd">    event_sources : List[EventSource]</span>
 <span class="sd">        zero, one or more EventSource objects</span>
 <span class="sd">    assets : List[AssetRegistry]</span>
+<span class="sd">    external_fetchers : Dict[str, Callable[Start, Stop]]</span>
 <span class="sd">    name : str, optional</span>
 <span class="sd">        The name of the broker</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hs</span><span class="p">,</span> <span class="n">event_sources</span><span class="p">,</span> <span class="n">assets</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hs</span><span class="p">,</span> <span class="n">event_sources</span><span class="p">,</span> <span class="n">assets</span><span class="p">,</span> <span class="n">external_fetchers</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hs</span> <span class="o">=</span> <span class="n">hs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event_sources</span> <span class="o">=</span> <span class="n">event_sources</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">assets</span> <span class="o">=</span> <span class="n">assets</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">external_fetchers</span> <span class="o">=</span> <span class="n">external_fetchers</span>
         <span class="c1"># Once we drop Python 2, we can accept initial filter and aliases as</span>
         <span class="c1"># keyword-only args if we want to.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filters</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1238,6 +1256,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">event_source_for_insert</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">registry_for_insert</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_sources</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prepare_hook</span> <span class="o">=</span> <span class="n">wrap_in_deprecated_doct</span>
+
+    <span class="k">def</span> <span class="nf">fetch_external</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">func</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span> <span class="k">for</span>
+                <span class="n">k</span><span class="p">,</span> <span class="n">func</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">external_fetchers</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 
     <span class="k">def</span> <span class="nf">add_event_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">es</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event_sources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">es</span><span class="p">)</span>
@@ -1380,9 +1402,7 @@
 
 <span class="sd">        &gt;&gt;&gt; header = db[42]</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span><span class="n">Header</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span>
-                      <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prepare_hook</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">stop</span><span class="p">),</span>
-                      <span class="n">db</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">[</span><span class="n">Header</span><span class="o">.</span><span class="n">from_run_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
                <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">search</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="p">)]</span>
         <span class="n">squeeze</span> <span class="o">=</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="nb">set</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="n">MutableSequence</span><span class="p">,</span> <span class="nb">slice</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">squeeze</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
@@ -1543,8 +1563,8 @@
 <span class="sd">        &gt;&gt;&gt; db(plan_name={&#39;$ne&#39;: &#39;relative_scan&#39;})</span>
 
 <span class="sd">        Read the</span>
-<span class="sd">        `MongoDB query documentation &lt;http://docs.mongodb.org/manual/tutorial/query-documents/&gt;`_</span>
-<span class="sd">        for more.</span>
+<span class="sd">        `MongoDB query documentation</span>
+<span class="sd">        &lt;http://docs.mongodb.org/manual/tutorial/query-documents/&gt;`_ for more.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">data_key</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_key&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
@@ -2216,23 +2236,28 @@
 <span class="sd">        By default, automatically register built-in asset handlers (classes</span>
 <span class="sd">        that handle I/O for externally stored data). Set this to ``False``</span>
 <span class="sd">        to do all registration manually.</span>
+<span class="sd">    external_fetchers, optional : Dict[str, Callable[Start, Stop]]</span>
+<span class="sd">        Used to attach extra data to the returned Headers in the `h.ext`</span>
+<span class="sd">        namespace.</span>
 <span class="sd">    name : str, optional</span>
 <span class="sd">        The name of the broker</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mds</span><span class="p">,</span> <span class="n">reg</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plugins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">auto_register</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">auto_register</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">external_fetchers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">plugins</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The &#39;plugins&#39; argument is no longer supported. &quot;</span>
                              <span class="s2">&quot;Use an EventSource instead.&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">filters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">filters</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">external_fetchers</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">external_fetchers</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">if</span> <span class="n">filters</span><span class="p">:</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Future versions of the databroker will not accept &quot;</span>
                           <span class="s2">&quot;&#39;filters&#39; in __init__. Set them using the filters &quot;</span>
                           <span class="s2">&quot;attribute after initialization.&quot;</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">(</span><span class="n">Broker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">HeaderSourceShim</span><span class="p">(</span><span class="n">mds</span><span class="p">),</span>
                                      <span class="p">[</span><span class="n">EventSourceShim</span><span class="p">(</span><span class="n">mds</span><span class="p">,</span> <span class="n">reg</span><span class="p">)],</span>
-                                     <span class="p">{</span><span class="s1">&#39;&#39;</span><span class="p">:</span> <span class="n">reg</span><span class="p">},</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+                                     <span class="p">{</span><span class="s1">&#39;&#39;</span><span class="p">:</span> <span class="n">reg</span><span class="p">},</span> <span class="n">external_fetchers</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span>
         <span class="k">if</span> <span class="n">auto_register</span><span class="p">:</span>
             <span class="n">register_builtin_handlers</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reg</span><span class="p">)</span>
@@ -2353,7 +2378,6 @@
         <span class="k">return</span> <span class="n">config</span></div></div>
 
 
-
 <span class="k">def</span> <span class="nf">_sanitize</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
     <span class="c1"># Make this a plain dict and strip off doct.Document artifacts.</span>
     <span class="n">d</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
@@ -2460,7 +2484,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../../',
-            VERSION:'0.10.0.post39+g0422fda',
+            VERSION:'0.10.0.post47+g01dde8d',
             LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
