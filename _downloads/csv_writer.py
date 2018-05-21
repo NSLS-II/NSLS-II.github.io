@@ -31,7 +31,7 @@ import bluesky as bs
 import bluesky.plans as bp
 import bluesky.callbacks as bc
 import csv
-from bluesky.examples import motor, det
+from ophyd.sim import motor, det
 
 import matplotlib.pyplot as plt
 

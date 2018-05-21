@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 from bluesky import RunEngine
 from bluesky.plans import adaptive_scan
 from bluesky.callbacks import LivePlot
-from bluesky.examples import motor, det
+from ophyd.sim import motor, det
 
 # Do this if running the example interactively;
 # skip it when building the documentation.

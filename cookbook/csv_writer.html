@@ -26,29 +26,20 @@
   
 
   
-  
     <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  
-
-  
-    <link rel="stylesheet" href="../_static/gallery.css" type="text/css" />
-  
-
-  
-        <link rel="index" title="Index"
-              href="../genindex.html"/>
-        <link rel="search" title="Search" href="../search.html"/>
-    <link rel="top" title="NSLS-II Software Documentation  documentation" href="../index.html"/>
-        <link rel="up" title="Cookbook (Examples)" href="index.html"/>
-        <link rel="next" title="Tutorials" href="../tutorials.html"/>
-        <link rel="prev" title="Re-scan until fit achieves desired confidence" href="adaptive_fitting.html"/> 
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/gallery.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Re-scan until fit achieves desired confidence" href="adaptive_fitting.html" />
+    <link rel="prev" title="Scan a grid around each sample in a grid" href="grid_in_grid.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
 
 </head>
 
-<body class="wy-body-for-nav" role="document">
+<body class="wy-body-for-nav">
 
    
   <div class="wy-grid-for-nav">
@@ -97,16 +88,15 @@
 <li class="toctree-l2"><a class="reference internal" href="simulation-mode.html">Inspect or rehearse a plan (“simulation mode”)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="adaptive-steps.html">Use scans with adaptive step sizes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="grid_in_grid.html">Scan a grid around each sample in a grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="adaptive_fitting.html">Re-scan until fit achieves desired confidence</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">A Minimal CSV writer for data collection</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#problem">Problem</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#approach">Approach</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#example-solution">Example Solution</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="adaptive_fitting.html">Re-scan until fit achieves desired confidence</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="../tutorials.html">Tutorials</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../remote-access.html">Remote Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../sandbox.html">Sandbox</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../history.html">History of Changes</a></li>
@@ -114,6 +104,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../fresh-installation.html">Installation at a Beamline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../internal_index.html">Internal Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../meetings/index.html">Meetings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Data Collection</span></p>
 <ul>
@@ -147,7 +138,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
 
       
-      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+      <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../index.html">NSLS-II Software Documentation</a>
@@ -155,9 +146,10 @@
       </nav>
 
 
-      
       <div class="wy-nav-content">
+        
         <div class="rst-content">
+        
           
 
 
@@ -215,13 +207,13 @@ bluesky.</p>
 <div class="section" id="example-solution">
 <h2>Example Solution<a class="headerlink" href="#example-solution" title="Permalink to this headline">¶</a></h2>
 <p>Boiler plate imports and configuration</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">path</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">path</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">bluesky</span> <span class="kn">as</span> <span class="nn">bs</span>
 <span class="kn">import</span> <span class="nn">bluesky.plans</span> <span class="kn">as</span> <span class="nn">bp</span>
 <span class="kn">import</span> <span class="nn">bluesky.callbacks</span> <span class="kn">as</span> <span class="nn">bc</span>
 <span class="kn">import</span> <span class="nn">csv</span>
-<span class="kn">from</span> <span class="nn">bluesky.examples</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
+<span class="kn">from</span> <span class="nn">ophyd.sim</span> <span class="kn">import</span> <span class="n">motor</span><span class="p">,</span> <span class="n">det</span>
 
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
 
@@ -239,7 +231,7 @@ bluesky.</p>
 </pre></div>
 </div>
 <p>Define a callback class which writes out a CSV file</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CSVWriter</span><span class="p">(</span><span class="n">bc</span><span class="o">.</span><span class="n">CallbackBase</span><span class="p">):</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CSVWriter</span><span class="p">(</span><span class="n">bc</span><span class="o">.</span><span class="n">CallbackBase</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">fname_format</span><span class="p">,</span> <span class="n">fpath</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_path</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">fpath</span><span class="p">)</span>
         <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
@@ -276,7 +268,7 @@ bluesky.</p>
 </pre></div>
 </div>
 <p>Set up some callbacks</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_cbs</span><span class="p">():</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">create_cbs</span><span class="p">():</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">bc</span><span class="o">.</span><span class="n">LiveTable</span><span class="p">([</span><span class="n">motor</span><span class="p">,</span> <span class="n">det</span><span class="p">]),</span> <span class="n">bc</span><span class="o">.</span><span class="n">LivePlot</span><span class="p">(</span><span class="s1">&#39;det&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">)]</span>
 
 <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;{user}_{uid:.6s}.csv&#39;</span>
@@ -288,32 +280,32 @@ bluesky.</p>
 </pre></div>
 </div>
 <p>run the scan</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">uid</span><span class="p">,</span> <span class="o">=</span> <span class="n">RE</span><span class="p">(</span><span class="n">bp</span><span class="o">.</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">uid</span><span class="p">,</span> <span class="o">=</span> <span class="n">RE</span><span class="p">(</span><span class="n">bp</span><span class="o">.</span><span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span>
           <span class="n">create_cbs</span><span class="p">(),</span> <span class="n">user</span><span class="o">=</span><span class="s1">&#39;tcaswell&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <img alt="../_images/sphx_glr_csv_writer_001.png" class="align-center" src="../_images/sphx_glr_csv_writer_001.png" />
 <p class="sphx-glr-script-out">Out:</p>
-<div class="sphx-glr-script-out highlight-default"><div class="highlight"><pre><span></span><span class="o">+-----------+------------+------------+----------------+------------+</span>
+<div class="sphx-glr-script-out highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">+-----------+------------+------------+----------------+------------+</span>
 <span class="o">|</span>   <span class="n">seq_num</span> <span class="o">|</span>       <span class="n">time</span> <span class="o">|</span>      <span class="n">motor</span> <span class="o">|</span> <span class="n">motor_setpoint</span> <span class="o">|</span>        <span class="n">det</span> <span class="o">|</span>
 <span class="o">+-----------+------------+------------+----------------+------------+</span>
-<span class="o">|</span>         <span class="mi">1</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.3</span> <span class="o">|</span>      <span class="o">-</span><span class="mf">5.00</span> <span class="o">|</span>          <span class="o">-</span><span class="mf">5.00</span> <span class="o">|</span>       <span class="mf">0.00</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">2</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.5</span> <span class="o">|</span>      <span class="o">-</span><span class="mf">4.00</span> <span class="o">|</span>          <span class="o">-</span><span class="mf">4.00</span> <span class="o">|</span>       <span class="mf">0.00</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">3</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.6</span> <span class="o">|</span>      <span class="o">-</span><span class="mf">3.00</span> <span class="o">|</span>          <span class="o">-</span><span class="mf">3.00</span> <span class="o">|</span>       <span class="mf">0.01</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">4</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.6</span> <span class="o">|</span>      <span class="o">-</span><span class="mf">2.00</span> <span class="o">|</span>          <span class="o">-</span><span class="mf">2.00</span> <span class="o">|</span>       <span class="mf">0.14</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">5</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.7</span> <span class="o">|</span>      <span class="o">-</span><span class="mf">1.00</span> <span class="o">|</span>          <span class="o">-</span><span class="mf">1.00</span> <span class="o">|</span>       <span class="mf">0.61</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">6</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.7</span> <span class="o">|</span>       <span class="mf">0.00</span> <span class="o">|</span>           <span class="mf">0.00</span> <span class="o">|</span>       <span class="mf">1.00</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">7</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.7</span> <span class="o">|</span>       <span class="mf">1.00</span> <span class="o">|</span>           <span class="mf">1.00</span> <span class="o">|</span>       <span class="mf">0.61</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">8</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.8</span> <span class="o">|</span>       <span class="mf">2.00</span> <span class="o">|</span>           <span class="mf">2.00</span> <span class="o">|</span>       <span class="mf">0.14</span> <span class="o">|</span>
-<span class="o">|</span>         <span class="mi">9</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.8</span> <span class="o">|</span>       <span class="mf">3.00</span> <span class="o">|</span>           <span class="mf">3.00</span> <span class="o">|</span>       <span class="mf">0.01</span> <span class="o">|</span>
-<span class="o">|</span>        <span class="mi">10</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.8</span> <span class="o">|</span>       <span class="mf">4.00</span> <span class="o">|</span>           <span class="mf">4.00</span> <span class="o">|</span>       <span class="mf">0.00</span> <span class="o">|</span>
-<span class="o">|</span>        <span class="mi">11</span> <span class="o">|</span> <span class="mi">00</span><span class="p">:</span><span class="mi">42</span><span class="p">:</span><span class="mf">59.9</span> <span class="o">|</span>       <span class="mf">5.00</span> <span class="o">|</span>           <span class="mf">5.00</span> <span class="o">|</span>       <span class="mf">0.00</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">1</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.1</span> <span class="o">|</span>     <span class="o">-</span><span class="mf">5.000</span> <span class="o">|</span>         <span class="o">-</span><span class="mf">5.000</span> <span class="o">|</span>      <span class="mf">0.000</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">2</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.2</span> <span class="o">|</span>     <span class="o">-</span><span class="mf">4.000</span> <span class="o">|</span>         <span class="o">-</span><span class="mf">4.000</span> <span class="o">|</span>      <span class="mf">0.000</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">3</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.3</span> <span class="o">|</span>     <span class="o">-</span><span class="mf">3.000</span> <span class="o">|</span>         <span class="o">-</span><span class="mf">3.000</span> <span class="o">|</span>      <span class="mf">0.011</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">4</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.4</span> <span class="o">|</span>     <span class="o">-</span><span class="mf">2.000</span> <span class="o">|</span>         <span class="o">-</span><span class="mf">2.000</span> <span class="o">|</span>      <span class="mf">0.135</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">5</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.4</span> <span class="o">|</span>     <span class="o">-</span><span class="mf">1.000</span> <span class="o">|</span>         <span class="o">-</span><span class="mf">1.000</span> <span class="o">|</span>      <span class="mf">0.607</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">6</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.5</span> <span class="o">|</span>      <span class="mf">0.000</span> <span class="o">|</span>          <span class="mf">0.000</span> <span class="o">|</span>      <span class="mf">1.000</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">7</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.6</span> <span class="o">|</span>      <span class="mf">1.000</span> <span class="o">|</span>          <span class="mf">1.000</span> <span class="o">|</span>      <span class="mf">0.607</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">8</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.6</span> <span class="o">|</span>      <span class="mf">2.000</span> <span class="o">|</span>          <span class="mf">2.000</span> <span class="o">|</span>      <span class="mf">0.135</span> <span class="o">|</span>
+<span class="o">|</span>         <span class="mi">9</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.7</span> <span class="o">|</span>      <span class="mf">3.000</span> <span class="o">|</span>          <span class="mf">3.000</span> <span class="o">|</span>      <span class="mf">0.011</span> <span class="o">|</span>
+<span class="o">|</span>        <span class="mi">10</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.8</span> <span class="o">|</span>      <span class="mf">4.000</span> <span class="o">|</span>          <span class="mf">4.000</span> <span class="o">|</span>      <span class="mf">0.000</span> <span class="o">|</span>
+<span class="o">|</span>        <span class="mi">11</span> <span class="o">|</span> <span class="mi">19</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mf">16.8</span> <span class="o">|</span>      <span class="mf">5.000</span> <span class="o">|</span>          <span class="mf">5.000</span> <span class="o">|</span>      <span class="mf">0.000</span> <span class="o">|</span>
 <span class="o">+-----------+------------+------------+----------------+------------+</span>
-<span class="n">generator</span> <span class="n">scan</span> <span class="p">[</span><span class="s1">&#39;bbf47b&#39;</span><span class="p">]</span> <span class="p">(</span><span class="n">scan</span> <span class="n">num</span><span class="p">:</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">generator</span> <span class="n">scan</span> <span class="p">[</span><span class="s1">&#39;730895f5&#39;</span><span class="p">]</span> <span class="p">(</span><span class="n">scan</span> <span class="n">num</span><span class="p">:</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>check file</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">export_path</span><span class="p">,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">export_path</span><span class="p">,</span>
                      <span class="s1">&#39;{user}_{uid:.6s}.csv&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="s1">&#39;tcaswell&#39;</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">uid</span><span class="p">))</span>
 
 <span class="k">print</span><span class="p">(</span><span class="s2">&quot;--- {} ---&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">))</span>
@@ -323,46 +315,44 @@ bluesky.</p>
 </pre></div>
 </div>
 <p class="sphx-glr-script-out">Out:</p>
-<div class="sphx-glr-script-out highlight-default"><div class="highlight"><pre><span></span><span class="o">---</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">export_demo</span><span class="o">/</span><span class="n">tcaswell_bbf47b</span><span class="o">.</span><span class="n">csv</span> <span class="o">---</span>
+<div class="sphx-glr-script-out highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">---</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">export_demo</span><span class="o">/</span><span class="n">tcaswell_730895</span><span class="o">.</span><span class="n">csv</span> <span class="o">---</span>
 <span class="n">motor</span><span class="p">,</span><span class="n">det</span>
-<span class="o">-</span><span class="mf">5.0</span><span class="p">,</span><span class="mf">3.726653172078671e-06</span>
-<span class="o">-</span><span class="mf">4.0</span><span class="p">,</span><span class="mf">0.00033546262790251185</span>
-<span class="o">-</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">0.011108996538242306</span>
-<span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">0.1353352832366127</span>
-<span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">0.6065306597126334</span>
+<span class="o">-</span><span class="mf">5.0</span><span class="p">,</span><span class="mf">3.72665317208e-06</span>
+<span class="o">-</span><span class="mf">4.0</span><span class="p">,</span><span class="mf">0.000335462627903</span>
+<span class="o">-</span><span class="mf">3.0</span><span class="p">,</span><span class="mf">0.0111089965382</span>
+<span class="o">-</span><span class="mf">2.0</span><span class="p">,</span><span class="mf">0.135335283237</span>
+<span class="o">-</span><span class="mf">1.0</span><span class="p">,</span><span class="mf">0.606530659713</span>
 <span class="mf">0.0</span><span class="p">,</span><span class="mf">1.0</span>
-<span class="mf">1.0</span><span class="p">,</span><span class="mf">0.6065306597126334</span>
-<span class="mf">2.0</span><span class="p">,</span><span class="mf">0.1353352832366127</span>
-<span class="mf">3.0</span><span class="p">,</span><span class="mf">0.011108996538242306</span>
-<span class="mf">4.0</span><span class="p">,</span><span class="mf">0.00033546262790251185</span>
-<span class="mf">5.0</span><span class="p">,</span><span class="mf">3.726653172078671e-06</span>
+<span class="mf">1.0</span><span class="p">,</span><span class="mf">0.606530659713</span>
+<span class="mf">2.0</span><span class="p">,</span><span class="mf">0.135335283237</span>
+<span class="mf">3.0</span><span class="p">,</span><span class="mf">0.0111089965382</span>
+<span class="mf">4.0</span><span class="p">,</span><span class="mf">0.000335462627903</span>
+<span class="mf">5.0</span><span class="p">,</span><span class="mf">3.72665317208e-06</span>
 </pre></div>
 </div>
-<p><strong>Total running time of the script:</strong> ( 0 minutes  0.835 seconds)</p>
+<p><strong>Total running time of the script:</strong> ( 0 minutes  0.962 seconds)</p>
 <div class="sphx-glr-footer docutils container">
 <div class="sphx-glr-download docutils container">
-<a class="reference download internal" href="../_downloads/csv_writer.py" download=""><code class="xref download docutils literal"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">csv_writer.py</span></code></a></div>
+<a class="reference download internal" href="../_downloads/csv_writer.py" download=""><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">csv_writer.py</span></code></a></div>
 <div class="sphx-glr-download docutils container">
-<a class="reference download internal" href="../_downloads/csv_writer.ipynb" download=""><code class="xref download docutils literal"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">csv_writer.ipynb</span></code></a></div>
+<a class="reference download internal" href="../_downloads/csv_writer.ipynb" download=""><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">csv_writer.ipynb</span></code></a></div>
 </div>
-<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.readthedocs.io">Generated by Sphinx-Gallery</a></p>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.readthedocs.io">Gallery generated by Sphinx-Gallery</a></p>
 </div>
 </div>
 
 
            </div>
-           <div class="articleComments">
-            
-           </div>
+           
           </div>
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="../tutorials.html" class="btn btn-neutral float-right" title="Tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="adaptive_fitting.html" class="btn btn-neutral float-right" title="Re-scan until fit achieves desired confidence" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="adaptive_fitting.html" class="btn btn-neutral" title="Re-scan until fit achieves desired confidence" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="grid_in_grid.html" class="btn btn-neutral" title="Scan a grid around each sample in a grid" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -375,7 +365,7 @@ bluesky.</p>
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -394,6 +384,7 @@ bluesky.</p>
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
             VERSION:'',
+            LANGUAGE:'None',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,
@@ -412,14 +403,11 @@ bluesky.</p>
     <script type="text/javascript" src="../_static/js/theme.js"></script>
   
 
-  
-  
   <script type="text/javascript">
       jQuery(function () {
-          SphinxRtdTheme.StickyNav.enable();
+          SphinxRtdTheme.Navigation.enable(true);
       });
-  </script>
-   
+  </script> 
 
 </body>
 </html>

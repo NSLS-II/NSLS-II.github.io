@@ -20,7 +20,7 @@ Example Solution
 import bluesky.plans as bp
 import bluesky.callbacks as bc
 from bluesky import RunEngine
-from bluesky.examples import det  # a simulated detector
+from ophyd.sim import det  # a simulated detector
 
 RE = RunEngine({})
 
