@@ -134,14 +134,13 @@ The following projects are in use but in a less mature stage of development.
 
    bluesky <https://nsls-ii.github.io/bluesky>
    ophyd <https://nsls-ii.github.io/ophyd>
+   caproto <https://nsls-ii.github.io/caproto>
 
 .. toctree::
    :hidden:
    :caption: Data Access and Management
 
    databroker <https://nsls-ii.github.io/databroker>
-   amostra <https://nsls-ii.github.io/amostra>
-   datamuxer <https://nsls-ii.github.io/datamuxer>
    suitcase <https://nsls-ii.github.io/suitcase>
 
 .. toctree::
