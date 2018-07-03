@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Including Data Files" href="including-data-files.html" />
+    <link rel="next" title="Writing Documentation" href="writing-docs.html" />
     <link rel="prev" title="Getting Started" href="preliminaries.html" /> 
 
   
@@ -84,10 +84,18 @@
             
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="preliminaries.html">Getting Started</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">The Code Itself</a></li>
-<li class="toctree-l1"><a class="reference internal" href="including-data-files.html">Including Data Files</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">The Code Itself</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#a-simple-function-with-inline-documentation">A simple function with inline documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#update-requirements">Update Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#try-it">Try it</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-the-tests">Run the Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#write-a-test">Write a Test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lint-check-for-suspicious-looking-code">Lint: Check for suspicious-looking code</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="writing-docs.html">Writing Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="including-data-files.html">Including Data Files</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publishing-releases.html">Publishing Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notes-for-experts.html">Philosophy</a></li>
 </ul>
@@ -156,6 +164,260 @@
             
   <div class="section" id="the-code-itself">
 <h1>The Code Itself<a class="headerlink" href="#the-code-itself" title="Permalink to this headline">¶</a></h1>
+<p>In this section you will:</p>
+<ul class="simple">
+<li>Put some scientific code to your Python package.</li>
+<li>Update our package’s list of dependencies in <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>.</li>
+<li>Write a test.</li>
+</ul>
+<div class="section" id="a-simple-function-with-inline-documentation">
+<h2>A simple function with inline documentation<a class="headerlink" href="#a-simple-function-with-inline-documentation" title="Permalink to this headline">¶</a></h2>
+<p>Let’s write a simple function that encodes
+<a class="reference external" href="https://en.wikipedia.org/wiki/Snell%27s_law">Snell’s Law</a> and include it in
+our Python package.</p>
+<p>Look again at the directory structure.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>example/
+├── .flake8
+├── .gitattributes
+├── .gitignore
+├── .travis.yml
+├── AUTHORS.rst
+├── CONTRIBUTING.rst
+├── LICENSE
+├── MANIFEST.in
+├── README.rst
+├── docs
+│   ├── Makefile
+│   ├── build
+│   ├── make.bat
+│   └── source
+│       ├── _static
+│       │   └── .placeholder
+│       ├── _templates
+│       ├── conf.py
+│       ├── index.rst
+│       ├── installation.rst
+│       ├── release-history.rst
+│       └── usage.rst
+├── example
+│   ├── __init__.py
+│   ├── _version.py
+│   └── tests
+│       └── test_examples.py
+├── requirements-dev.txt
+├── requirements.txt
+├── setup.cfg
+├── setup.py
+└── versioneer.py
+</pre></div>
+</div>
+<p>Our scientific code should go in the <code class="docutils literal notranslate"><span class="pre">example/</span></code> subdirectory, next to
+<code class="docutils literal notranslate"><span class="pre">__init__.py</span></code>. Let’s make a file named <code class="docutils literal notranslate"><span class="pre">refraction.py</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># example/refraction.py</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+
+<span class="k">def</span> <span class="nf">snell</span><span class="p">(</span><span class="n">theta_inc</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the refraction angle using Snell&#39;s Law.</span>
+
+<span class="sd">    See https://en.wikipedia.org/wiki/Snell%27s_law</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    theta_inc : float</span>
+<span class="sd">        Incident angle</span>
+<span class="sd">    n1 : float</span>
+<span class="sd">        Refractive index of medium of origin</span>
+<span class="sd">    n2: : float</span>
+<span class="sd">        Refractive index of destination medium</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    theta : float</span>
+<span class="sd">        refraction angle</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    A ray enters an air--water boundary at 45 degrees. Compute exit angle.</span>
+<span class="sd">    &gt;&gt;&gt; snell(np.deg2rad(45), 1.00, 1.33)</span>
+<span class="sd">    0.5605584137424605</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">arcsin</span><span class="p">(</span><span class="n">n1</span> <span class="o">/</span> <span class="n">n2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta_inc</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Notice that this example includes inline documentation — a “docstring”. This
+is extremely useful for collaborators, and the most common collaborator is
+Future You!</p>
+<p>Further, by following the
+<a class="reference external" href="https://numpydoc.readthedocs.io/en/latest/format.html">numpydoc standard</a>,
+we will be able to automatically generate nice-looking HTML documentation
+later. Notable features:</p>
+<ul>
+<li><p class="first">There is a succinct, one-line summary of the functions use. It must one line.</p>
+</li>
+<li><p class="first">There is an optional paragraph elaborating on that summary.</p>
+</li>
+<li><p class="first">There is a list of parameters with the structure</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>parameter_name : parameter_type
+    optional description
+</pre></div>
+</div>
+<p>Note that space before the <code class="docutils literal notranslate"><span class="pre">:</span></code>. That is part of the standard.</p>
+</li>
+<li><p class="first">Finally, there is an optional block of examples.</p>
+</li>
+</ul>
+</div>
+<div class="section" id="update-requirements">
+<h2>Update Requirements<a class="headerlink" href="#update-requirements" title="Permalink to this headline">¶</a></h2>
+<p>Notice that our package has a third-party dependency, numpy. We should
+update our package’s <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># requirements.txt
+
+# List required packages in this file, one per line.
+numpy
+</pre></div>
+</div>
+<p>Our cookiecutter configured <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> to read this file. It will ensure that
+numpy is installed when our package is installed.</p>
+<p>We can test it by reinstalling the package.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -m pip install --user -e .
+</pre></div>
+</div>
+</div>
+<div class="section" id="try-it">
+<h2>Try it<a class="headerlink" href="#try-it" title="Permalink to this headline">¶</a></h2>
+<p>Try importing and using the function.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">example.refraction</span> <span class="kn">import</span> <span class="n">snell</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">snell</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="mf">1.00</span><span class="p">,</span> <span class="mf">1.33</span><span class="p">))</span>
+<span class="go">1.2239576240104186</span>
+</pre></div>
+</div>
+<p>The docstring can be viewed with <a class="reference external" href="https://docs.python.org/3/library/functions.html#help" title="(in Python v3.7)"><code class="xref py py-func docutils literal notranslate"><span class="pre">help()</span></code></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">help</span><span class="p">(</span><span class="n">snell</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or, as a shortcut, use <code class="docutils literal notranslate"><span class="pre">?</span></code> in IPython/Jupyter.</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span>snell<span class="o">?</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="run-the-tests">
+<h2>Run the Tests<a class="headerlink" href="#run-the-tests" title="Permalink to this headline">¶</a></h2>
+<p>You should add a test right away while the details are still fresh in mind.
+Writing tests encourages you to write modular, reusable code, which is easier
+to test.</p>
+<p>The cookiecutter template included an example test suite with one test:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># example/tests/test_examples.py</span>
+
+<span class="k">def</span> <span class="nf">test_one_plus_one_is_two</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">2</span>
+</pre></div>
+</div>
+<p>Before writing our own test, let’s practice running that test to check that
+everything is working.</p>
+<p>First, install the “development requirements” for our package. These are
+third-party Python packages that aren’t necessary to <em>use</em> our package, but are
+necessary to <em>develop</em> it (run tests, build the documentation). The cookiecutter
+template has listed some defaults in <code class="docutils literal notranslate"><span class="pre">requirements-dev.txt</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3 -m pip install --upgrade --user -r requirements-dev.txt
+</pre></div>
+</div>
+<p>Now run the tests like so.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest
+</pre></div>
+</div>
+<p>This walks through all the directories and files in our package that start with
+the word ‘test’ and collects all the functions whose name also starts with
+<code class="docutils literal notranslate"><span class="pre">test</span></code>. Currently, there is just one, <code class="docutils literal notranslate"><span class="pre">test_one_plus_one_is_two</span></code>.
+<code class="docutils literal notranslate"><span class="pre">pytest</span></code> runs that function. If no exceptions are raised, the test passes.</p>
+<p>The output should look something like this:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="o">========================================</span> <span class="nb">test</span> session <span class="nv">starts</span> <span class="o">========================================</span>
+platform darwin -- Python <span class="m">3</span>.6.4, pytest-3.6.2, py-1.5.4, pluggy-0.6.0
+benchmark: <span class="m">3</span>.1.1 <span class="o">(</span>defaults: <span class="nv">timer</span><span class="o">=</span>time.perf_counter <span class="nv">disable_gc</span><span class="o">=</span>False <span class="nv">min_rounds</span><span class="o">=</span><span class="m">5</span> <span class="nv">min_time</span><span class="o">=</span><span class="m">0</span>.000005 <span class="nv">max_time</span><span class="o">=</span><span class="m">1</span>.0 <span class="nv">calibration_precision</span><span class="o">=</span><span class="m">10</span> <span class="nv">warmup</span><span class="o">=</span>False <span class="nv">warmup_iterations</span><span class="o">=</span><span class="m">100000</span><span class="o">)</span>
+rootdir: /private/tmp/test11/example, inifile:
+plugins: xdist-1.22.2, timeout-1.2.1, rerunfailures-4.0, pep8-1.0.6, lazy-fixture-0.3.0, forked-0.2, benchmark-3.1.1
+collected <span class="m">1</span> item
+
+example/tests/test_examples.py .                                                              <span class="o">[</span><span class="m">100</span>%<span class="o">]</span>
+
+<span class="o">=====================================</span> <span class="m">1</span> passed in <span class="m">0</span>.02 <span class="nv">seconds</span> <span class="o">======================================</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>The output of <code class="docutils literal notranslate"><span class="pre">pytest</span></code> is customizable. Commonly useful command-line
+arguments include:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">-v</span></code> verbose</li>
+<li><code class="docutils literal notranslate"><span class="pre">-s</span></code> Do not capture stdout/err per test.</li>
+<li><code class="docutils literal notranslate"><span class="pre">-k</span> <span class="pre">EXPRESSION</span></code> Filter tests by pattern-matching test name.</li>
+</ul>
+<p class="last">Consult the <a class="reference external" href="https://docs.pytest.org/en/latest/">pytest documentation</a>
+for more.</p>
+</div>
+</div>
+<div class="section" id="write-a-test">
+<h2>Write a Test<a class="headerlink" href="#write-a-test" title="Permalink to this headline">¶</a></h2>
+<p>Let’s add a test to <code class="docutils literal notranslate"><span class="pre">test_examples.py</span></code> that exercises our <code class="docutils literal notranslate"><span class="pre">snell</span></code> function.
+We can delete <code class="docutils literal notranslate"><span class="pre">test_one_plus_one_is_two</span></code> now.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># example/tests/test_examples.py</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+
+<span class="k">def</span> <span class="nf">test_perpendicular</span><span class="p">():</span>
+    <span class="c1"># For any indexes, a ray normal to the surface should not bend.</span>
+    <span class="c1"># We&#39;ll try a couple different combinations of indexes....</span>
+
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span>
+
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span>
+
+
+<span class="k">def</span> <span class="nf">test_air_water</span><span class="p">():</span>
+    <span class="n">n_air</span><span class="p">,</span> <span class="n">n_water</span> <span class="o">=</span> <span class="mf">1.00</span><span class="p">,</span> <span class="mf">1.33</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="n">n_air</span><span class="p">,</span> <span class="n">n_water</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mf">0.5605584137424605</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Things to notice:</p>
+<ul class="simple">
+<li>It is sometime useful to put multiple <code class="docutils literal notranslate"><span class="pre">assert</span></code> statements in one test. You
+should make a separate test for each <em>behavior</em> that you are checking. When a
+monolithic, multi-step tests fails, it’s difficult to figure out why.</li>
+<li>When comparing floating-point numbers (as opposed to integers) you should not
+test for exact equality. Use <a class="reference external" href="https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html#numpy.allclose" title="(in NumPy v1.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">numpy.allclose()</span></code></a>, which checks for
+equality within a (configurable) tolerance. Numpy provides several
+<a class="reference external" href="https://docs.scipy.org/doc/numpy-1.13.0/reference/routines.testing.html">testing utilities</a>,
+which should always be used when testing numpy arrays.</li>
+<li>Remember that the names of all test modules and functions must begin with
+<code class="docutils literal notranslate"><span class="pre">test</span></code> or they will not be picked up by pytest!</li>
+</ul>
+</div>
+<div class="section" id="lint-check-for-suspicious-looking-code">
+<h2>Lint: Check for suspicious-looking code<a class="headerlink" href="#lint-check-for-suspicious-looking-code" title="Permalink to this headline">¶</a></h2>
+<p>A <a class="reference external" href="https://en.wikipedia.org/wiki/Lint_(software)">linter</a> is a tool that
+analyzes code to flag potential errors. For example, it can catch variables you
+defined by never used, which is likely a spelling error.</p>
+<p>The cookiecutter configured <code class="docutils literal notranslate"><span class="pre">flake8</span></code> for this purpose. Flake8 checks for
+“lint” and also enforces the standard Python coding style,
+<a class="reference external" href="https://www.python.org/dev/peps/pep-0008/?#introduction">PEP8</a>. Enforcing
+consistent style helps projects stay easy to read and maintain as they grow.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>flake8
+</pre></div>
+</div>
+<p>This will list linting or stylistic errors. If there is no output, all is well.
+See the <a class="reference external" href="http://flake8.pycqa.org/en/latest/">flake8 documentation</a> for more.</p>
+</div>
 </div>
 
 
@@ -166,7 +428,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="including-data-files.html" class="btn btn-neutral float-right" title="Including Data Files" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="writing-docs.html" class="btn btn-neutral float-right" title="Writing Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="preliminaries.html" class="btn btn-neutral" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
