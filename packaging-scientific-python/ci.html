@@ -90,6 +90,7 @@
 <li class="toctree-l1"><a class="reference internal" href="including-data-files.html">Including Data Files</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publishing-releases.html">Publishing Releases</a></li>
 <li class="toctree-l1"><a class="reference internal" href="advanced-testing.html">Common Patterns for Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="further-reading.html">Futher Reading</a></li>
 <li class="toctree-l1"><a class="reference internal" href="notes-for-experts.html">Philosophy of this Tutorial</a></li>
 </ul>
 
@@ -159,10 +160,46 @@
 <h1>Continous Integration Testing<a class="headerlink" href="#continous-integration-testing" title="Permalink to this headline">¶</a></h1>
 <p>In this section you will:</p>
 <ul class="simple">
+<li>Understand the benefits Continuous Integration.</li>
 <li>Configure Travis-CI, a “continuous integration” service, to operate on your
 GitHub repository.</li>
 </ul>
-<p>TO DO</p>
+<p>If “Continuous Integration” (CI) is new to you, we refer you to
+<a class="reference external" href="https://katyhuff.github.io/python-testing/08-ci/">this excellent Software Carpentry tutorial</a>
+on the subject. To summarize, CI speeds development by checking out your code on
+a fresh, clean server, installing your software, running the tests, and
+reporting the results. This helps you ensure that your code will work on your
+colleague’s computer—that is doesn’t accidentally depend on some local detail
+of your machine. It also creates a clear, public record of whether the tests
+passed or failed, so if things are accidentally broken (say, while you are on
+vacation) you can trace when the breaking change occurred.</p>
+<p>The cookiecutter template has already generated a configuration file for
+Travis-CI.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>language: python
+python:
+  - 3.6
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
+
+install:
+  # Install this package and the packages listed in requirements.txt.
+  - pip install .
+  # Install extra requirements for running tests and building docs.
+  - pip install -r requirements-dev.txt
+
+script:
+  - coverage run -m pytest  # Run the tests and check for test coverage.
+  - coverage report -m  # Generate test coverage report.
+  - codecov  # Upload the report to codecov.
+  - flake8 --max-line-length=115  # Enforce code style (but relax line length limit a bit).
+  - make -C docs html  # Build the documentation.
+</pre></div>
+</div>
+<p>You can customize this to your liking. For example, if you are migrating a
+large amount of existing code that is not compliant with PEP8, you may want to
+remove the line that does <code class="docutils literal notranslate"><span class="pre">flake8</span></code> style-checking.</p>
 </div>
 
 
