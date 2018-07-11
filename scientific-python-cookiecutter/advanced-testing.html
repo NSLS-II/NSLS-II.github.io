@@ -1,0 +1,375 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Common Patterns for Tests &mdash; Scientific Python Cookiecutter 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="https://cdn.rawgit.com/choldgraf/sphinx-copybutton/master/_static/copybutton.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Futher Reading" href="further-reading.html" />
+    <link rel="prev" title="Guiding Design Principles" href="guiding-design-principles.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Scientific Python Cookiecutter
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="preliminaries.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="the-code-itself.html">The Code Itself</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ci.html">Continous Integration Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="writing-docs.html">Writing Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="including-data-files.html">Including Data Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publishing-docs.html">Publishing the Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publishing-releases.html">Publishing Releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="guiding-design-principles.html">Guiding Design Principles</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Common Patterns for Tests</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#parametrized-tests">Parametrized Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fixtures">Fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#skipping-tests">Skipping Tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="further-reading.html">Futher Reading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notes-for-experts.html">Philosophy of this Tutorial</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Scientific Python Cookiecutter</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Common Patterns for Tests</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/advanced-testing.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="common-patterns-for-tests">
+<h1>Common Patterns for Tests<a class="headerlink" href="#common-patterns-for-tests" title="Permalink to this headline">¶</a></h1>
+<p>In this section you will learn some useful features of pytest that can make
+your tests succinct and easy to maintain.</p>
+<div class="section" id="parametrized-tests">
+<h2>Parametrized Tests<a class="headerlink" href="#parametrized-tests" title="Permalink to this headline">¶</a></h2>
+<p>Tests that apply the same general test logic to a collection of different
+parameters can use parametrized tests. For example, this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">..refraction</span> <span class="kn">import</span> <span class="n">snell</span>
+
+
+<span class="k">def</span> <span class="nf">test_perpendicular</span><span class="p">():</span>
+    <span class="c1"># For any indexes, a ray normal to the surface should not bend.</span>
+    <span class="c1"># We&#39;ll try a couple different combinations of indexes....</span>
+
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span>
+
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>can be rewritten as:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">..refraction</span> <span class="kn">import</span> <span class="n">snell</span>
+
+
+<span class="nd">@pytest.mark.parametrize</span><span class="p">(</span><span class="s1">&#39;n1, n2&#39;</span><span class="p">,</span>
+                         <span class="p">[(</span><span class="mf">2.00</span><span class="p">,</span> <span class="mf">3.00</span><span class="p">),</span>
+                          <span class="p">(</span><span class="mf">3.00</span><span class="p">,</span> <span class="mf">2.00</span><span class="p">),</span>
+                         <span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_perpendicular</span><span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">):</span>
+    <span class="c1"># For any indexes, a ray normal to the surface should not bend.</span>
+    <span class="c1"># We&#39;ll try a couple different combinations of indexes....</span>
+
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">snell</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">)</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">assert</span> <span class="n">actual</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>The string <code class="docutils literal notranslate"><span class="pre">'n1,</span> <span class="pre">n2'</span></code> specifies which parameters this decorator will fill in.
+Pytest will run <code class="docutils literal notranslate"><span class="pre">test_perpendicular</span></code> twice, one for each entry in the
+list <code class="docutils literal notranslate"><span class="pre">[(2.00,</span> <span class="pre">3.00),</span> <span class="pre">(3.00,</span> <span class="pre">2.00)]</span></code>, passing in the respective values <code class="docutils literal notranslate"><span class="pre">n1</span></code>
+and <code class="docutils literal notranslate"><span class="pre">n2</span></code> as arguments.</p>
+<p>From here we refer you to the
+<a class="reference external" href="https://docs.pytest.org/en/latest/parametrize.html">pytest parametrize documentation</a>.</p>
+</div>
+<div class="section" id="fixtures">
+<h2>Fixtures<a class="headerlink" href="#fixtures" title="Permalink to this headline">¶</a></h2>
+<p>Tests that have different logic but share the same setup code can use pytest
+fixtures. For example, this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+
+<span class="k">def</span> <span class="nf">test_height</span><span class="p">():</span>
+    <span class="c1"># Construct a 1-dimensional Gaussian peak.</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">sigma</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="c1"># Test that the peak height is correct.</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">peak</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_nonnegative</span><span class="p">():</span>
+    <span class="c1"># Construct a 1-dimensional Gaussian peak.</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">sigma</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="c1"># Test that there are no negative values.</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">peak</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>can be written as:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+
+<span class="nd">@pytest.fixture</span>
+<span class="k">def</span> <span class="nf">peak</span><span class="p">():</span>
+    <span class="c1"># Construct a 1-dimensional Gaussian peak.</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">21</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">peak</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">sigma</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">peak</span>
+
+
+<span class="k">def</span> <span class="nf">test_height</span><span class="p">(</span><span class="n">peak</span><span class="p">):</span>
+    <span class="n">expected</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="c1"># Test that the peak height is correct.</span>
+    <span class="n">actual</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">peak</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">expected</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_nonnegative</span><span class="p">(</span><span class="n">peak</span><span class="p">):</span>
+    <span class="c1"># Test that there are no negative values.</span>
+    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">peak</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To reuse a fixture in multiple files, add it to <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> located in the
+<code class="docutils literal notranslate"><span class="pre">tests/</span></code> directory. It will automatically be imported by pytest into each
+test module.</p>
+<p>From here we refer you to the
+<a class="reference external" href="https://docs.pytest.org/en/latest/fixture.html">pytest fixtures documentation</a>.</p>
+</div>
+<div class="section" id="skipping-tests">
+<h2>Skipping Tests<a class="headerlink" href="#skipping-tests" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes it is useful to skip specific tests under certain conditions.
+Examples:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<span class="nd">@pytest.mark.skipif</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span>
+                    <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;requires python3.7 or higher&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_something</span><span class="p">():</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@pytest.mark.skipif</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">==</span> <span class="s1">&#39;win32&#39;</span><span class="p">,</span>
+                    <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;does not run on windows&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_something_that_does_not_work_on_windows</span><span class="p">():</span>
+    <span class="o">...</span>
+
+
+<span class="k">def</span> <span class="nf">test_something_that_needs_a_special_dependency</span><span class="p">():</span>
+    <span class="n">some_library</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">importorskip</span><span class="p">(</span><span class="s2">&quot;some_library&quot;</span><span class="p">)</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>From here we refer you to the
+<a class="reference external" href="https://docs.pytest.org/en/latest/skipping.html">pytest skipping documentation</a>.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="further-reading.html" class="btn btn-neutral float-right" title="Futher Reading" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="guiding-design-principles.html" class="btn btn-neutral" title="Guiding Design Principles" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Contributors.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.1',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdn.rawgit.com/choldgraf/sphinx-copybutton/master/_static/copybutton.js"></script>
+      <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
