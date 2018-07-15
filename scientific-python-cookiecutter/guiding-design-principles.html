@@ -98,6 +98,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#keep-i-o-separate">Keep I/O Separate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#duck-typing-is-a-good-idea">Duck Typing is a Good Idea</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#stop-writing-classes">“Stop Writing Classes”</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#permissiveness-isn-t-always-convenient">Permissiveness Isn’t Always Convenient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#write-useful-error-messages">Write Useful Error Messages</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#complexity-is-always-conserved">Complexity is Always Conserved</a></li>
 </ul>
 </li>
@@ -176,7 +178,12 @@ organizing scientific Python code.</p>
 <div class="section" id="collaborate">
 <h2>Collaborate<a class="headerlink" href="#collaborate" title="Permalink to this headline">¶</a></h2>
 <p>Software developed by several people is preferable to software developed by
-one.</p>
+one. By adopting the conventions and tooling used by many other scientific
+software projects, you are well on your way to making it easy for others to
+contribute. Familiarity works in both directions: it will be easier for others
+to understand and contribute to your project, and it will be easier for you to
+use other popular open-source scientific software projects and modify them to
+your purposes.</p>
 <p>Talking through a design and the assumptions in it helps to clarify your
 thinking. To quote the
 <a class="reference external" href="https://www.python.org/dev/peps/pep-0020/#id3">Zen of Python</a>,
@@ -194,7 +201,8 @@ by different fields.</p>
 <h2>Don’t Be Afraid to Refactor<a class="headerlink" href="#don-t-be-afraid-to-refactor" title="Permalink to this headline">¶</a></h2>
 <p>No code is ever right the first (or second) time.</p>
 <p>Refactoring the code once you understand the problem and the design trade-offs
-more fully helps keep the code maintainable.</p>
+more fully helps keep the code maintainable. Version control, tests, and
+linting are your safety net, empowering you to make changes with confidence.</p>
 </div>
 <div class="section" id="prefer-wide-over-deep">
 <h2>Prefer “Wide” over “Deep”<a class="headerlink" href="#prefer-wide-over-deep" title="Permalink to this headline">¶</a></h2>
@@ -235,6 +243,14 @@ possible range of input types.</p>
 </div>
 <div class="section" id="stop-writing-classes">
 <h2>“Stop Writing Classes”<a class="headerlink" href="#stop-writing-classes" title="Permalink to this headline">¶</a></h2>
+<p>Not everything needs to be object-oriented. Object-oriented design frequently
+does not add value in scientific computing.</p>
+<blockquote class="epigraph">
+<div><p>It is better to have 100 functions operate on one data structure than 10
+functions on 10 data structures.</p>
+<p class="attribution">&mdash;From ACM’s SIGPLAN publication, (September, 1982), Article “Epigrams in
+Programming”, by Alan J. Perlis of Yale University.</p>
+</div></blockquote>
 <p>It is often tempting to invent special objects for a use case or workflow —
 an <code class="docutils literal notranslate"><span class="pre">Image</span></code> object or a <code class="docutils literal notranslate"><span class="pre">DiffractionAnalysis</span></code> object. This approach has
 proven again and again to be difficult to extend and maintain. It is better to
@@ -252,6 +268,30 @@ arrays, but they don’t understand custom classes, so it is better to pass
 application-specific metadata <em>alongside</em> a standard array than to try to
 encapsulate all of that information in a new, bespoke object.</p>
 </div>
+<div class="section" id="permissiveness-isn-t-always-convenient">
+<h2>Permissiveness Isn’t Always Convenient<a class="headerlink" href="#permissiveness-isn-t-always-convenient" title="Permalink to this headline">¶</a></h2>
+<p>Overly permissive code can lead to very confusing bugs. If you need a flexible
+user-facing interface that tries to “do the right thing” by guessing what the
+users wants, separate it into two layers: a thin “friendly” layer on top of a
+“cranky” layer that takes in only exactly what it needs and does the actual
+work. It should be easy to test, constrained about what it accepts and what
+it returns. The layered design makes it possible to write <em>many</em> such friendly
+layers with different opinions and different defaults.</p>
+<p>When it doubt, make function arguments required. Optional arguments are harder
+to discover and can hide important choices that the user should know that they
+are making.</p>
+<p>Exceptions should just be raised: don’t catch them and print. Exceptions are a
+tool for being clear about what the code needs and letting the caller decide
+what to do about it. <em>Application</em> code (e.g. GUIs) should catch and handle
+errors to avoid crashing, but <em>library</em> code should generally raise errors
+unless it is sure how the user or the caller wants to handle them.</p>
+</div>
+<div class="section" id="write-useful-error-messages">
+<h2>Write Useful Error Messages<a class="headerlink" href="#write-useful-error-messages" title="Permalink to this headline">¶</a></h2>
+<p>Be specific. Include what the wrong value was and what was wrong with it.
+Suggest examples. For example, if the code fails to locate a file it needs,
+it should say what it was looking for and where it looked.</p>
+</div>
 <div class="section" id="complexity-is-always-conserved">
 <h2>Complexity is Always Conserved<a class="headerlink" href="#complexity-is-always-conserved" title="Permalink to this headline">¶</a></h2>
 <p>Complexity is always conserved and is strictly greater than the system the code
@@ -267,13 +307,53 @@ function, shortening this:</p>
     <span class="o">...</span>
 </pre></div>
 </div>
-<p>Although the complexity appears to have been reduced through hidden keyword
-arguments, it has been slightly complicated through the need to dig through
-more documentation to better understand how to use them.</p>
+<p>Although the interface appears to have been simplified through hidden keyword
+arguments, now the user needs to remember what the <code class="docutils literal notranslate"><span class="pre">options</span></code> are or dig
+through documentation to better understand how to use them.</p>
 <p>Because new science occurs when old ideas are reapplied or extended in
 unforeseen ways, scientific code should not bury its complexity or overly
 optimize for a specific use case. It should expose what complexity there is
 straightforwardly.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Even better, you should consider using “keyword-only” arguments, introduced
+in Python 3, which require the user to pass an argument by keyword rather
+than position.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">get_image</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">beginning</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p class="last">Every argument after the <code class="docutils literal notranslate"><span class="pre">*</span></code> is keyword-only. Therefore, the usage
+<code class="docutils literal notranslate"><span class="pre">get_image(filename,</span> <span class="pre">True)</span></code> will not be allowed; the caller must
+explicitly type <code class="docutils literal notranslate"><span class="pre">get_image(filename,</span> <span class="pre">normalize=True)</span></code>. The latter is
+easier to read, and it now possible for the author to insert additional
+parameters without breaking backward compatibility.</p>
+</div>
+<p>Similarly, it is common for new software developers to prefer one function with
+many options to several functions with fewer options. The advantages of “many
+small functions” reveal themselves in time:</p>
+<ul class="simple">
+<li>Small functions are easier to explain and document because their behavior is
+well-scoped.</li>
+<li>Small functions can be tested individually, and it is easy to see which paths
+have and have not yet been tested.</li>
+<li>It is easier to compose and reuse functions with well-defined behavior in
+other contexts. This is called <em>the UNIX philosophy:</em> do one thing and do it
+well.</li>
+<li>The more options a function accepts, the more possible interactions they
+have, which can be confusing for the user and difficult for the author to
+reason about and test. In particular, <em>coupled</em> arguments whose meaning
+depends on other arguments should be avoided.</li>
+<li>Large functions with many optional parameters often want to return different
+types of things depending on the value of some optional parameter. This puts
+the burden on the caller to check what has been returned, and it makes the
+code harder to test. Generally, it is better to adhere to “return type
+stability”. Functions should return the same kind of thing no matter what
+their arguments, particularly their optional arguments.</li>
+</ul>
+<p>Some of the power of Python is its flexibility. It accommodates many possible
+design choices. It requires some forethought and judgement to build tools that
+last and grow well over time.</p>
 </div>
 </div>
 
