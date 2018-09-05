@@ -8,7 +8,7 @@ RE = RunEngine({})
 RE.subscribe(bec)
 
 RE(adaptive_scan([det], 'det', motor,
-                 start=-15,
+                 start=-15.5,
                  stop=10,
                  min_step=0.01,
                  max_step=5,
