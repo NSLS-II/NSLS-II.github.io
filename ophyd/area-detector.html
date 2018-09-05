@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                1.3.0.post4+gec0816c
+                1.3.0.post9+g112c889
               </div>
             
           
@@ -199,6 +199,8 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-devices">Custom Devices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-plugins-or-cameras">Custom Plugins or Cameras</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#helpers">Helpers</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.EpicsSignalWithRBV.html">ophyd.areadetector.base.EpicsSignalWithRBV</a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADComponent.html">ophyd.areadetector.base.ADComponent</a></li>
@@ -823,6 +825,172 @@ for components.</p>
 <area shape="rect" id="node27" href="generated/ophyd.areadetector.cam.URLDetectorCam.html#ophyd.areadetector.cam.URLDetectorCam" target="_top" title="URLDetectorCam" alt="" coords="611,904,739,929"/>
 <area shape="rect" id="node9" href="generated/ophyd.ophydobj.OphydObject.html#ophyd.ophydobj.OphydObject" target="_top" title="The base class for all objects in Ophyd" alt="" coords="17,525,116,550"/>
 </map></div>
+</div>
+<div class="section" id="custom-devices">
+<h2>Custom Devices<a class="headerlink" href="#custom-devices" title="Permalink to this headline">¶</a></h2>
+<p>For custom hardware based on area-detector it may be necesary to add a custom
+device class (for custom plugins see section below). The new class should
+inherit from <code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.base.ADbase</span></code> and should have the following
+PV structure:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">PV</span> <span class="o">=</span> <span class="s1">&#39;Areadetector_device_PV_prefix:(Plugin_suffix or attribute_suffix)&#39;</span>
+</pre></div>
+</div>
+<p>As an example, for the builtin areadetector ‘stats’ class this looks like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">PV</span> <span class="o">=</span> <span class="s1">&#39;Areadetector_device_PV_prefix:Stats&#39;</span>
+</pre></div>
+</div>
+<p>And for the builtin areadetector ‘color mode’ attribute it looks like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">PV</span> <span class="o">=</span> <span class="s1">&#39;Areadetector_device_PV_prefix:cam1:ColorMode_RBV&#39;</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal"><span class="pre">'Areadetector_device_PV_prefix'</span></code> is the base PV name for the
+Area detector device, <code class="docutils literal"><span class="pre">plugin_suffix</span> <span class="pre">=</span> <span class="pre">'Stats'</span></code> is the ‘stats’ Plugin
+suffix and <code class="docutils literal"><span class="pre">attribute_suffix</span> <span class="pre">=</span> <span class="pre">'ColorMode_RBV'</span></code> is the ‘color mode’
+attribute suffix of the <code class="docutils literal"><span class="pre">'cam1'</span></code> plugin.</p>
+<p>In order to create the class then the following code is required
+(where <code class="docutils literal"><span class="pre">XXX</span></code> is the name of the device):</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd.areadetector.base</span> <span class="kn">import</span> <span class="n">ad_group</span><span class="p">,</span> <span class="n">EpicsSignalWithRBV</span>
+<span class="kn">from</span> <span class="nn">ophyd.signal</span> <span class="kn">import</span> <span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span>
+<span class="kn">from</span> <span class="nn">ophyd.device</span> <span class="kn">import</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDCpt</span><span class="p">,</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">Cpt</span>
+<span class="kn">from</span> <span class="nn">ophyd.detectors</span> <span class="kn">import</span> <span class="n">DetectorBase</span>
+<span class="kn">from</span> <span class="nn">ophyd.areadetector.trigger_mixins</span> <span class="kn">import</span> <span class="n">SingleTrigger</span>
+
+<span class="k">class</span> <span class="nc">XXX</span><span class="p">(</span><span class="n">SingleTrigger</span><span class="p">,</span> <span class="n">DetectorBase</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;An areadetector device class for ...&#39;&#39;&#39;</span>
+
+    <span class="c1"># ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX</span>
+    <span class="c1"># where &#39;Type&#39; is EpicsSignal, EpicsSignalRO, EpicsSignalWithRBV,..</span>
+    <span class="n">attribute_name</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">Type</span><span class="p">,</span> <span class="n">attribute_suffix</span><span class="p">)</span>
+
+    <span class="c1"># ADD ATTRIBUTE GROUPS AS COMPONENTS USING THE SYNTAX</span>
+    <span class="n">group_name</span> <span class="o">=</span> <span class="n">DDCpt</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">Type</span><span class="p">,</span>
+                                <span class="p">(</span><span class="n">attribute_1_name</span><span class="p">,</span> <span class="n">attribute_1_suffix</span><span class="p">),</span>
+                                <span class="p">(</span><span class="n">attribute_2_name</span><span class="p">,</span> <span class="n">attribute_2_suffix</span><span class="p">),</span>
+                                <span class="o">...</span><span class="p">,</span>
+                                <span class="p">(</span><span class="n">attribute_n_name</span><span class="p">,</span> <span class="n">attribute_n_suffix</span><span class="p">))</span>
+
+    <span class="c1"># ADD ATTRIBUTE PLUGINS AS COMPONENTS USING THE SYNTAX</span>
+    <span class="n">plugin_name</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">PluginClass</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="n">Plugin_suffix</span><span class="o">+</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ol class="last arabic simple">
+<li><a class="reference internal" href="generated/ophyd.areadetector.detectors.DetectorBase.html#ophyd.areadetector.detectors.DetectorBase" title="ophyd.areadetector.detectors.DetectorBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.detectors.DetectorBase</span></code></a> can be
+swapped out for any other Areadetector Device class that inherits
+from <a class="reference internal" href="generated/ophyd.areadetector.detectors.DetectorBase.html#ophyd.areadetector.detectors.DetectorBase" title="ophyd.areadetector.detectors.DetectorBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.detectors.DetectorBase</span></code></a>.</li>
+<li><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.triggermixins.SingleTrigger</span></code> is an
+optional trigger_mixin class and can be swapped out for any other
+class that inherits from
+<a class="reference internal" href="generated/ophyd.areadetector.trigger_mixins.TriggerBase.html#ophyd.areadetector.trigger_mixins.TriggerBase" title="ophyd.areadetector.trigger_mixins.TriggerBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.trigger_mixins.TriggerBase</span></code></a>.  These
+classes provide the logic to ‘trigger’ the detector and actually
+acquire the images.</li>
+<li>PluginClass can be
+<a class="reference internal" href="generated/ophyd.areadetector.plugins.PluginBase.html#ophyd.areadetector.plugins.PluginBase" title="ophyd.areadetector.plugins.PluginBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.plugins.PluginBase</span></code></a>,
+<a class="reference internal" href="generated/ophyd.areadetector.cam.CamBase.html#ophyd.areadetector.cam.CamBase" title="ophyd.areadetector.cam.CamBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.cam.CamBase</span></code></a> or any plugin/cam class
+that inherits from either of these.</li>
+<li>In the ophyd source code, you may see
+<a class="reference internal" href="generated/ophyd.areadetector.base.ADComponent.html#ophyd.areadetector.base.ADComponent" title="ophyd.areadetector.base.ADComponent"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.base.ADComponent</span></code></a>
+used. Functionally, this is interchangeable with an ordinary
+<a class="reference internal" href="generated/ophyd.device.Component.html#ophyd.device.Component" title="ophyd.device.Component"><code class="xref py py-class docutils literal"><span class="pre">ophyd.device.Component</span></code></a> (imported as <code class="docutils literal"><span class="pre">Cpt</span></code> above); it
+just adds extra machinery for generating a docstring based on a
+scrape of the HTML of the official AreaDetector documentation. For
+custom extensions such as we are addressing here, it is not
+generally applicable.</li>
+</ol>
+</div>
+<p>The Areadetector device should then be instantiated using:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ADdevice_name</span> <span class="o">=</span> <span class="n">Some_Areadetector_Device_Class</span><span class="p">(</span><span class="n">Areadetector_device_PV_suffix</span><span class="p">,</span>
+                                               <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;ADdevice_name&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="custom-plugins-or-cameras">
+<h2>Custom Plugins or Cameras<a class="headerlink" href="#custom-plugins-or-cameras" title="Permalink to this headline">¶</a></h2>
+<p>For custom hardware based on area-detector it may be necesary to add a
+custom plugin or camera class, this section will cover what is
+required. Both ‘plugins’ and ‘cameras’ act in the same way, but have
+slightly different ‘base’ attributes, hence they have different ‘base
+classes’.  New Plugin classes should inherit from
+<code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.base.PluginBase</span></code> while new Camera classes
+should inherit from <a class="reference internal" href="generated/ophyd.areadetector.cam.CamBase.html#ophyd.areadetector.cam.CamBase" title="ophyd.areadetector.cam.CamBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.cam.CamBase</span></code></a>.  Both
+should have the following PV structure (replace ‘plugin’ with ‘cam’
+for cameras):</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">PV</span> <span class="o">=</span> <span class="s1">&#39;Areadetector_device_PV_prefix:Plugin_suffix:attribute_suffix&#39;</span>
+</pre></div>
+</div>
+<p>As an example, for the ‘max value’ component of the built-in areadetector
+‘stats’ class this looks like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">PV</span> <span class="o">=</span> <span class="s1">&#39;Areadetector_device_PV_prefix:Stats:max_value&#39;</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal"><span class="pre">Areadetector_device_PV_prefix</span></code> is the PV name for the Area
+detector device, <code class="docutils literal"><span class="pre">plugin_suffix</span> <span class="pre">=</span> <span class="pre">Stats</span></code> is the ‘stats’ Plugin
+suffix and <code class="docutils literal"><span class="pre">attribute_suffix</span> <span class="pre">=</span> <span class="pre">max_value</span></code> is the ‘max value’
+attribute suffix.</p>
+<p>In order to create the class then the following code is required
+(where <code class="docutils literal"><span class="pre">XXX</span></code> is the name of the plugin):</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd.areadetector.base</span> <span class="kn">import</span> <span class="n">ad_group</span><span class="p">,</span> <span class="n">EpicsSignalWithRBV</span>
+<span class="kn">from</span> <span class="nn">ophyd.signal</span> <span class="kn">import</span> <span class="n">EpicsSignal</span><span class="p">,</span> <span class="n">EpicsSignalRO</span>
+<span class="kn">from</span> <span class="nn">ophyd.device</span> <span class="kn">import</span> <span class="n">DynamicDeviceComponent</span> <span class="k">as</span> <span class="n">DDCpt</span><span class="p">,</span> <span class="n">Component</span> <span class="k">as</span> <span class="n">Cpt</span>
+<span class="kn">from</span> <span class="nn">ophyd.areadetector.plugins</span> <span class="kn">import</span> <span class="n">PluginBase</span><span class="p">,</span> <span class="n">register_plugin</span>
+<span class="kn">from</span> <span class="nn">ophyd.areadetector.filestore_mixins</span> <span class="kn">import</span> <span class="n">FileStoreHDF5</span>
+
+
+<span class="k">class</span> <span class="nc">XXXplugin</span><span class="p">(</span><span class="n">PluginBase</span><span class="p">,</span> <span class="n">FileStoreHDF5</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;An areadetector plugin class that does ......&#39;&#39;&#39;</span>
+    <span class="n">_suffix_re</span> <span class="o">=</span> <span class="s1">&#39;Plugin_suffix\d:&#39;</span>
+
+    <span class="c1"># ADD ATTRIBUTES AS COMPONENTS HERE USING THE SYNTAX</span>
+    <span class="n">attribute_name</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">Type</span><span class="p">,</span> <span class="n">attribute_suffix</span><span class="p">)</span>
+        <span class="c1"># where &#39;Type&#39; is EpicsSignal, EpicsSignalRO, EpicsSignalWithRBV,..</span>
+
+    <span class="c1"># ADD ATTRIBUTE GROUPS AS COMPONENTS USING THE SYNTAX</span>
+    <span class="n">group_name</span> <span class="o">=</span> <span class="n">DDCpt</span><span class="p">(</span><span class="n">ad_group</span><span class="p">(</span><span class="n">Type</span><span class="p">,</span>
+                                <span class="p">(</span><span class="n">attribute_1_name</span><span class="p">,</span> <span class="n">attribute_1_suffix</span><span class="p">),</span>
+                                <span class="p">(</span><span class="n">attribute_2_name</span><span class="p">,</span> <span class="n">attribute_2_suffix</span><span class="p">),</span>
+                                <span class="o">...</span><span class="p">,</span>
+                                <span class="p">(</span><span class="n">attribute_n_name</span><span class="p">,</span> <span class="n">attribute_n_suffix</span><span class="p">))</span>
+
+<span class="c1"># this allows searching for a plugin class via matching _suffix_re for</span>
+<span class="c1"># classes in the registry against the a PV name and is optional.</span>
+<span class="n">register_plugin</span><span class="p">(</span><span class="n">XXXplugin</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<ol class="last arabic simple">
+<li><a class="reference internal" href="generated/ophyd.areadetector.plugins.PluginBase.html#ophyd.areadetector.plugins.PluginBase" title="ophyd.areadetector.plugins.PluginBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.plugins.PluginBase</span></code></a> can be swapped
+out for <a class="reference internal" href="generated/ophyd.areadetector.cam.CamBase.html#ophyd.areadetector.cam.CamBase" title="ophyd.areadetector.cam.CamBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.cam.CamBase</span></code></a>,
+<a class="reference internal" href="generated/ophyd.areadetector.plugins.FilePlugin.html#ophyd.areadetector.plugins.FilePlugin" title="ophyd.areadetector.plugins.FilePlugin"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.plugins.FilePlugin</span></code></a> or any other
+Areadetector Plugin, cam or FilePlugin class that inherits from
+these.</li>
+<li>For FilePlugin plugins the optional filestore_mixin
+<a class="reference internal" href="generated/ophyd.areadetector.filestore_mixins.FileStoreHDF5.html#ophyd.areadetector.filestore_mixins.FileStoreHDF5" title="ophyd.areadetector.filestore_mixins.FileStoreHDF5"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.filestore_mixins.FileStoreHDF5</span></code></a> should
+also be defined. This can be replaced with any class that inherits
+from
+<a class="reference internal" href="generated/ophyd.areadetector.filestore_mixins.FileStorePluginBase.html#ophyd.areadetector.filestore_mixins.FileStorePluginBase" title="ophyd.areadetector.filestore_mixins.FileStorePluginBase"><code class="xref py py-class docutils literal"><span class="pre">ophyd.areadetector.filestore_mixins.FileStorePluginBase</span></code></a>.
+These mix-in classes provide the logic for generating Asset
+Registry documents.</li>
+</ol>
+</div>
+<p>Once the class is defined above then it should be added to the Area
+detector device class as a component using the code:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Some_Areadetector_Device_Class</span><span class="p">(</span><span class="n">Some_Area_Detector_Base_Class</span><span class="p">):</span>
+    <span class="s1">&#39;The ophyd class for the device that has the custom plugin&#39;</span>
+
+    <span class="o">...</span>
+
+    <span class="n">xxx</span> <span class="o">=</span> <span class="n">Cpt</span><span class="p">(</span><span class="n">XXXplugin</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="n">Plugin_suffix</span><span class="o">+</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>The Areadetector device should then be instantiated using:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">ADdevice_name</span> <span class="o">=</span> <span class="n">Some_Areadetector_Device_Class</span><span class="p">(</span><span class="n">Areadetector_device_PV_suffix</span><span class="p">,</span>
+                                              <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;ADdevice_name&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="helpers">
 <h2>Helpers<a class="headerlink" href="#helpers" title="Permalink to this headline">¶</a></h2>
