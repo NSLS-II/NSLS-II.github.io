@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Meetings &mdash; NSLS-II Software Documentation  documentation</title>
+  <title>Re-syncing Conda &mdash; NSLS-II Software Documentation  documentation</title>
   
 
   
@@ -30,8 +30,8 @@
   <link rel="stylesheet" href="../_static/gallery.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="DataBroker mini-hackathon" href="2018-01_databroker.html" />
-    <link rel="prev" title="2018-08-07 Incompatible Qt Binaries" href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" /> 
+    <link rel="next" title="Deploying New Environments" href="updating-metapackages.html" />
+    <link rel="prev" title="Releasing Software" href="releasing-software.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -90,11 +90,19 @@
 <li class="toctree-l1"><a class="reference internal" href="../fresh-installation.html">Installation at a Beamline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../internal_index.html">Internal Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deployment_docs.html">NSLS-II Deployment Documentation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Meetings</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="2018-01_databroker.html">DataBroker mini-hackathon</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../deployment_docs.html">NSLS-II Deployment Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../deployment_docs.html#components">Components</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../deployment_docs.html#deployment-procedures">Deployment Procedures</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="releasing-software.html">Releasing Software</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Re-syncing Conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="updating-metapackages.html">Deploying New Environments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="upgrading-beamlines.html">Upgrading Beamlines</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment_docs.html#incident-reports">Incident Reports</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../meetings/index.html">Meetings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Data Collection</span></p>
 <ul>
@@ -161,13 +169,15 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Meetings</li>
+          <li><a href="../deployment_docs.html">NSLS-II Deployment Documentation</a> &raquo;</li>
+        
+      <li>Re-syncing Conda</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/meetings/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/deployment/resyncing-conda.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -180,10 +190,35 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="meetings">
-<h1>Meetings<a class="headerlink" href="#meetings" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
+  <div class="section" id="re-syncing-conda">
+<h1>Re-syncing Conda<a class="headerlink" href="#re-syncing-conda" title="Permalink to this headline">¶</a></h1>
+<p>Our internal conda server maintains a separate copy of all the packages
+provided by “upstream” Anaconda: Python, numpy, conda itself, etc. We
+intentionally do not pull in updated versions of these packages during an
+operating cycle, to help isolate users from changes that might break things
+mid-cycle due to some unintended upgrade.</p>
+<p>Before the start of each cycle, we re-synchronize our internal collection of
+packages with the latest packages available from Anaconda.</p>
+<p>The internal Anaconda server runs on the <code class="docutils literal notranslate"><span class="pre">pergamon</span></code> host, inside the Controls
+netowork, and it runs as a service account user <code class="docutils literal notranslate"><span class="pre">anacodna-server</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
 </div>
+<p>ssh pegramon
+sudo su anaconda-server
+cd
+export https_proxy=http://proxy:8888
+export HTTPS_PROXY=http://proxy:8888</p>
+<p>The configuration file <code class="docutils literal notranslate"><span class="pre">~/anaconda.yaml</span></code> controls which packages are synced.
+Edit it to, for example, update which version(s) of Python we want packages for
+this cycle.</p>
+<p>Finally, the command to sync is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/opt/continuum/anaconda_server/bin/anaconda-server-sync-conda --mirror-config anaconda.yaml <span class="p">|</span> tee /tmp/update.txt
+</pre></div>
+</div>
+<p>We have teed the log file into <code class="docutils literal notranslate"><span class="pre">/tmp/update.txt</span></code>. Download that file using
+<code class="docutils literal notranslate"><span class="pre">scp</span></code> and share it (e.g. in a Basecamp post) in case something goes wrong and
+we need to investigate later.</p>
 </div>
 
 
@@ -194,10 +229,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="2018-01_databroker.html" class="btn btn-neutral float-right" title="DataBroker mini-hackathon" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="updating-metapackages.html" class="btn btn-neutral float-right" title="Deploying New Environments" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" class="btn btn-neutral" title="2018-08-07 Incompatible Qt Binaries" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="releasing-software.html" class="btn btn-neutral" title="Releasing Software" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

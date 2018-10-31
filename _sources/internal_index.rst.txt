@@ -8,5 +8,4 @@ Out of date
    :maxdepth: 2
 
    install
-   deployment-howto
    requirements

@@ -126,6 +126,7 @@ The following projects are in use but in a less mature stage of development.
    fresh-installation
    resources
    internal_index
+   deployment_docs
    meetings/index
 
 .. toctree::

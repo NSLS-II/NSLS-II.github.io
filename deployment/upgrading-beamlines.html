@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Meetings &mdash; NSLS-II Software Documentation  documentation</title>
+  <title>Upgrading Beamlines &mdash; NSLS-II Software Documentation  documentation</title>
   
 
   
@@ -30,8 +30,8 @@
   <link rel="stylesheet" href="../_static/gallery.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="DataBroker mini-hackathon" href="2018-01_databroker.html" />
-    <link rel="prev" title="2018-08-07 Incompatible Qt Binaries" href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" /> 
+    <link rel="next" title="2018-08-07 Incompatible Qt Binaries" href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" />
+    <link rel="prev" title="Deploying New Environments" href="updating-metapackages.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -90,11 +90,23 @@
 <li class="toctree-l1"><a class="reference internal" href="../fresh-installation.html">Installation at a Beamline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../resources.html">Recommended Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../internal_index.html">Internal Notes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deployment_docs.html">NSLS-II Deployment Documentation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Meetings</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="2018-01_databroker.html">DataBroker mini-hackathon</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../deployment_docs.html">NSLS-II Deployment Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../deployment_docs.html#components">Components</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../deployment_docs.html#deployment-procedures">Deployment Procedures</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="releasing-software.html">Releasing Software</a></li>
+<li class="toctree-l3"><a class="reference internal" href="resyncing-conda.html">Re-syncing Conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="updating-metapackages.html">Deploying New Environments</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Upgrading Beamlines</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#test-the-new-environment">Test the new environment</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#change-bsui-s-default-environment">Change bsui’s default environment</a></li>
 </ul>
 </li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../deployment_docs.html#incident-reports">Incident Reports</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../meetings/index.html">Meetings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Data Collection</span></p>
 <ul>
@@ -161,13 +173,15 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Meetings</li>
+          <li><a href="../deployment_docs.html">NSLS-II Deployment Documentation</a> &raquo;</li>
+        
+      <li>Upgrading Beamlines</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/meetings/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/deployment/upgrading-beamlines.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -180,9 +194,41 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="meetings">
-<h1>Meetings<a class="headerlink" href="#meetings" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
+  <div class="section" id="upgrading-beamlines">
+<h1>Upgrading Beamlines<a class="headerlink" href="#upgrading-beamlines" title="Permalink to this headline">¶</a></h1>
+<p>Once a new environment has been deployed to a beamline, we visit in person to
+test the new environment and “move” the default behavior of <code class="docutils literal notranslate"><span class="pre">bsui</span></code> to point
+to the new environment.</p>
+<div class="section" id="test-the-new-environment">
+<h2>Test the new environment<a class="headerlink" href="#test-the-new-environment" title="Permalink to this headline">¶</a></h2>
+<p>For testing, use the <code class="docutils literal notranslate"><span class="pre">BS_ENV</span></code> environment variable to temporarily override
+the default behavior for <code class="docutils literal notranslate"><span class="pre">bsui</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">BS_ENV</span><span class="o">=</span>collection-YYYY-X.V bsui
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">YYYY-X.V</span></code> is a version such as <code class="docutils literal notranslate"><span class="pre">2018-3.0</span></code>.</p>
+</div>
+<div class="section" id="change-bsui-s-default-environment">
+<h2>Change bsui’s default environment<a class="headerlink" href="#change-bsui-s-default-environment" title="Permalink to this headline">¶</a></h2>
+<p>We do this from ansible, affecting all machines at a beamline together. It is
+important to do this using ansible so that our centralized record of which
+environment a given beamline is using remains accurate.</p>
+<p>In the <code class="docutils literal notranslate"><span class="pre">production</span></code> inventory file, located in the root directory of the
+NSLS-II/playbooks repository, find the beamline of interest and update its
+<code class="docutils literal notranslate"><span class="pre">curent_env_tag</span></code> variable. Here is an excerpt:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1">### SIX ###</span>
+
+<span class="k">[02-ID-1:vars]</span>
+<span class="na">current_env_tag</span><span class="o">=</span><span class="s">&quot;2018-3.0&quot;</span>
+</pre></div>
+</div>
+<p>Now deploy the change using the <code class="docutils literal notranslate"><span class="pre">update_default_vars.yml</span></code> playbook.
+Use <code class="docutils literal notranslate"><span class="pre">--limit=XXX</span></code> to target the playbook to the servers on the beamline of
+interest. This is important!</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ansible-playbook -i production update_default_vars.yml --limit<span class="o">=</span>XXX -bkK
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">XXX</span></code> may be for example <code class="docutils literal notranslate"><span class="pre">02-ID-1</span></code>.</p>
 </div>
 </div>
 
@@ -194,10 +240,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="2018-01_databroker.html" class="btn btn-neutral float-right" title="DataBroker mini-hackathon" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" class="btn btn-neutral float-right" title="2018-08-07 Incompatible Qt Binaries" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../incident-reports/2018-09-07-incompatible-qt-binaries.html" class="btn btn-neutral" title="2018-08-07 Incompatible Qt Binaries" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="updating-metapackages.html" class="btn btn-neutral" title="Deploying New Environments" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
