@@ -8,13 +8,14 @@ For an in-depth introduction, we highly recommend
 Books We Like
 -------------
 * `Effective Computation in Physics <http://shop.oreilly.com/product/0636920033424.do>`_ (beginner)
+* `Python for Scientists <https://www.oreilly.com/programming/free/files/python-for-scientists.pdf>`_ (beginner)
 * `Python for Data Analysis <http://shop.oreilly.com/product/0636920023784.do>`_ (intermediate)
 * `Python and HDF5 <http://shop.oreilly.com/product/0636920030249.do>`_ (intermediate)
 
 Scientific Python Packages We Use
 ---------------------------------
 
-* `numpy tutorial <http://wiki.scipy.org/Tentative_NumPy_Tutorial>`_ -- core package for fast array computation in Python
+* `numpy tutorial <https://docs.scipy.org/doc/numpy/user/quickstart.html>`_ -- core package for fast array computation in Python
 * `pandas <http://pandas.pydata.org/pandas-docs/stable/overview.html>`_ -- practical data analysis tools (e.g., IO in many formats, handling missing data)
 * `scikit-image <http://scikit-image.org/docs/dev/auto_examples/>`_ -- image analysis tools
 * `scipy <http://docs.scipy.org/doc/scipy/reference/tutorial/index.html>`_ --
