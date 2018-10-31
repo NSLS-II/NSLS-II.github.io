@@ -29,6 +29,7 @@ Example Solution
 """
 import glob
 import imageio
+import skimage
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -42,7 +43,9 @@ from ophyd import Device, Signal, Component as Cpt
 from ophyd.sim import SynAxis, NullStatus
 
 L = 64
+D = int(np.ceil(L * 2**0.5))  # diagonal
 obj = tomopy.cameraman(L)
+orig_obj = np.copy(obj)
 # obj = tomopy.checkerboard(L)
 # obj = tomopy.baboon(L)
 # obj = tomopy.lena(L)
@@ -97,6 +100,7 @@ class LiveRecon(CallbackBase):
         self.im.set_clim((np.min(self._partial), np.max(self._partial)))
         self.im.figure.canvas.draw_idle()
 
+
 class LiveSinogram(CallbackBase):
     def __init__(self, name, width, ax=None):
         if ax is None:
@@ -121,6 +125,23 @@ class LiveSinogram(CallbackBase):
         self.im.figure.canvas.draw_idle()
 
 
+class LiveRotation(CallbackBase):
+    def __init__(self, x, y, ax=None):
+        if ax is None:
+            ax = plt.gca()
+        ax.axis('off')
+        self.ax = ax
+        self.im = ax.imshow(np.zeros((y, x)), origin='upper')
+        self.im.set_clim((orig_obj[0].min(), orig_obj[0].max()))
+
+    def event(self, doc):
+        angle = doc['data']['angle'] * 180 / np.pi
+        self.ax.set_title(f'Angle: {angle:.2f}°')
+        rotated = skimage.transform.rotate(orig_obj[0], angle, resize=False)
+        self.im.set_data(rotated)
+        self.im.figure.canvas.draw_idle()
+
+
 class LiveSaving(CallbackBase):
     def __init__(self, fig=None):
         self._fig = fig
@@ -131,14 +152,15 @@ class LiveSaving(CallbackBase):
             self._fig.savefig(f'recon_{angle:3.3f}.png')
 
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(18, 6))
 
 lt = LiveTable([angle])
-ls = LiveSinogram(f'{det.name}_image', 94, ax=ax1)
-lr = LiveRecon(f'{det.name}_image', L, L, algorithm='art', ax=ax2)
+ls = LiveSinogram(f'{det.name}_image', D, ax=ax1)
+lrt = LiveRotation(L, L, ax=ax2)
+lr = LiveRecon(f'{det.name}_image', L, L, algorithm='art', ax=ax3)
 lsv = LiveSaving(fig=fig)
 
-RE(bp.scan([det], angle, 0, np.pi, 100), [lt, ls, lr, lsv])
+RE(bp.scan([det], angle, 0, np.pi, 90), [lt, ls, lr, lrt, lsv])
 
 with imageio.get_writer('recon.gif', mode='I') as writer:
     for fn in sorted(glob.glob('recon_*.png')):
