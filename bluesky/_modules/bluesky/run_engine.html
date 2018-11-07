@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.4.1.post9+g239c9bf documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.4.1.post15+g4761659 documentation</title>
   
 
   
@@ -56,7 +56,7 @@
             
             
               <div class="version">
-                1.4.1.post9+g239c9bf
+                1.4.1.post15+g4761659
               </div>
             
           
@@ -279,6 +279,10 @@
      <span class="n">Parameter</span><span class="p">(</span><span class="s1">&#39;metadata_kw&#39;</span><span class="p">,</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">VAR_KEYWORD</span><span class="p">)])</span>
 
 
+<span class="k">def</span> <span class="nf">default_scan_id_source</span><span class="p">(</span><span class="n">md</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">md</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scan_id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+
 <div class="viewcode-block" id="RunEngine"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine">[docs]</a><span class="k">class</span> <span class="nc">RunEngine</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;The Run Engine execute messages and emits Documents.</span>
 
@@ -318,6 +322,13 @@
 <span class="sd">        Function should raise if md is invalid. What that means is</span>
 <span class="sd">        completely up to the user. The function&#39;s return value is</span>
 <span class="sd">        ignored.</span>
+
+<span class="sd">    scan_id_source : callable, optional</span>
+<span class="sd">        a function that will be used to calculate scan_id. Default is to</span>
+<span class="sd">        increment scan_id by 1 each time. However you could pass in a</span>
+<span class="sd">        customized function to get a scan_id from any source.</span>
+<span class="sd">        Expected signature: f(md)</span>
+<span class="sd">        Expected return: updated scan_id value</span>
 
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
@@ -390,7 +401,8 @@
                              <span class="s1">&#39;remove_suspender&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">scan_id_source</span><span class="o">=</span><span class="n">default_scan_id_source</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
@@ -414,6 +426,7 @@
         <span class="k">if</span> <span class="n">md_validator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">md_validator</span> <span class="o">=</span> <span class="n">_default_md_validator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md_validator</span> <span class="o">=</span> <span class="n">md_validator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scan_id_source</span> <span class="o">=</span> <span class="n">scan_id_source</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">max_depth</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">msg_hook</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1528,9 +1541,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting new with uid </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
 
-        <span class="c1"># Increment scan ID</span>
-        <span class="n">scan_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scan_id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">scan_id</span>
+        <span class="c1"># Run scan_id calculation method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_id_source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">)</span>
 
         <span class="c1"># For metadata below, info about plan passed to self.__call__ for.</span>
         <span class="n">plan_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
@@ -2696,7 +2708,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.4.1.post9+g239c9bf',
+              VERSION:'1.4.1.post15+g4761659',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
