@@ -2,7 +2,8 @@ import numpy as np
 import lmfit
 from bluesky.plans import scan
 from ophyd.sim import motor, noisy_det
-from bluesky.callbacks import LiveFit, LivePlot, LiveFitPlot
+from bluesky.callbacks import LiveFit
+from bluesky.callbacks.mpl_plotting import LivePlot, LiveFitPlot
 from bluesky import RunEngine
 
 RE = RunEngine({})

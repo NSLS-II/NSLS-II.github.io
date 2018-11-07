@@ -1,7 +1,7 @@
 from bluesky import RunEngine
 from bluesky.plans import grid_scan
 from ophyd.sim import det4, motor1, motor2
-from bluesky.callbacks import LiveGrid
+from bluesky.callbacks.mpl_plotting import LiveGrid
 motor1.delay = 0
 motor2.delay = 0
 RE = RunEngine({})

@@ -1,7 +1,7 @@
 from bluesky import RunEngine
 from bluesky.plans import grid_scan
 from ophyd.sim import det5, jittery_motor1, jittery_motor2
-from bluesky.callbacks import LiveScatter
+from bluesky.callbacks.mpl_plotting import LiveScatter
 RE = RunEngine({})
 RE(grid_scan([det5],
                       jittery_motor1, -3, 3, 6,
