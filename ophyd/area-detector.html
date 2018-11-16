@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                1.3.0.post113+g96cc8a2
+                1.3.0.post117+g8c96021
               </div>
             
           
@@ -94,8 +94,10 @@
 <li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="status.html">Status Objects</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Area Detectors</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#callbacks">Callbacks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ports">Ports</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.html">ophyd.areadetector.base.ADBase</a></li>
+<li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.visualize_asyn_digraph.html">ophyd.areadetector.base.ADBase.visualize_asyn_digraph</a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port.html">ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port</a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_port_dictionary.html">ophyd.areadetector.base.ADBase.get_asyn_port_dictionary</a></li>
 <li class="toctree-l3"><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_digraph.html">ophyd.areadetector.base.ADBase.get_asyn_digraph</a></li>
@@ -313,10 +315,88 @@ possible configuration.</p>
 <span class="n">det</span> <span class="o">=</span> <span class="n">MyDetector</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The above should work correctly with any EPICS <a class="reference external" href="http://cars.uchicago.edu/software/epics/areaDetector.html">Area Detector</a>. We test on
-versions 1.9.1 and 2.2.</p>
+<p>The above should work correctly with any EPICS <a class="reference external" href="http://cars.uchicago.edu/software/epics/areaDetector.html#Overview">Area Detector</a>. We test
+on versions 1.9.1 and 2.2.  For preliminary support for AD33 see the
+<code class="docutils literal"><span class="pre">nslsii</span></code> package.</p>
+<div class="section" id="callbacks">
+<h2>Callbacks<a class="headerlink" href="#callbacks" title="Permalink to this headline">¶</a></h2>
+<p>Internally, Area Detector provides a <a class="reference external" href="http://cars9.uchicago.edu/software/epics/pluginDoc.html">flexible array processing
+pipeline</a>.
+The pipeline is a chain of ‘plugins’ which can be re-configured at
+runtime by setting the <code class="docutils literal"><span class="pre">.nd_array_port</span></code> on a downstream plugin to
+the <code class="docutils literal"><span class="pre">.port_name</span></code> of the upstream plugin.  Internally the plugins
+pass data between each other by passing a pointer to an <code class="docutils literal"><span class="pre">NDArray</span></code> C++
+object (which is an array plus some meta-data).  The arrays are
+allocated out of a shared pool when they are created (typically by the
+‘cam’ plugin which wraps the detector driver) and freed when the last
+plugin is done with them.  Each plugin can trigger its children in
+two ways:</p>
+<ul class="simple">
+<li><em>blocking</em> : The next plugin is called syncronously, blocking the
+parent plugin until all of the (blocking) children are finished.
+This is single-threaded.</li>
+<li><em>non-blocking</em> : The pointer is put on a queue that the child
+consumes from.  This allows multi-threaded processing with each
+plugin running on its own thread.</li>
+</ul>
+<p>This behavior is controlled by the <code class="docutils literal"><span class="pre">.blocking_callbacks</span></code> signal on
+the plugin.</p>
+<p>The <a class="reference internal" href="generated/ophyd.areadetector.trigger_mixins.SingleTrigger.html#ophyd.areadetector.trigger_mixins.SingleTrigger" title="ophyd.areadetector.trigger_mixins.SingleTrigger"><code class="xref py py-obj docutils literal"><span class="pre">SingleTrigger</span></code></a> sets the
+acquire bit ‘high’ and then watches for it to go low (indicating that
+acquisition is complete).  If any of the down-stream plugins are in
+non-blocking mode are likely to have the following sequence of events
+when using, for example, the <code class="docutils literal"><span class="pre">Stats</span></code> plugin and taking one frame</p>
+<ol class="arabic simple">
+<li>detector produces the frame</li>
+<li>puts the frame on the queue for the stats plugin to consume</li>
+<li>flips the acquire bit to ‘low’</li>
+<li>ophyd sees the acquire bit go low and marks the status object as done</li>
+<li>bluesky continues with the plan and reads the Stats plugin (which still contains old data)</li>
+<li>the Stats plugin processes the frame (updating the values for the just-collected frame)</li>
+</ol>
+<p>Because (6) happens after (5) bluesky reads ‘stale’ data from the
+stats plugin and produces an event which associates other measurements
+with the incorrect reading from the camera.  This issue has resulted
+in alignment scans systematically returning the values from the
+previous point.  To avoid this, we ensure in <code class="docutils literal"><span class="pre">stage()</span></code> that all
+plugins are in ‘blocking’ mode.  This has the downside of slowing the
+detector down as we are only using a single thread but has the
+advantage of giving correct measurements.</p>
+<p>Prior to AD3-3, AD did not track if a given frame had fully propagated
+through the pipeline.  We looked into tracking this from the outside
+and using this to determine when the data acquisition was done.  In
+principle this could be done by watching a combination of queue size
+and the <code class="docutils literal"><span class="pre">.uniqueID</span></code> signal, however this work was abandoned due to
+the complexity of supporting this for all of the version of AD on the
+floor.</p>
+<p>In <a class="reference external" href="https://github.com/areaDetector/ADCore/blob/master/RELEASE.md#queued-array-counting-and-waiting-for-plugins-to-complete">AD3-3</a>,
+the camera now tracks if all of the frames it produces have been
+processed (added to support ophyd <a class="footnote-reference" href="#id2" id="id1">[1]</a> ).  There is now a
+<code class="docutils literal"><span class="pre">.wait_for_plugins</span></code> signal that controls the behavior of
+put-complete on the <code class="docutils literal"><span class="pre">.acquire</span></code> signal.  If <code class="docutils literal"><span class="pre">.wait_for_plugins</span></code> is
+<code class="docutils literal"><span class="pre">True</span></code>, then the put-complete callback on the <code class="docutils literal"><span class="pre">.acquire</span></code> signal
+will not process until all of the frames have been processed by all of
+the plugins.</p>
+<p>This allows us to run with all of the plugins in non-blocking mode and
+to simplify the trigger logic.  Instead of waiting for the acquire bit to
+change value, we use the a put-completion callback.</p>
+<p>To convert an existing area detector sub-class to support the new scheme you
+must:</p>
+<ol class="arabic simple">
+<li>Change the type of the came to sub-class <code class="xref py py-obj docutils literal"><span class="pre">nslsii.ad33.CamV33Mixin</span></code></li>
+<li>Change the trigger mixin to be <code class="xref py py-obj docutils literal"><span class="pre">nslsii.ad33.SingleTriggerV33</span></code></li>
+<li>Arrange for <code class="docutils literal"><span class="pre">det.cam.ensure_nonblocking</span></code> to be called after
+initializing the ophyd object.</li>
+</ol>
+</div>
 <div class="section" id="ports">
 <h2>Ports<a class="headerlink" href="#ports" title="Permalink to this headline">¶</a></h2>
+<p>Each plugin has a read-only out-put port name (<code class="docutils literal"><span class="pre">.port_name</span></code>) and a
+settable in-put port name (<code class="docutils literal"><span class="pre">.nd_array_port</span></code>).  To connect plugin
+<code class="docutils literal"><span class="pre">downstream</span></code> to plugin <code class="docutils literal"><span class="pre">upstream</span></code> set <code class="docutils literal"><span class="pre">downstream.nd_array_port</span></code>
+to <code class="docutils literal"><span class="pre">upstream.port_name</span></code>.</p>
+<p>The top-level <cite>~base.ADBase</cite> class has several helper methods for
+walking and validating the plugin network.</p>
 <table border="1" class="longtable docutils">
 <colgroup>
 <col width="10%" />
@@ -326,19 +406,22 @@ versions 1.9.1 and 2.2.</p>
 <tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.html#ophyd.areadetector.base.ADBase" title="ophyd.areadetector.base.ADBase"><code class="xref py py-obj docutils literal"><span class="pre">ADBase</span></code></a>([prefix,&nbsp;kind,&nbsp;read_attrs,&nbsp;…])</td>
 <td>The AreaDetector base class</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port.html#ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port" title="ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port"><code class="xref py py-obj docutils literal"><span class="pre">get_plugin_by_asyn_port</span></code></a>(port_name)</td>
+<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.visualize_asyn_digraph.html#ophyd.areadetector.base.ADBase.visualize_asyn_digraph" title="ophyd.areadetector.base.ADBase.visualize_asyn_digraph"><code class="xref py py-obj docutils literal"><span class="pre">visualize_asyn_digraph</span></code></a>([ax])</td>
+<td>This generates a figure showing the current asyn port layout.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port.html#ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port" title="ophyd.areadetector.base.ADBase.get_plugin_by_asyn_port"><code class="xref py py-obj docutils literal"><span class="pre">get_plugin_by_asyn_port</span></code></a>(port_name)</td>
 <td>Get the plugin which has the given asyn port name</td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_port_dictionary.html#ophyd.areadetector.base.ADBase.get_asyn_port_dictionary" title="ophyd.areadetector.base.ADBase.get_asyn_port_dictionary"><code class="xref py py-obj docutils literal"><span class="pre">get_asyn_port_dictionary</span></code></a>()</td>
+<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_port_dictionary.html#ophyd.areadetector.base.ADBase.get_asyn_port_dictionary" title="ophyd.areadetector.base.ADBase.get_asyn_port_dictionary"><code class="xref py py-obj docutils literal"><span class="pre">get_asyn_port_dictionary</span></code></a>()</td>
 <td>Return port name : component map</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_digraph.html#ophyd.areadetector.base.ADBase.get_asyn_digraph" title="ophyd.areadetector.base.ADBase.get_asyn_digraph"><code class="xref py py-obj docutils literal"><span class="pre">get_asyn_digraph</span></code></a>()</td>
+<tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.get_asyn_digraph.html#ophyd.areadetector.base.ADBase.get_asyn_digraph" title="ophyd.areadetector.base.ADBase.get_asyn_digraph"><code class="xref py py-obj docutils literal"><span class="pre">get_asyn_digraph</span></code></a>()</td>
 <td>Get the directed graph of the ASYN ports</td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.validate_asyn_ports.html#ophyd.areadetector.base.ADBase.validate_asyn_ports" title="ophyd.areadetector.base.ADBase.validate_asyn_ports"><code class="xref py py-obj docutils literal"><span class="pre">validate_asyn_ports</span></code></a>()</td>
+<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.validate_asyn_ports.html#ophyd.areadetector.base.ADBase.validate_asyn_ports" title="ophyd.areadetector.base.ADBase.validate_asyn_ports"><code class="xref py py-obj docutils literal"><span class="pre">validate_asyn_ports</span></code></a>()</td>
 <td>Validate that all components of pipeline are known</td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.missing_plugins.html#ophyd.areadetector.base.ADBase.missing_plugins" title="ophyd.areadetector.base.ADBase.missing_plugins"><code class="xref py py-obj docutils literal"><span class="pre">missing_plugins</span></code></a>()</td>
+<tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.areadetector.base.ADBase.missing_plugins.html#ophyd.areadetector.base.ADBase.missing_plugins" title="ophyd.areadetector.base.ADBase.missing_plugins"><code class="xref py py-obj docutils literal"><span class="pre">missing_plugins</span></code></a>()</td>
 <td>Find missing ports</td>
 </tr>
 </tbody>
@@ -1092,7 +1175,13 @@ detector device class as a component using the code:</p>
 <area shape="rect" id="node32" href="generated/ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite.html#ophyd.areadetector.filestore_mixins.FileStoreTIFFIterativeWrite" target="_top" title="FileStoreTIFFIterativeWrite" alt="" coords="364,1121,446,1133"/>
 <area shape="rect" id="node48" href="generated/ophyd.areadetector.trigger_mixins.MultiTrigger.html#ophyd.areadetector.trigger_mixins.MultiTrigger" target="_top" title="This trigger mixin class can take multiple acquisitions per trigger." alt="" coords="191,1139,233,1150"/>
 <area shape="rect" id="node76" href="generated/ophyd.areadetector.trigger_mixins.SingleTrigger.html#ophyd.areadetector.trigger_mixins.SingleTrigger" target="_top" title="This trigger mixin class takes one acquisition per trigger." alt="" coords="189,1117,235,1128"/>
-</map></div>
+</map><table class="docutils footnote" frame="void" id="id2" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>This came out of a conversation with Mark Rivers, Thomas Caswell, Stuart Campbell, and Stuart Wilkins and implemented by <a class="reference external" href="https://github.com/areaDetector/ADCore/pull/323">Mark</a></td></tr>
+</tbody>
+</table>
+</div>
 </div>
 
 
