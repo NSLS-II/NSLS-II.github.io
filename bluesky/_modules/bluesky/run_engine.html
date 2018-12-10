@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.4.1.post58+gd8aef2f documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.4.1.post60+g2ce0c2c documentation</title>
   
 
   
@@ -56,7 +56,7 @@
             
             
               <div class="version">
-                1.4.1.post58+gd8aef2f
+                1.4.1.post60+g2ce0c2c
               </div>
             
           
@@ -927,6 +927,7 @@
             <span class="k">for</span> <span class="n">mgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span><span class="p">:</span>
                 <span class="n">stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">mgr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">())</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Executing plan </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">()</span>
             <span class="k">finally</span><span class="p">:</span>
@@ -1260,8 +1261,8 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">stop</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="n">success</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to stop </span><span class="si">%r</span><span class="s2">. Error: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to stop </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
 
     <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
     <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1443,13 +1444,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
             <span class="c1"># TODO Is the sleep here necessary?</span>
             <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;fail&#39;</span>  <span class="c1"># Exception raises during &#39;running&#39;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">err</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="c1"># Some done_callbacks may still be alive in other threads.</span>
@@ -1462,22 +1461,21 @@
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;collect&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="p">))</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to collect </span><span class="si">%r</span><span class="s2">. Error: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to collect </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
             <span class="c1"># in case we were interrupted between &#39;stage&#39; and &#39;unstage&#39;</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">obj</span><span class="o">.</span><span class="n">unstage</span><span class="p">()</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to unstage </span><span class="si">%r</span><span class="s2">. Error: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to unstage </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
             <span class="c1"># Clear any uncleared monitoring callbacks.</span>
             <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to stop monitoring </span><span class="si">%r</span><span class="s2">. Error: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
-                                   <span class="n">obj</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to stop monitoring </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
@@ -1485,9 +1483,9 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_run</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">))</span>
-                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to close run </span><span class="si">%r</span><span class="s2">. Error: </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
-                                   <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                        <span class="s2">&quot;Failed to close run </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
 
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -1501,6 +1499,7 @@
         <span class="c1"># if the task was cancelled</span>
         <span class="k">if</span> <span class="n">pending_cancel_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">pending_cancel_exception</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleaned up from plan </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span>
 
     <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
     <span class="k">def</span> <span class="nf">_wait_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -1539,7 +1538,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_clear_run_cache</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting new with uid </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
 
         <span class="c1"># Run scan_id calculation method</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_id_source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">)</span>
@@ -2708,7 +2706,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.4.1.post58+gd8aef2f',
+              VERSION:'1.4.1.post60+g2ce0c2c',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
