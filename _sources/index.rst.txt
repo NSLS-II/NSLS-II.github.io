@@ -104,7 +104,7 @@ The following projects are in use but in a less mature stage of development.
   stamps, using `datamuxer <http://nsls-ii.github.io/datamuxer>`_.
 * Export data from the databroker to common formats using
   `suitcase <http://nsls-ii.github.io/suitcase>`_.
-* Write analysis code using `scikit-beam <scikit-beam.github.io/scikit-beam>`_,
+* Write analysis code using `scikit-beam <https://scikit-beam.github.io/scikit-beam>`_,
   in conjunction with
   `widely-used scientific Python libraries <http://www.scipy.org/>`_.
 * Utilize beamline-specific libraries in the Github organizations maintained
@@ -148,7 +148,7 @@ The following projects are in use but in a less mature stage of development.
    :hidden:
    :caption: Data Analysis
 
-   scikit-beam <http://scikit-beam.github.io/scikit-beam>
+   scikit-beam <https://scikit-beam.github.io/scikit-beam>
 
 .. toctree::
    :hidden:
