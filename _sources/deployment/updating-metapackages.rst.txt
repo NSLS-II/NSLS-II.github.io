@@ -96,6 +96,10 @@ Defining Environments
 
 #. Repeat the above, substituting ``collection`` for ``analysis``.
 
+#. Manually edit the files to delete the ``prefix: /tmp/...`` entry and to sort
+   the ``dependencies:`` section alphabetically. This makes it easier to
+   compare diffs.
+
 We don't bother creating environments out of the other, beamline-specific
 metapackages, purely to save time and effort. This means they are less strictly
 defined and not as perfectly reproducible as the base ``analysis`` and
