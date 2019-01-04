@@ -5,12 +5,13 @@ Conda
 Conda Installation
 ==================
 
-We provide a system-wide installation of conda, which enables us to provide it
-to all users by default and to configure it in certain ways. Note that this is
+We use a system-wide installation of conda, which enables us to provide a
+default to all users and to configure it in certain ways. Note that this is
 different from how individuals usually work with conda, installing it into
 their home directories (``~/miniconda3``). We strongly advise users *not* to
 install conda on beamline machines, but to use the binary provided by us
-at ``/opt/conda/bin/conda``.
+at ``/opt/conda/bin/conda``. We advise this as it is the best way for us to
+provide useful support for conda issues.
 
 Conda Server
 ============

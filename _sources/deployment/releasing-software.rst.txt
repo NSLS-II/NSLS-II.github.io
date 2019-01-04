@@ -27,7 +27,7 @@ Update NSLS-II Conda Recipes
 
 We keep conda recipes for our projects and external projects that we build in
 `NSLS-II/lightsource2-recipes <https://github.com/NSLS-II/lightsource2-recipes>`_.
-There are two copies of every recipes, one under the ``recipes-tag`` directory
+There are two copies of every recipe, one under the ``recipes-tag`` directory
 that is pinned to a specific tagged release, and one under the ``recipes-dev``
 directory that builds from the ``master`` branch.
 

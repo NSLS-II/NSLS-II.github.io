@@ -19,21 +19,22 @@ Overview
 ========
 
 We will update the requirements list in the **metapackages**, a human-friendly
-specification of our direct requirements. From the metapackages, we will
+specification of our direct requirements. From the metapackages we will
 generate **environment files**, an explicit, pinned specification of all the
-requirements, including indirect dependencies. The environment files will serve
+requirements including indirect dependencies. The environment files will serve
 as the canonical definition of software environments.
 
 Updating the Metapackages
 =========================
 
 #. Update the requirements listed in the ``analysis`` and ``collection``
-   metapacakges. Also update any beamline-specific metapackages if the
+   metapackages. Also update any beamline-specific metapackages if the
    beamlines' requirements have changed.
 
-#. Notice that certain requirement have minimum versions specified to ensure
+#. Notice that certain requirements have minimum versions specified to ensure
    that conda resolves the right version. We do this selectively (not on _all_
-   packages) to reduce the maintenace burden. Update these spefiers as needed.
+   packages) to reduce the maintenace burden. Update these specifiers as
+   needed.
 
 #. Finally, when you are ready to publish the new metapackages, submit a PR
    that bumps the version numbers in the recipes. The metapackages have the
@@ -51,7 +52,7 @@ We often discover a mistake in a metapackage shortly after publishing it. If
 the metapackage has already been deployed to beamlines, it should not be
 deleted; instead a new version should be released. But if we catch the error
 early, during deployment, we remove the bad metapackage and re-publish under
-the same version.
+the same version number.
 
 #. Delete the package from the public conda channel. Visit
    https://anaconda.org/lightsource2-tag/analysis/files and/or
@@ -113,7 +114,7 @@ Deploying the Environments
       scp <host>:~/collection-YYYY-X.V.yml .
 
 #. We typically keep the two newest environments in ``beamline_envs/files`` and
-   move anything other to ``beamline_envs/archived``. The old environments will
+   move anything else to ``beamline_envs/archived``. The old environments will
    thus not be deployed to new systems, but they remain easy to discover and
    reference.
 

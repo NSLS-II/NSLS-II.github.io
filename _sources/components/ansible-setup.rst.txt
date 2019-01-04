@@ -59,6 +59,23 @@ Allan have access to it. Stash the password in file named
 You will also need sudo access on the hosts you want to change if that change
 requires privilege escalation.
 
+.. note::
+
+    The ``ansible-conda`` submodule should be copied locally using the
+    following command:
+
+    .. code-block:: bash
+
+        git submodule update --init --recursive
+
+.. note::
+
+    You should have a few files in the ``security`` directory, which
+    can be found on the jupyterhub server:
+    - ``cookie_secret``
+    - ``ssl.crt``
+    - ``ssl.key``
+
 Organization
 ============
 Inventories
@@ -97,7 +114,7 @@ The JupyterHub playbook configures a machine to run the JupyterHub process
 and single-user notebook server processes.
 
 Deploy it to the staging inventory first, which updates
-https://notedev.nsls2.bnl.gov.
+https://notebook-dev.nsls2.bnl.gov.
 
 .. code-block:: bash
 
@@ -164,6 +181,12 @@ New databroker configuration
 
 Add a file to ``roles/databroker_config/files/`` and deploy the beamline
 playbook.
+
+.. warning::
+
+    This will also update the databroker configuration file for ALL conda
+    enviroments, it may render the older enviroments unusable.
+
 
 New Environments
 ----------------

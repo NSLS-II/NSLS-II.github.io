@@ -26,7 +26,8 @@ environment a given beamline is using remains accurate.
 
 In the ``production`` inventory file, located in the root directory of the
 NSLS-II/playbooks repository, find the beamline of interest and update its
-``curent_env_tag`` variable. Here is an excerpt:
+``curent_env_tag`` variable and then open a PR to NSLS-II/playbooks so that the
+change is recorded in the master branch. Here is an excerpt:
 
 .. code-block:: ini
 
@@ -35,9 +36,10 @@ NSLS-II/playbooks repository, find the beamline of interest and update its
    [02-ID-1:vars]
    current_env_tag="2018-3.0"
 
-Now deploy the change using the ``update_default_vars.yml`` playbook.
-Use ``--limit=XXX`` to target the playbook to the servers on the beamline of
-interest. This is important!
+Now deploy the change using the ``update_default_vars.yml`` playbook. Use
+``--limit=XXX`` to target the playbook to the servers on the beamline of
+interest. This is important! This step can occur prior to the PR opened above
+being merged, as it will use the local version of ``production``.
 
 .. code-block:: bash
 

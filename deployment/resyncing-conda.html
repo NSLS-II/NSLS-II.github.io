@@ -198,27 +198,39 @@ intentionally do not pull in updated versions of these packages during an
 operating cycle, to help isolate users from changes that might break things
 mid-cycle due to some unintended upgrade.</p>
 <p>Before the start of each cycle, we re-synchronize our internal collection of
-packages with the latest packages available from Anaconda.</p>
-<p>The internal Anaconda server runs on the <code class="docutils literal notranslate"><span class="pre">pergamon</span></code> host, inside the Controls
-netowork, and it runs as a service account user <code class="docutils literal notranslate"><span class="pre">anacodna-server</span></code>.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>
+packages with the latest packages available from Anaconda (<code class="docutils literal notranslate"><span class="pre">defaults</span></code> channel).</p>
+<p>The internal Anaconda server runs on the <code class="docutils literal notranslate"><span class="pre">alexandria</span></code> host, inside the Controls
+network, and it runs as root.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh alexandria
+sudo su
+bash /opt/builds/bootstrap-mirror-nsls2anaconda-local-folder
+bash /opt/builds/run_conda_index
 </pre></div>
 </div>
-<p>ssh pegramon
-sudo su anaconda-server
-cd
-export https_proxy=http://proxy:8888
-export HTTPS_PROXY=http://proxy:8888</p>
-<p>The configuration file <code class="docutils literal notranslate"><span class="pre">~/anaconda.yaml</span></code> controls which packages are synced.
-Edit it to, for example, update which version(s) of Python we want packages for
-this cycle.</p>
-<p>Finally, the command to sync is:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/opt/continuum/anaconda_server/bin/anaconda-server-sync-conda --mirror-config anaconda.yaml <span class="p">|</span> tee /tmp/update.txt
+<p>To modify which packages to synchronize, modify the script found in
+<cite>bootstrap-tag-build &lt;https://github.com/NSLS-II/lightsource2-recipes/blob/master/scripts/bootstrapping/bootstrap-tag-build&gt;</cite> and
+<a class="reference external" href="https://github.com/NSLS-II/lightsource2-recipes/blob/master/scripts/nsls2-tag-build-local.sh">nsls2-tag-build-local</a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">/opt/builds/run_conda_index</span></code> needs to run every time new package is
+added. Information about <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">index</span></code> can also be found at
+<a class="reference external" href="https://conda.io/docs/user-guide/tasks/create-custom-channels.html">create-custom-channels</a>.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">A Token needs to be provided in the script.
+(<cite>creating-access-tokens &lt;https://docs.anaconda.com/anaconda-cloud/user-guide/tasks/work-with-accounts/#creating-access-tokens&gt;</cite>)</p>
+</div>
+<p>Moreover, a sync of <code class="docutils literal notranslate"><span class="pre">lightsouce2-tag</span></code> to <code class="docutils literal notranslate"><span class="pre">nsls2-tag</span></code> follows a similar process:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash /opt/builds/bootstrap-mirror-nsls2tag-local-folder
 </pre></div>
 </div>
-<p>We have teed the log file into <code class="docutils literal notranslate"><span class="pre">/tmp/update.txt</span></code>. Download that file using
-<code class="docutils literal notranslate"><span class="pre">scp</span></code> and share it (e.g. in a Basecamp post) in case something goes wrong and
-we need to investigate later.</p>
+<p>We have teed the log file into, <code class="docutils literal notranslate"><span class="pre">/root/tmp/mirror-logs/</span></code>,
+i.e, <code class="docutils literal notranslate"><span class="pre">/root/tmp/mirror-logs/2019/01/03/14.25-mirror-nsls2-tag</span></code>.
+Download that file using <code class="docutils literal notranslate"><span class="pre">scp</span></code> and share it (e.g. in a Basecamp post)
+in case something goes wrong and we need to investigate later.</p>
+<p>This mirroring job for <code class="docutils literal notranslate"><span class="pre">nsls2-tag</span></code> is running on <code class="docutils literal notranslate"><span class="pre">alexandria</span></code> as a cronjob
+every 5 mins. <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">index</span></code> is also included in a cronjob for every 6 mins.</p>
 </div>
 
 
