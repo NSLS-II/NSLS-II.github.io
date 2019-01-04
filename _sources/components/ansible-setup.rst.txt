@@ -118,13 +118,13 @@ https://notebook-dev.nsls2.bnl.gov.
 
 .. code-block:: bash
 
-   ansible-playbook -i staging jupyterhub.yml -bkK
+   ansible-playbook -i staging jupyterhub.yml -kK
 
 If all works as expected, update https://notebook.nsls2.bnl.gov:
 
 .. code-block:: bash
 
-   ansible-playbook -i production jupyterhub.yml -bkK
+   ansible-playbook -i production jupyterhub.yml -kK
 
 
 Beamlines
@@ -135,7 +135,7 @@ conda environments based on environment files.
 
 .. code-block:: bash
 
-   ansible-playbook -i production beamlines.yml -bkK
+   ansible-playbook -i production beamlines.yml -kK
 
 
 Changing default environments
@@ -151,7 +151,7 @@ Use ``--limit=XXX`` to target the playbook to the servers on one beamline, where
 
 .. code-block:: bash
 
-   ansible-playbook -i production update_default_vars.yml --limit=XXX -bkK
+   ansible-playbook -i production update_default_vars.yml --limit=XXX -kK
 
 
 Where to Make Changes
@@ -168,7 +168,7 @@ Python.)
 
 .. code-block:: bash
 
-   ansible -i production beamlines -a "/opt/conda/bin/conda install -n root python=3.6 conda" -bkK
+   ansible -i production beamlines -a "/opt/conda/bin/conda install -n root python=3.6 conda" -kK
 
 
 New hosts
@@ -216,4 +216,4 @@ Run the beamlines playbook.
 
 .. code-block:: bash
 
-   ansible-playbook -i production beamlines.yml --limit=18-ID -bkK
+   ansible-playbook -i production beamlines.yml --limit=18-ID -kK
