@@ -83,7 +83,8 @@ Defining Environments
 
    .. code-block:: bash
 
-      conda create -y -p /tmp/analysis-YYYY-X.V analysis=YYYYCX.V --override-channels -c defaults -c nsls2-tag
+      conda create -y -p /tmp/analysis-YYYY-X.V analysis=YYYYCX.V --override-channels -c http://alexandria/conda/defaults -c http://alexandria/conda/nsls2-tag
+
 
    where ``YYYYCX.V`` is a version like ``2018C3.0``. This resolves the
    specifications encoded in the metapackage into a specific set of packages.
@@ -92,7 +93,7 @@ Defining Environments
 
    .. code-block:: bash
 
-      conda env export -p /tmp/analysis-YYYY-X.V -f ~/analysis-YYYY-X.V.yml
+      conda env export -p /tmp/analysis-YYYY-X.V -f ~/analysis-YYYY-X.V.yml --override-channels -c http://alexandria/conda/defaults -c http://alexandria/conda/nsls2-tag
 
 #. Repeat the above, substituting ``collection`` for ``analysis``.
 
