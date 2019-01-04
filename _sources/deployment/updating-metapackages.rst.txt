@@ -83,7 +83,7 @@ Defining Environments
 
    .. code-block:: bash
 
-      conda create -y -p /tmp/analysis-YYYY-X.V analysis=YYYYCX.V --override-channels -c http://alexandria/conda/defaults -c http://alexandria/conda/nsls2-tag
+      conda create -y -p /tmp/analysis-YYYY-X.V analysis=YYYYCX.V --override-channels -c http://alexandria/conda/nsls2-tag -c http://alexandria/conda/defaults
 
 
    where ``YYYYCX.V`` is a version like ``2018C3.0``. This resolves the
@@ -93,7 +93,7 @@ Defining Environments
 
    .. code-block:: bash
 
-      conda env export -p /tmp/analysis-YYYY-X.V -f ~/analysis-YYYY-X.V.yml --override-channels -c http://alexandria/conda/defaults -c http://alexandria/conda/nsls2-tag
+      conda env export -p /tmp/analysis-YYYY-X.V -f ~/analysis-YYYY-X.V.yml --override-channels -c http://alexandria/conda/nsls2-tag -c http://alexandria/conda/defaults
 
 #. Repeat the above, substituting ``collection`` for ``analysis``.
 
