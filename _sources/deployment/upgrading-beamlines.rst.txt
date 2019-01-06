@@ -43,6 +43,6 @@ being merged, as it will use the local version of ``production``.
 
 .. code-block:: bash
 
-   ansible-playbook -i production update_default_vars.yml --limit=XXX -kK
+   time ansible-playbook -i production update_default_vars.yml --limit=XXX -kK
 
 where ``XXX`` may be for example ``02-ID-1``.

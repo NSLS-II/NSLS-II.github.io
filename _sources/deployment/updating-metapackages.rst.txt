@@ -135,7 +135,7 @@ Deploying the Environments
 
    .. code-block:: bash
 
-      ansible-playbook -i production beamlines.yml -kK --limit=02-ID
+      time ansible-playbook -i production beamlines.yml -kK --limit=02-ID
 
    If that completes successfully, log into the machine and check that the
    environment can be activated and that the expected versions of a couple
@@ -155,7 +155,7 @@ Deploying the Environments
 
    .. code-block:: bash
 
-      ansible-playbook -i production beamlines.yml -kK
+      time ansible-playbook -i production beamlines.yml -kK
 
    Keep a record of any failures.  The most common failure mode is a server
    being temporarily offline or inaccessible on the network. When that happens,
