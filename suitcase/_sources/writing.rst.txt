@@ -158,7 +158,7 @@ Here is a sketch of a :class:`Serializer`
         #   later. Example:
         #
         #   filename = f'{self._templated_file_prefix}-primary.csv'
-        #   file = self._manager.open('stream_data', 'primary', 'xt')
+        #   file = self._manager.open('stream_data', filename, 'xt')
         #   self._files['primary'] = file
         #
         #   See the manager documentation below for more about the arguments to open().
