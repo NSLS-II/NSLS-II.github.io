@@ -8,7 +8,7 @@ Scope of a Suitcase
 Suitcases are Highly Specific
 -----------------------------
 
-Suitcase's design philosophy is to make many, tailored suitcases rather
+Suitcase's design philosophy is to make many well-tailored suitcases rather
 than try to fit a large range of functionality into one suitcase.
 
 Each file format is implemented in a separate Python package, named
@@ -197,12 +197,27 @@ Run the tests with pytest:
    pytest
 
 API Documentation
------------------
+=================
 
-TODO Add abstract base class for :class:`Serializer`.
+The :class:`DocumentRouter` is typically useful as base class for a
+:class:`Serializer`.
+
+.. autoclass:: event_model.DocumentRouter
+
+There are "manager" classes for files and memory buffers. The user may provide
+their own manager class implementing a different transport mechanism. It need
+only implement these same methods.
 
 .. autoclass:: suitcase.utils.MultiFileManager
    :members:
 
 .. autoclass:: suitcase.utils.MemoryBuffersManager
+   :members:
+
+These classes are used by the :class:`~suitcase.utils.MemoryBuffersManager`.
+
+.. autoclass:: suitcase.utils.PersistentStringIO
+   :members:
+
+.. autoclass:: suitcase.utils.PersistentBytesIO
    :members:

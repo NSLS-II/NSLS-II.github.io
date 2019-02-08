@@ -97,7 +97,7 @@ Simple Export
 Streaming Export
 ================
 
-In addition to the :func:`export`, each suitcase package implements a
+In addition to the :func:`export` function, each suitcase package implements a
 :class:`Serializer` class. It produces exactly the same files and has the same
 options; :func:`export` is just a wrapper around :class:`Serializer`. But
 where :func:`export` loops through a list or generator of documents,
@@ -118,7 +118,7 @@ is what is returned by :func:`export`.) The :class:`Serializer` should be
 closed when finished. This closes all the of the resources (e.g. files) that is
 has opened.
 
-This is suitable for streaming export. Note that given :class:`Serializer`
+This is suitable for streaming export. Note that a given :class:`Serializer`
 instance may only be used for one run (one RunStart document, RunStop document,
 and whatever in between). A new instance must be created for each new run.
 
@@ -163,7 +163,7 @@ The :class:`MultiFileManager` class handles opening the file(s) with the name
 requested by a :class:`Serializer` and providing it with writable buffers. The
 :class:`Serializer` interacts with files only indirectly, always mediated
 through the :class:`MultiFileManager`. Therefore, to write to a different sort
-of buffer, you need only provide different manager class. No changes are
+of buffer, you need only provide a different manager class. No changes are
 necessary to the :class:`Serializer` itself.
 
 This example will write the serialized data into memory buffers---subclasses of

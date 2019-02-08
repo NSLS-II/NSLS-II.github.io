@@ -1,0 +1,1060 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>event_model &mdash; suitcase v0.8.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/copybutton.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> suitcase
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v0.8.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../formats.html">Supported Formats and Layouts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../writing.html">Write Your Own Suitcase</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">suitcase</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>event_model</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for event_model</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">namedtuple</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">jsonschema</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="k">import</span> <span class="n">resource_filename</span> <span class="k">as</span> <span class="n">rs_fn</span>
+<span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">ttime</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">._version</span> <span class="k">import</span> <span class="n">get_versions</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DocumentNames&#39;</span><span class="p">,</span> <span class="s1">&#39;schemas&#39;</span><span class="p">,</span> <span class="s1">&#39;compose_run&#39;</span><span class="p">]</span>
+
+<span class="n">_validate</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;array&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)})</span>
+
+
+<span class="k">class</span> <span class="nc">DocumentNames</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">stop</span> <span class="o">=</span> <span class="s1">&#39;stop&#39;</span>
+    <span class="n">start</span> <span class="o">=</span> <span class="s1">&#39;start&#39;</span>
+    <span class="n">descriptor</span> <span class="o">=</span> <span class="s1">&#39;descriptor&#39;</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="s1">&#39;event&#39;</span>
+    <span class="n">datum</span> <span class="o">=</span> <span class="s1">&#39;datum&#39;</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="s1">&#39;resource&#39;</span>
+    <span class="n">event_page</span> <span class="o">=</span> <span class="s1">&#39;event_page&#39;</span>
+    <span class="n">datum_page</span> <span class="o">=</span> <span class="s1">&#39;datum_page&#39;</span>
+    <span class="n">bulk_datum</span> <span class="o">=</span> <span class="s1">&#39;bulk_datum&#39;</span>  <span class="c1"># deprecated</span>
+    <span class="n">bulk_events</span> <span class="o">=</span> <span class="s1">&#39;bulk_events&#39;</span>  <span class="c1"># deprecated</span>
+
+
+<div class="viewcode-block" id="DocumentRouter"><a class="viewcode-back" href="../writing.html#event_model.DocumentRouter">[docs]</a><span class="k">class</span> <span class="nc">DocumentRouter</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Route each document by type to a corresponding method.</span>
+
+<span class="sd">    When an instance is called with a document type and a document like::</span>
+
+<span class="sd">        router(name, doc)</span>
+
+<span class="sd">    the document is passed to the method of the corresponding name, as in</span>
+
+<span class="sd">        getattr(router, name)(doc)</span>
+
+<span class="sd">    The method is expected to return a valid document of the same type. It may</span>
+<span class="sd">    be the original instance (passed through), a copy, or a different dict</span>
+<span class="sd">    altogether.</span>
+
+<span class="sd">    Finally, the call to ``router(name, doc))`` returns::</span>
+
+<span class="sd">        (name, getattr(router, name)(doc))</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process a document.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : string</span>
+<span class="sd">        doc : dict</span>
+<span class="sd">        validate : boolean</span>
+<span class="sd">            Apply jsonschema validation to the documents coming *out*. This is</span>
+<span class="sd">            False by default.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        name, output_doc : string, dict</span>
+<span class="sd">            The same name as what was passed in, and a doc that may be the same</span>
+<span class="sd">            instance as doc, a copy of doc, or a different dict altogether.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">output_doc</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+            <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">output_doc</span><span class="p">,</span>
+                                <span class="n">schemas</span><span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">,</span> <span class="n">name</span><span class="p">)])</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">output_doc</span> <span class="k">if</span> <span class="n">output_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">event_page</span> <span class="o">=</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="n">output_event_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">)</span>
+        <span class="c1"># Subclass&#39; implementation of event_page may return a valid EventPage</span>
+        <span class="c1"># or None.</span>
+        <span class="k">if</span> <span class="n">output_event_page</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">output_event</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">output_event_page</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_event</span>
+
+    <span class="k">def</span> <span class="nf">datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">datum_page</span> <span class="o">=</span> <span class="n">pack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="n">output_datum_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">datum_page</span><span class="p">)</span>
+        <span class="c1"># Subclass&#39; implementation of event_page may return a valid DatumPage</span>
+        <span class="c1"># or None.</span>
+        <span class="k">if</span> <span class="n">output_datum_page</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">output_datum</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">output_datum_page</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_datum</span>
+
+    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">datum_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">bulk_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="c1"># Do not modify this in a subclass. Use event_page.</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;The document type &#39;bulk_events&#39; has been deprecated in favor of &quot;</span>
+            <span class="s2">&quot;&#39;event_page&#39;, whose structure is a transpose of &#39;bulk_events&#39;.&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">bulk_events_to_event_pages</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">event_page</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">bulk_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="c1"># Do not modify this in a subclass. Use event_page.</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;The document type &#39;bulk_datum&#39; has been deprecated in favor of &quot;</span>
+            <span class="s2">&quot;&#39;datum_page&#39;, whose structure is a transpose of &#39;bulk_datum&#39;.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">bulk_datum_to_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span></div>
+
+
+<span class="k">class</span> <span class="nc">Filler</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Pass documents through, loading any externally-referenced data.</span>
+
+<span class="sd">    It is recommended to use the Filler as a context manager.  Because the</span>
+<span class="sd">    Filler manages caches of potentially expensive resources (e.g. large data</span>
+<span class="sd">    in memory) managing its lifecycle is important. If used as a context</span>
+<span class="sd">    manager, it will drop references to its caches upon exit from the</span>
+<span class="sd">    context. Unless the user holds additional references to those caches, they</span>
+<span class="sd">    will be garbage collected.</span>
+
+<span class="sd">    But for some applications, such as taking multiple passes over the same</span>
+<span class="sd">    data, it may be useful to keep a longer-lived Filler instance and then</span>
+<span class="sd">    manually delete it when finished.</span>
+
+<span class="sd">    See Examples below.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    handler_registry : dict</span>
+<span class="sd">        Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">        resource) to a handler class.</span>
+
+<span class="sd">        A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">            handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">        It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">        callable and has the following signature::</span>
+
+<span class="sd">            handler_instance(**datum_kwargs)</span>
+
+<span class="sd">        As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">        typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">        ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">        any callable-that-returns-a-callable.</span>
+<span class="sd">    include : Iterable</span>
+<span class="sd">        The set of fields to fill. By default all unfilled fields are filled.</span>
+<span class="sd">        This parameter is mutually incompatible with the ``exclude`` parameter.</span>
+<span class="sd">    exclude : Iterable</span>
+<span class="sd">        The set of fields to skip filling. By default all unfilled fields are</span>
+<span class="sd">        filled.  This parameter is mutually incompatible with the ``include``</span>
+<span class="sd">        parameter.</span>
+<span class="sd">    root_map: dict</span>
+<span class="sd">        str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
+<span class="sd">        files.  Any resources which have a ``root`` in ``root_map`` will be</span>
+<span class="sd">        loaded using the mapped ``root``.</span>
+<span class="sd">    handler_cache : dict, optional</span>
+<span class="sd">        A cache of handler instances. If None, a dict is used.</span>
+<span class="sd">    resource_cache : dict, optional</span>
+<span class="sd">        A cache of Resource documents. If None, a dict is used.</span>
+<span class="sd">    datum_cache : dict, optional</span>
+<span class="sd">        A cache of Datum documents. If None, a dict is used.</span>
+<span class="sd">    retry_intervals : Iterable, optional</span>
+<span class="sd">        If data is not found on the first try, there may a race between the</span>
+<span class="sd">        I/O systems creating the external data and this stream of Documents</span>
+<span class="sd">        that reference it. If Filler encounters an ``IOError`` it will wait a</span>
+<span class="sd">        bit and retry. This list specifies how long to sleep (in seconds)</span>
+<span class="sd">        between subsequent attempts. Set to ``None`` to try only once before</span>
+<span class="sd">        raising ``DataNotAccessible``. A subclass may catch this exception and</span>
+<span class="sd">        implement a different retry mechanism --- for example using a different</span>
+<span class="sd">        implementation of sleep from an async framework.  But by default, a</span>
+<span class="sd">        sequence of several retries with increasing sleep intervals is used.</span>
+<span class="sd">        The default sequence should not be considered stable; it may change at</span>
+<span class="sd">        any time as the authors tune it.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    DataNotAccessible</span>
+<span class="sd">        If an IOError is raised when loading the data after the configured</span>
+<span class="sd">        number of attempts. See the ``retry_intervals`` parameter for details.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    A Filler may be used as a context manager.</span>
+
+<span class="sd">    &gt;&gt;&gt; with Filler(handler_registry) as filler:</span>
+<span class="sd">    ...     for name, doc in stream:</span>
+<span class="sd">    ...         filler(name, doc)  # mutates doc in place</span>
+<span class="sd">    ...         # Do some analysis or export with name and doc.</span>
+
+<span class="sd">    Or as a long-lived object.</span>
+
+<span class="sd">    &gt;&gt;&gt; f = Filler(handler_registry)</span>
+<span class="sd">    &gt;&gt;&gt; for name, doc in stream:</span>
+<span class="sd">    ...     filler(name, doc)  # mutates doc in place</span>
+<span class="sd">    ...     # Do some analysis or export with name and doc.</span>
+<span class="sd">    ...</span>
+<span class="sd">    &gt;&gt;&gt; del filler  # Free up memory from potentially large caches.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler_registry</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">handler_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resource_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">datum_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">retry_intervals</span><span class="o">=</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.002</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.016</span><span class="p">,</span> <span class="mf">0.032</span><span class="p">,</span>
+                                  <span class="mf">0.064</span><span class="p">,</span> <span class="mf">0.128</span><span class="p">,</span> <span class="mf">0.256</span><span class="p">,</span> <span class="mf">0.512</span><span class="p">,</span> <span class="mf">1.024</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The parameters `include` and `exclude` are mutually &quot;</span>
+                <span class="s2">&quot;incompatible. At least one must be left as the default, &quot;</span>
+                <span class="s2">&quot;None.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span> <span class="o">=</span> <span class="n">handler_registry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">include</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">exclude</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span> <span class="o">=</span> <span class="n">root_map</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">handler_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">handler_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_handler_cache</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">resource_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">resource_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_resource_cache</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">datum_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">datum_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_datum_cache</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handler_cache</span> <span class="o">=</span> <span class="n">handler_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span> <span class="o">=</span> <span class="n">resource_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span> <span class="o">=</span> <span class="n">datum_cache</span>
+        <span class="k">if</span> <span class="n">retry_intervals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">retry_intervals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">retry_intervals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">retry_intervals</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;Filler&gt;&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="k">else</span> <span class="s2">&quot;&lt;Closed Filler&gt;&quot;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_default_resource_cache</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_default_datum_cache</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_default_handler_cache</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="c1"># Defer creating the handler instance until we actually need it, when</span>
+        <span class="c1"># we fill the first Event field that requires this Resource.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="c1"># Handlers operate document-wise, so we&#39;ll explode pages into individual</span>
+    <span class="c1"># documents.</span>
+
+    <span class="k">def</span> <span class="nf">datum_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">datum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datum</span>  <span class="c1"># Avoid attribute lookup in hot loop.</span>
+        <span class="k">for</span> <span class="n">datum_doc</span> <span class="ow">in</span> <span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+            <span class="n">datum</span><span class="p">(</span><span class="n">datum_doc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="c1"># TODO We may be able to fill a page in place, and that may be more</span>
+        <span class="c1"># efficient than unpacking the page in to Events, filling them, and the</span>
+        <span class="c1"># re-packing a new page. But that seems tricky in general since the</span>
+        <span class="c1"># page may be implemented as a DataFrame or dict, etc.</span>
+
+        <span class="n">event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span>  <span class="c1"># Avoid attribute lookup in hot loop.</span>
+        <span class="n">filled_events</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">event_doc</span> <span class="ow">in</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+            <span class="n">filled_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">(</span><span class="n">event_doc</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="o">*</span><span class="n">filled_events</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">is_filled</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_filled</span><span class="p">:</span>
+                <span class="n">datum_id</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+                <span class="c1"># Look up the cached Datum doc.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">datum_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span><span class="p">[</span><span class="n">datum_id</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">f</span><span class="s2">&quot;Event with uid </span><span class="si">{doc[&#39;uid&#39;]}</span><span class="s2"> refers to unknown Datum &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;datum_id </span><span class="si">{datum_id}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+                <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">datum_doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+                <span class="c1"># Look up the cached Resource.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span><span class="p">[</span><span class="n">resource_uid</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">f</span><span class="s2">&quot;Datum with id </span><span class="si">{datum_id}</span><span class="s2"> refers to unknown Resource &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;uid </span><span class="si">{resource_uid}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+                <span class="c1"># Look up the cached handler instance, or instantiate one.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">handler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handler_cache</span><span class="p">[</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">handler_class</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">[</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;spec&#39;</span><span class="p">]]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">UndefinedAssetSpecification</span><span class="p">(</span>
+                            <span class="n">f</span><span class="s2">&quot;Resource document with uid </span><span class="si">{resource[&#39;uid&#39;]}</span><span class="s2"> &quot;</span>
+                            <span class="n">f</span><span class="s2">&quot;refers to spec </span><span class="si">{resource[&#39;spec&#39;]!r}</span><span class="s2"> which is &quot;</span>
+                            <span class="n">f</span><span class="s2">&quot;not defined in the Filler&#39;s &quot;</span>
+                            <span class="n">f</span><span class="s2">&quot;handler registry.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="c1"># Apply root_map.</span>
+                        <span class="n">resource_path</span> <span class="o">=</span> <span class="n">resource</span><span class="p">[</span><span class="s1">&#39;resource_path&#39;</span><span class="p">]</span>
+                        <span class="n">root</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">root</span><span class="p">:</span>
+                            <span class="n">resource_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">resource_path</span><span class="p">)</span>
+
+                        <span class="n">handler</span> <span class="o">=</span> <span class="n">handler_class</span><span class="p">(</span><span class="n">resource_path</span><span class="p">,</span>
+                                                <span class="o">**</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;resource_kwargs&#39;</span><span class="p">])</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">EventModelError</span><span class="p">(</span>
+                            <span class="n">f</span><span class="s2">&quot;Error instantiating handler &quot;</span>
+                            <span class="n">f</span><span class="s2">&quot;class </span><span class="si">{handler_class}</span><span class="s2"> &quot;</span>
+                            <span class="n">f</span><span class="s2">&quot;with Resource document </span><span class="si">{resource}</span><span class="s2">.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_handler_cache</span><span class="p">[</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">handler</span>
+
+                <span class="c1"># We are sure to attempt to read that data at least once and</span>
+                <span class="c1"># then perhaps additional times depending on the contents of</span>
+                <span class="c1"># retry_intervals.</span>
+                <span class="n">error</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">interval</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">retry_intervals</span><span class="p">:</span>
+                    <span class="n">ttime</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">interval</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">actual_data</span> <span class="o">=</span> <span class="n">handler</span><span class="p">(</span><span class="o">**</span><span class="n">datum_doc</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">])</span>
+                        <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">actual_data</span>
+                        <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">datum_id</span>
+                    <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">error_</span><span class="p">:</span>
+                        <span class="c1"># The file may not be visible on the network yet.</span>
+                        <span class="c1"># Wait and try again. Stash the error in a variable</span>
+                        <span class="c1"># that we can access later if we run out of attempts.</span>
+                        <span class="n">error</span> <span class="o">=</span> <span class="n">error_</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># We have used up all our attempts. There seems to be an</span>
+                    <span class="c1"># actual problem. Raise the error stashed above.</span>
+                    <span class="k">raise</span> <span class="n">DataNotAccessible</span><span class="p">(</span>
+                        <span class="n">f</span><span class="s2">&quot;Filler was unable to load the data referenced by &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;the Datum document </span><span class="si">{datum_doc}</span><span class="s2"> and the Resource &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;document </span><span class="si">{resource}</span><span class="s2">.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">error</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Drop references to the caches. If the user holds another reference to</span>
+        <span class="c1"># them it&#39;s the user&#39;s problem to manage their lifecycle. If the user</span>
+        <span class="c1"># does not (e.g. they are the default caches) the gc will look after</span>
+        <span class="c1"># them.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handler_cache</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">exc_details</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_closed</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EventModelRuntimeError</span><span class="p">(</span>
+                <span class="s2">&quot;This Filler has been closed and is no longer usable.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EventModelError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">EventModelKeyError</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">EventModelValueError</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">EventModelRuntimeError</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">EventModelValidationError</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">UnfilledData</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;raised when unfilled data is found&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">UndefinedAssetSpecification</span><span class="p">(</span><span class="n">EventModelKeyError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;raised when a resource spec is missing from the handler registry&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">DataNotAccessible</span><span class="p">(</span><span class="n">EventModelError</span><span class="p">,</span> <span class="ne">IOError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;raised when attempts to load data referenced by Datum document fail&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+
+<span class="k">class</span> <span class="nc">UnresolvableForeignKeyError</span><span class="p">(</span><span class="n">EventModelValueError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;when we see a foreign before we see the thing to which it refers&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+
+<span class="n">SCHEMA_PATH</span> <span class="o">=</span> <span class="s1">&#39;schemas&#39;</span>
+<span class="n">SCHEMA_NAMES</span> <span class="o">=</span> <span class="p">{</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">:</span> <span class="s1">&#39;schemas/run_start.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">:</span> <span class="s1">&#39;schemas/run_stop.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">:</span> <span class="s1">&#39;schemas/event.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">event_page</span><span class="p">:</span> <span class="s1">&#39;schemas/event_page.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">:</span> <span class="s1">&#39;schemas/event_descriptor.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">:</span> <span class="s1">&#39;schemas/datum.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum_page</span><span class="p">:</span> <span class="s1">&#39;schemas/datum_page.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">resource</span><span class="p">:</span> <span class="s1">&#39;schemas/resource.json&#39;</span><span class="p">,</span>
+                <span class="c1"># DEPRECATED:</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">bulk_events</span><span class="p">:</span> <span class="s1">&#39;schemas/bulk_events.json&#39;</span><span class="p">,</span>
+                <span class="n">DocumentNames</span><span class="o">.</span><span class="n">bulk_datum</span><span class="p">:</span> <span class="s1">&#39;schemas/bulk_datum.json&#39;</span><span class="p">}</span>
+<span class="n">schemas</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">SCHEMA_NAMES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">rs_fn</span><span class="p">(</span><span class="s1">&#39;event_model&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
+        <span class="n">schemas</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fin</span><span class="p">)</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="n">get_versions</span><span class="p">()[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
+<span class="k">del</span> <span class="n">get_versions</span>
+
+<span class="n">ComposeRunBundle</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ComposeRunBundle&#39;</span><span class="p">,</span>
+                              <span class="s1">&#39;start_doc compose_descriptor compose_resource &#39;</span>
+                              <span class="s1">&#39;compose_stop&#39;</span><span class="p">)</span>
+<span class="n">ComposeDescriptorBundle</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ComposeDescriptorBundle&#39;</span><span class="p">,</span>
+                                     <span class="s1">&#39;descriptor_doc compose_event compose_event_page&#39;</span><span class="p">)</span>
+<span class="n">ComposeResourceBundle</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;ComposeResourceBundle&#39;</span><span class="p">,</span>
+                                   <span class="s1">&#39;resource_doc compose_datum compose_datum_page&#39;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">compose_datum</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">counter</span><span class="p">,</span> <span class="n">datum_kwargs</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">resource_uid</span><span class="p">,</span>
+           <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
+           <span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">counter</span><span class="p">))}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">doc</span>
+
+
+<span class="k">def</span> <span class="nf">compose_datum_page</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">counter</span><span class="p">,</span> <span class="n">datum_kwargs</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="n">any_column</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">datum_kwargs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">any_column</span><span class="p">)</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">resource_uid</span><span class="p">,</span>
+           <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
+           <span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">counter</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">doc</span>
+
+
+<span class="k">def</span> <span class="nf">compose_resource</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">resource_path</span><span class="p">,</span> <span class="n">resource_kwargs</span><span class="p">,</span>
+                     <span class="n">path_semantics</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span>
+           <span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
+           <span class="s1">&#39;spec&#39;</span><span class="p">:</span> <span class="n">spec</span><span class="p">,</span>
+           <span class="s1">&#39;root&#39;</span><span class="p">:</span> <span class="n">root</span><span class="p">,</span>
+           <span class="s1">&#39;resource_path&#39;</span><span class="p">:</span> <span class="n">resource_path</span><span class="p">,</span>
+           <span class="s1">&#39;resource_kwargs&#39;</span><span class="p">:</span> <span class="n">resource_kwargs</span><span class="p">,</span>
+           <span class="s1">&#39;path_semantics&#39;</span><span class="p">:</span> <span class="n">path_semantics</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">resource</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">ComposeResourceBundle</span><span class="p">(</span>
+        <span class="n">doc</span><span class="p">,</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_datum</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">counter</span><span class="o">=</span><span class="n">counter</span><span class="p">),</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_datum_page</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">counter</span><span class="o">=</span><span class="n">counter</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">compose_stop</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">event_counter</span><span class="p">,</span> <span class="n">poison_pill</span><span class="p">,</span>
+                 <span class="n">exit_status</span><span class="o">=</span><span class="s1">&#39;success&#39;</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+                 <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">poison_pill</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">EventModelError</span><span class="p">(</span><span class="s2">&quot;Already composed a RunStop document for run &quot;</span>
+                              <span class="s2">&quot;</span><span class="si">{!r}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]))</span>
+    <span class="n">poison_pill</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">object</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span>
+           <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+           <span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
+           <span class="s1">&#39;exit_status&#39;</span><span class="p">:</span> <span class="n">exit_status</span><span class="p">,</span>
+           <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+           <span class="s1">&#39;num_events&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">event_counter</span><span class="p">)}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">doc</span>
+
+
+<span class="k">def</span> <span class="nf">compose_event_page</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">event_counter</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="p">,</span> <span class="n">seq_num</span><span class="p">,</span>
+                       <span class="n">filled</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">seq_num</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="p">[</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()]</span> <span class="o">*</span> <span class="n">N</span>
+    <span class="k">if</span> <span class="n">filled</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filled</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span>
+           <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+           <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">data</span><span class="p">,</span>
+           <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="n">timestamps</span><span class="p">,</span>
+           <span class="s1">&#39;seq_num&#39;</span><span class="p">:</span> <span class="n">seq_num</span><span class="p">,</span>
+           <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">filled</span><span class="p">,</span>
+           <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event_page</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;These sets of keys must match:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;event[&#39;data&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;event[&#39;timestamps&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;descriptor[&#39;data_keys&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">filled</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;Keys in event[&#39;filled&#39;] </span><span class="si">{}</span><span class="s2"> must be a subset of those in &quot;</span>
+                <span class="s2">&quot;event[&#39;data&#39;] </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filled</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">event_counter</span><span class="p">[</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">doc</span>
+
+
+<span class="k">def</span> <span class="nf">compose_event</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">,</span> <span class="n">event_counter</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="p">,</span> <span class="n">seq_num</span><span class="p">,</span>
+                  <span class="n">filled</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">filled</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filled</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span>
+           <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+           <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">data</span><span class="p">,</span>
+           <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="n">timestamps</span><span class="p">,</span>
+           <span class="s1">&#39;seq_num&#39;</span><span class="p">:</span> <span class="n">seq_num</span><span class="p">,</span>
+           <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">filled</span><span class="p">,</span>
+           <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;These sets of keys must match:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;event[&#39;data&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;event[&#39;timestamps&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;descriptor[&#39;data_keys&#39;].keys(): </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">filled</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;Keys in event[&#39;filled&#39;] </span><span class="si">{}</span><span class="s2"> must be a subset of those in &quot;</span>
+                <span class="s2">&quot;event[&#39;data&#39;] </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">filled</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">event_counter</span><span class="p">[</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">doc</span>
+
+
+<span class="k">def</span> <span class="nf">compose_descriptor</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">streams</span><span class="p">,</span> <span class="n">event_counter</span><span class="p">,</span>
+                       <span class="n">name</span><span class="p">,</span> <span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">object_names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">configuration</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hints</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">object_names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">object_names</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">configuration</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">configuration</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">hints</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">hints</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span>
+           <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+           <span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
+           <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+           <span class="s1">&#39;data_keys&#39;</span><span class="p">:</span> <span class="n">data_keys</span><span class="p">,</span>
+           <span class="s1">&#39;object_names&#39;</span><span class="p">:</span> <span class="n">object_names</span><span class="p">,</span>
+           <span class="s1">&#39;hints&#39;</span><span class="p">:</span> <span class="n">hints</span><span class="p">,</span>
+           <span class="s1">&#39;configuration&#39;</span><span class="p">:</span> <span class="n">configuration</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">streams</span> <span class="ow">and</span> <span class="n">streams</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
+                <span class="s2">&quot;A descriptor with the name </span><span class="si">{}</span><span class="s2"> has already been composed with &quot;</span>
+                <span class="s2">&quot;data_keys </span><span class="si">{}</span><span class="s2">. The requested data_keys were </span><span class="si">{}</span><span class="s2">. All &quot;</span>
+                <span class="s2">&quot;descriptors in a given stream must have the same &quot;</span>
+                <span class="s2">&quot;data_keys.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">streams</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)))</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">streams</span><span class="p">:</span>
+        <span class="n">streams</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
+        <span class="n">event_counter</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">return</span> <span class="n">ComposeDescriptorBundle</span><span class="p">(</span>
+        <span class="n">doc</span><span class="p">,</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_event</span><span class="p">,</span> <span class="n">descriptor</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">event_counter</span><span class="o">=</span><span class="n">event_counter</span><span class="p">),</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_event_page</span><span class="p">,</span> <span class="n">descriptor</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">event_counter</span><span class="o">=</span><span class="n">event_counter</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">compose_run</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compose a RunStart document and factory functions for related documents.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    uid : string, optional</span>
+<span class="sd">        Unique identifier for this run, conventionally a UUID4. If None is</span>
+<span class="sd">        given, a UUID4 will be generated.</span>
+<span class="sd">    time: float, optional</span>
+<span class="sd">        UNIX epoch time of start of this run. If None is given, the current</span>
+<span class="sd">        time will be used.</span>
+<span class="sd">    metadata : dict, optional</span>
+<span class="sd">        Additional metadata include the document</span>
+<span class="sd">    validate : boolean, optional</span>
+<span class="sd">        Validate this document conforms to the schema.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">time</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">metadata</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="n">uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">time</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="c1"># Define some mutable state to be shared internally by the closures composed</span>
+    <span class="c1"># below.</span>
+    <span class="n">streams</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">event_counter</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">poison_pill</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">ComposeRunBundle</span><span class="p">(</span>
+        <span class="n">doc</span><span class="p">,</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_descriptor</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">streams</span><span class="o">=</span><span class="n">streams</span><span class="p">,</span> <span class="n">event_counter</span><span class="o">=</span><span class="p">{}),</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_resource</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">doc</span><span class="p">),</span>
+        <span class="n">partial</span><span class="p">(</span><span class="n">compose_stop</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">event_counter</span><span class="o">=</span><span class="n">event_counter</span><span class="p">,</span>
+                <span class="n">poison_pill</span><span class="o">=</span><span class="n">poison_pill</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">pack_event_page</span><span class="p">(</span><span class="o">*</span><span class="n">events</span><span class="p">):</span>
+    <span class="n">time_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">uid_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">seq_num_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">data_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">filled_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">timestamps_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+        <span class="n">time_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+        <span class="n">uid_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+        <span class="n">seq_num_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">])</span>
+        <span class="n">filled_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">])</span>
+        <span class="n">data_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])</span>
+        <span class="n">timestamps_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">])</span>
+    <span class="n">event_page</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time_list</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid_list</span><span class="p">,</span> <span class="s1">&#39;seq_num&#39;</span><span class="p">:</span> <span class="n">seq_num_list</span><span class="p">,</span>
+                  <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+                  <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">_transpose_list_of_dicts</span><span class="p">(</span><span class="n">filled_list</span><span class="p">),</span>
+                  <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">_transpose_list_of_dicts</span><span class="p">(</span><span class="n">data_list</span><span class="p">),</span>
+                  <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="n">_transpose_list_of_dicts</span><span class="p">(</span><span class="n">timestamps_list</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="n">event_page</span>
+
+
+<span class="k">def</span> <span class="nf">unpack_event_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">):</span>
+    <span class="n">descriptor</span> <span class="o">=</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
+    <span class="n">data_list</span> <span class="o">=</span> <span class="n">_transpose_dict_of_lists</span><span class="p">(</span><span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])</span>
+    <span class="n">timestamps_list</span> <span class="o">=</span> <span class="n">_transpose_dict_of_lists</span><span class="p">(</span><span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">])</span>
+    <span class="n">filled_list</span> <span class="o">=</span> <span class="n">_transpose_dict_of_lists</span><span class="p">(</span><span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">uid</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="n">seq_num</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="p">,</span> <span class="n">filled</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
+            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span>
+            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">],</span>
+            <span class="n">data_list</span><span class="p">,</span>
+            <span class="n">timestamps_list</span><span class="p">,</span>
+            <span class="n">filled_list</span> <span class="ow">or</span> <span class="p">[{}]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_list</span><span class="p">)):</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">,</span>
+                 <span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span> <span class="s1">&#39;seq_num&#39;</span><span class="p">:</span> <span class="n">seq_num</span><span class="p">,</span>
+                 <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">data</span><span class="p">,</span> <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="n">timestamps</span><span class="p">,</span> <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">filled</span><span class="p">}</span>
+        <span class="k">yield</span> <span class="n">event</span>
+
+
+<span class="k">def</span> <span class="nf">pack_datum_page</span><span class="p">(</span><span class="o">*</span><span class="n">datum</span><span class="p">):</span>
+    <span class="n">datum_id_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">datum_kwarg_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">datum_</span> <span class="ow">in</span> <span class="n">datum</span><span class="p">:</span>
+        <span class="n">datum_id_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">datum_</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>
+        <span class="n">datum_kwarg_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">datum_</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">])</span>
+    <span class="n">datum_page</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">datum_</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">],</span>
+                  <span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="n">datum_id_list</span><span class="p">,</span>
+                  <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">_transpose_list_of_dicts</span><span class="p">(</span><span class="n">datum_kwarg_list</span><span class="p">)}</span>
+    <span class="k">return</span> <span class="n">datum_page</span>
+
+
+<span class="k">def</span> <span class="nf">unpack_datum_page</span><span class="p">(</span><span class="n">datum_page</span><span class="p">):</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="n">datum_page</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+    <span class="n">datum_kwarg_list</span> <span class="o">=</span> <span class="n">_transpose_dict_of_lists</span><span class="p">(</span><span class="n">datum_page</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">datum_id</span><span class="p">,</span> <span class="n">datum_kwargs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">datum_page</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">],</span>
+            <span class="n">datum_kwarg_list</span><span class="p">):</span>
+        <span class="n">datum</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="n">datum_id</span><span class="p">,</span> <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
+                 <span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="p">}</span>
+        <span class="k">yield</span> <span class="n">datum</span>
+
+
+<span class="k">def</span> <span class="nf">bulk_events_to_event_pages</span><span class="p">(</span><span class="n">bulk_events</span><span class="p">):</span>
+    <span class="c1"># This is for a deprecated document type, so we are not being fussy</span>
+    <span class="c1"># about efficiency/laziness here.</span>
+    <span class="n">event_pages</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># descriptor uid mapped to page</span>
+    <span class="k">for</span> <span class="n">stream_name</span><span class="p">,</span> <span class="n">events</span> <span class="ow">in</span> <span class="n">bulk_events</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+            <span class="n">descriptor</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="n">event_pages</span><span class="p">[</span><span class="n">descriptor</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">page</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;seq_num&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">}</span>
+                <span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]}</span>
+                <span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]}</span>
+                <span class="n">page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]}</span>
+                <span class="n">event_pages</span><span class="p">[</span><span class="n">descriptor</span><span class="p">]</span> <span class="o">=</span> <span class="n">page</span>
+            <span class="n">page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+            <span class="n">page</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+            <span class="n">page</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">])</span>
+            <span class="n">page_data</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">page_data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">page_timestamps</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">page_timestamps</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="n">page_filled</span> <span class="o">=</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">page_filled</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">event_pages</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
+
+<span class="k">def</span> <span class="nf">bulk_datum_to_datum_page</span><span class="p">(</span><span class="n">bulk_datum</span><span class="p">):</span>
+    <span class="n">datum_page</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="n">bulk_datum</span><span class="p">[</span><span class="s1">&#39;datum_ids&#39;</span><span class="p">],</span>
+                  <span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">bulk_datum</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">],</span>
+                  <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">_transpose_list_of_dicts</span><span class="p">(</span>
+                      <span class="n">bulk_datum</span><span class="p">[</span><span class="s1">&#39;datum_kwarg_list&#39;</span><span class="p">])}</span>
+    <span class="k">return</span> <span class="n">datum_page</span>
+
+
+<span class="k">def</span> <span class="nf">_transpose_list_of_dicts</span><span class="p">(</span><span class="n">list_of_dicts</span><span class="p">):</span>
+    <span class="s2">&quot;Transform list-of-dicts into dict-of-lists (i.e. DataFrame-like).&quot;</span>
+    <span class="n">dict_of_lists</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">list_of_dicts</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">dict_of_lists</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dict_of_lists</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_transpose_dict_of_lists</span><span class="p">(</span><span class="n">dict_of_lists</span><span class="p">):</span>
+    <span class="s2">&quot;Transform dict-of-lists (i.e. DataFrame-like) into list-of-dicts.&quot;</span>
+    <span class="n">list_of_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dict_of_lists</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">dict_of_lists</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">)):</span>
+        <span class="n">list_of_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">row</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">list_of_dicts</span>
+
+
+<span class="k">def</span> <span class="nf">verify_filled</span><span class="p">(</span><span class="n">event_page</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Take an event_page document and verify that it is completely filled.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_page : event_page document</span>
+<span class="sd">        The event page document to check</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    UnfilledData</span>
+<span class="sd">        Raised if any of the data in the event_page is unfilled, when raised it</span>
+<span class="sd">        inlcudes a list of unfilled data objects in the exception message.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">all</span><span class="p">,</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())):</span>
+        <span class="c1"># check that all event_page data is filled.</span>
+        <span class="n">unfilled_data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">filled</span> <span class="ow">in</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">filled</span><span class="p">):</span>
+                <span class="n">unfilled_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">UnfilledData</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Unfilled data found in fields &quot;</span>
+                                   <span class="n">f</span><span class="s2">&quot;</span><span class="si">{unfilled_data!r}</span><span class="s2">. Use &quot;</span>
+                                   <span class="n">f</span><span class="s2">&quot;`event_model.Filler`.&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">sanitize_doc</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Return a copy with any numpy objects converted to built-in Python types.</span>
+
+<span class="sd">    This function takes in an event-model document and returns a copy with any</span>
+<span class="sd">    numpy objects converted to built-in Python types. It is useful for</span>
+<span class="sd">    sanitizing documents prior to sending to any consumer that does not</span>
+<span class="sd">    recognize numpy types, such as a MongoDB database or a JSON encoder.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    doc : dict</span>
+<span class="sd">        The event-model document to be sanitized</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sanitized_doc : event-model document</span>
+<span class="sd">        The event-model document with numpy objects converted to built-in</span>
+<span class="sd">        Python types.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="n">NumpyEncoder</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">NumpyEncoder</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="p">):</span>
+    <span class="c1"># Credit: https://stackoverflow.com/a/47626762/1221924</span>
+    <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">generic</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONEncoder</span><span class="o">.</span><span class="n">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Brookhaven National Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.0/clipboard.min.js"></script>
+        <script type="text/javascript" src="../_static/copybutton.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

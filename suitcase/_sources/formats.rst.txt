@@ -5,7 +5,7 @@ Supported Formats and Layouts
 Generics
 ========
 
-These export into commonly-requested formats.
+These export into common, general-purpose formats.
 
 Available:
 
@@ -45,9 +45,9 @@ Backends
 ========
 
 These encode the data into a format intended to be accessed through a
-programmatic interface such as databroker. They are not intended to be read by
-humans or necessarily parseable by external software. Rather, they are for
-internal archival.
+programmatic interface such as databroker. They are not generally intended to
+be read by humans or opened directly by data analysis software. Rather, they
+are for internal archival.
 
 Available:
 

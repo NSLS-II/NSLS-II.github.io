@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Write Your Own Suitcase &mdash; suitcase 0.1.0b3 documentation</title>
+  <title>Write Your Own Suitcase &mdash; suitcase v0.8.0 documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.1.0b3
+                v0.8.0
               </div>
             
           
@@ -95,9 +95,9 @@
 <li class="toctree-l3"><a class="reference internal" href="#create-the-package-with-cookiecutter">Create the package with cookiecutter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#write-the-serializer">Write the Serializer</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#test-the-serializer">Test the Serializer</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#api-documentation">API Documentation</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#api-documentation">API Documentation</a></li>
 </ul>
 </li>
 </ul>
@@ -170,7 +170,7 @@
 <h2>Scope of a Suitcase<a class="headerlink" href="#scope-of-a-suitcase" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="suitcases-are-highly-specific">
 <h3>Suitcases are Highly Specific<a class="headerlink" href="#suitcases-are-highly-specific" title="Permalink to this headline">¶</a></h3>
-<p>Suitcase’s design philosophy is to make many, tailored suitcases rather
+<p>Suitcase’s design philosophy is to make many well-tailored suitcases rather
 than try to fit a large range of functionality into one suitcase.</p>
 <p>Each file format is implemented in a separate Python package, named
 <code class="docutils literal notranslate"><span class="pre">suitcase-&lt;format&gt;</span></code>. As support for new formats is added over time, there may
@@ -344,9 +344,34 @@ view.</p>
 </pre></div>
 </div>
 </div>
+</div>
 <div class="section" id="api-documentation">
-<h3>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h3>
-<p>TODO Add abstract base class for <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>.</p>
+<h2>API Documentation<a class="headerlink" href="#api-documentation" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">DocumentRouter</span></code> is typically useful as base class for a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>.</p>
+<dl class="class">
+<dt id="event_model.DocumentRouter">
+<em class="property">class </em><code class="descclassname">event_model.</code><code class="descname">DocumentRouter</code><a class="reference internal" href="_modules/event_model.html#DocumentRouter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#event_model.DocumentRouter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Route each document by type to a corresponding method.</p>
+<p>When an instance is called with a document type and a document like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">router</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>the document is passed to the method of the corresponding name, as in</p>
+<blockquote>
+<div>getattr(router, name)(doc)</div></blockquote>
+<p>The method is expected to return a valid document of the same type. It may
+be the original instance (passed through), a copy, or a different dict
+altogether.</p>
+<p>Finally, the call to <code class="docutils literal notranslate"><span class="pre">router(name,</span> <span class="pre">doc))</span></code> returns:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="n">doc</span><span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<p>There are “manager” classes for files and memory buffers. The user may provide
+their own manager class implementing a different transport mechanism. It need
+only implement these same methods.</p>
 <dl class="class">
 <dt id="suitcase.utils.MultiFileManager">
 <em class="property">class </em><code class="descclassname">suitcase.utils.</code><code class="descname">MultiFileManager</code><span class="sig-paren">(</span><em>directory</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/suitcase/utils.html#MultiFileManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#suitcase.utils.MultiFileManager" title="Permalink to this definition">¶</a></dt>
@@ -530,7 +555,46 @@ there is no actual file). Must be unique for this Manager.</p>
 
 </dd></dl>
 
+<p>These classes are used by the <a class="reference internal" href="#suitcase.utils.MemoryBuffersManager" title="suitcase.utils.MemoryBuffersManager"><code class="xref py py-class docutils literal notranslate"><span class="pre">MemoryBuffersManager</span></code></a>.</p>
+<dl class="class">
+<dt id="suitcase.utils.PersistentStringIO">
+<em class="property">class </em><code class="descclassname">suitcase.utils.</code><code class="descname">PersistentStringIO</code><a class="reference internal" href="_modules/suitcase/utils.html#PersistentStringIO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#suitcase.utils.PersistentStringIO" title="Permalink to this definition">¶</a></dt>
+<dd><p>A StringIO that does not clear the buffer when closed.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This StringIO subclass behaves like StringIO except that its
+close() method, which would normally clear the buffer, has no
+effect. The clear() method, however, may still be used.</p>
 </div>
+<dl class="method">
+<dt id="suitcase.utils.PersistentStringIO.close">
+<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/suitcase/utils.html#PersistentStringIO.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#suitcase.utils.PersistentStringIO.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the IO object.</p>
+<p>Attempting any further operation after the object is closed
+will raise a ValueError.</p>
+<p>This method has no effect if the file is already closed.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="suitcase.utils.PersistentBytesIO">
+<em class="property">class </em><code class="descclassname">suitcase.utils.</code><code class="descname">PersistentBytesIO</code><a class="reference internal" href="_modules/suitcase/utils.html#PersistentBytesIO"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#suitcase.utils.PersistentBytesIO" title="Permalink to this definition">¶</a></dt>
+<dd><p>A BytesIO that does not clear the buffer when closed.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This BytesIO subclass behaves like BytesIO except that its
+close() method, which would normally clear the buffer, has no
+effect. The clear() method, however, may still be used.</p>
+</div>
+<dl class="method">
+<dt id="suitcase.utils.PersistentBytesIO.close">
+<code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/suitcase/utils.html#PersistentBytesIO.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#suitcase.utils.PersistentBytesIO.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable all I/O operations.</p>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 </div>
 
