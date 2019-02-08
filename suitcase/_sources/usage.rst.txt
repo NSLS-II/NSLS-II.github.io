@@ -130,7 +130,7 @@ Serialize to Any Buffer
 While most users will use suitcase to write files to disk, advanced users may
 write to a memory buffer, a network socket, etc. This is useful if the data's
 ultimate destination is a web client or some ready application. There is no
-need to waste time writing the data to a file and then reading it right back.
+need to waste time writing the data to disk and then reading it right back.
 
 To support this naturally, suitcase's architecture cleanly separates the
 serialization (documents-to-bytes) from the transport (what to do with the
