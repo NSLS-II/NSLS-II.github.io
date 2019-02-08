@@ -34,8 +34,8 @@ Categories of Suitcases
 The :doc:`list of existing and planned suitcases <formats>` groups them into
 three categories.
 
-* "One-offs" --- These are tailed to one specific application, writing files to the
-  requirements of a particular software program or user.
+* "One-offs" --- These are tailed to one specific application, writing files to
+  the requirements of a particular software program or user.
 * "Generics" --- These write commonly-requested formats such as TIFF or CSV.
   There is often room for interpretation in how exactly to lay out the data
   into a given file format. (One TIFF file per detector? Per Event? Per

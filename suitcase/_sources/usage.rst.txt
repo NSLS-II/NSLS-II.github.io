@@ -29,7 +29,7 @@ Simple Export
 
    This will generate one or more files in the current directory. You may also
    specify a different directory like so:
-   
+
    .. code-block:: python
 
       suitcase.csv.export(docs, 'path/to/usb_stick')
@@ -38,7 +38,7 @@ Simple Export
    of the data being exported.  For example, suitcase-csv generates one CSV
    file for each logical table ("stream") in the data, which varies. The
    filenames are returned by the :func:`export` function.
-   
+
    By default the file names are derived from the run's unique ID, which is
    guaranteed to be *unique* but not very descriptive --- names like
    ``e687d1b6-af34-4f8f-9f0d-2ebe1e1edcb7-primary.csv`` and
@@ -61,8 +61,8 @@ Simple Export
       export(docs, 'path/to/files', '{time:%%Y-%%m-%%d_%%H:%%M}-') # timestamp
       export(docs, 'path/to/files', '{sample_name}')
 
-   The last example assumes that a ``sample_name`` metadata was included when
-   the data was acquired.
+   The last example assumes that ``sample_name`` was included in the metadata
+   when the data was acquired.
 
 #. Repeat if multiple formats are desired. For example, you may wish to
    export to CSV (which captures only scalar data), TIFF (which captures only
@@ -70,7 +70,7 @@ Simple Export
    be useful to wrap these up in a custom function.
 
    .. code-block:: python
-   
+
       from itertools import tee
       import suitcase.csv
       import suitcase.tiff
@@ -84,6 +84,12 @@ Simple Export
 
       my_exporter(docs)
 
+   .. note::
+
+      The first line in ``my_exporter`` above duplicates docs into 3 identical
+      versions. It is required as ``docs`` may be a generator that will be
+      exhausted when used and we need to use it 3 independent times.
+
 .. warning::
 
     Note that :func:`export` can only be used on one "run" (one RunStart
@@ -92,7 +98,7 @@ Simple Export
     .. code-block:: python
 
        for header in db(since='2018-01'):
-           export(header.documents(), '') 
+           export(header.documents(), '')
 
 Streaming Export
 ================
