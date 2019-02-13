@@ -75,6 +75,7 @@ Create the package with cookiecutter
 
    .. code-block:: bash
 
+      cd suitcase-my-special-format
       git init
       git add .
       git commit -m "Initial commit"
@@ -83,7 +84,6 @@ Create the package with cookiecutter
 
    .. code-block:: bash
 
-      cd suitcase-my-special-format
       pip install -e .
       pip install -r requirements-dev.txt
 
