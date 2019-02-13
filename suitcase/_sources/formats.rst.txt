@@ -10,11 +10,10 @@ These export into common, general-purpose formats.
 Available:
 
 * suitcase-tiff --- image data TIFF stacks or individual TIFF files
-
-In Progress:
-
 * suitcase-csv --- scalar data as Common-Separated Values
 * suitcase-json-metadata --- JSON with just experiment metadata ("header")
+
+In Progress:
 
 Planned:
 
