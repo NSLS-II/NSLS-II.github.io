@@ -1,0 +1,875 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a1.post12+g793c036 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/copybutton.css" type="text/css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" type="text/css" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Intake Bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0a1.post12+g793c036
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API and Design Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Intake Bluesky</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>intake_bluesky.core</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for intake_bluesky.core</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">ast</span>
+<span class="kn">import</span> <span class="nn">event_model</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">dask</span>
+<span class="kn">import</span> <span class="nn">dask.bag</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">intake.catalog.base</span>
+<span class="kn">import</span> <span class="nn">intake.container.base</span>
+<span class="kn">import</span> <span class="nn">intake_xarray.base</span>
+<span class="kn">from</span> <span class="nn">intake.compat</span> <span class="k">import</span> <span class="n">unpack_kwargs</span>
+<span class="kn">import</span> <span class="nn">msgpack</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">from</span> <span class="nn">requests.compat</span> <span class="k">import</span> <span class="n">urljoin</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">xarray</span>
+
+
+<div class="viewcode-block" id="documents_to_xarray"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.documents_to_xarray">[docs]</a><span class="k">def</span> <span class="nf">documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span> <span class="n">event_docs</span><span class="p">,</span>
+                        <span class="n">filler</span><span class="p">,</span> <span class="n">get_resource</span><span class="p">,</span> <span class="n">get_datum</span><span class="p">,</span> <span class="n">get_datum_cursor</span><span class="p">,</span>
+                        <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represent the data in one Event stream as an xarray.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    start_doc: dict</span>
+<span class="sd">        RunStart Document</span>
+<span class="sd">    stop_doc : dict</span>
+<span class="sd">        RunStop Document</span>
+<span class="sd">    descriptor_docs : list</span>
+<span class="sd">        EventDescriptor Documents</span>
+<span class="sd">    event_docs : list</span>
+<span class="sd">        Event Documents</span>
+<span class="sd">    filler : event_model.Filler</span>
+<span class="sd">    get_resource : callable</span>
+<span class="sd">        Expected signature ``get_resource(resource_uid) -&gt; Resource``</span>
+<span class="sd">    get_datum : callable</span>
+<span class="sd">        Expected signature ``get_datum(datum_id) -&gt; Datum``</span>
+<span class="sd">    get_datum_cursor : callable</span>
+<span class="sd">        Expected signature ``get_datum_cursor(resource_uid) -&gt; generator``</span>
+<span class="sd">        where ``generator`` yields Datum documents</span>
+<span class="sd">    include : list, optional</span>
+<span class="sd">        Fields (&#39;data keys&#39;) to include. By default all are included. This</span>
+<span class="sd">        parameter is mutually exclusive with ``exclude``.</span>
+<span class="sd">    exclude : list, optional</span>
+<span class="sd">        Fields (&#39;data keys&#39;) to exclude. By default none are excluded. This</span>
+<span class="sd">        parameter is mutually exclusive with ``include``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dataset : xarray.Dataset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">include</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">exclude</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">include</span> <span class="ow">and</span> <span class="n">exclude</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;The parameters `include` and `exclude` are mutually exclusive.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Data keys must not change within one stream, so we can safely sample</span>
+    <span class="c1"># just the first Event Descriptor.</span>
+    <span class="n">data_keys</span> <span class="o">=</span> <span class="n">descriptor_docs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">include</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">include</span><span class="p">))</span>
+    <span class="k">elif</span> <span class="n">exclude</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">exclude</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
+
+    <span class="c1"># Collect a Dataset for each descriptor. Merge at the end.</span>
+    <span class="n">datasets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptor_docs</span><span class="p">:</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">event_docs</span>
+                  <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;external&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">event_model</span><span class="o">.</span><span class="n">UnresolvableForeignKeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">datum_id</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">key</span>
+                    <span class="n">datum</span> <span class="o">=</span> <span class="n">get_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="p">)</span>
+                    <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">datum</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+                    <span class="n">resource</span> <span class="o">=</span> <span class="n">get_resource</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">)</span>
+                    <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="p">)</span>
+                    <span class="c1"># Pre-fetch all datum for this resource.</span>
+                    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">get_datum_cursor</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">):</span>
+                        <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;datum&#39;</span><span class="p">,</span> <span class="n">datum</span><span class="p">)</span>
+                    <span class="c1"># TODO -- When to clear the datum cache in filler?</span>
+                    <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
+        <span class="n">seq_nums</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
+        <span class="n">uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
+        <span class="n">data_table</span> <span class="o">=</span> <span class="n">_transpose</span><span class="p">(</span><span class="n">events</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
+        <span class="c1"># external_keys = [k for k in data_keys if &#39;external&#39; in data_keys[k]]</span>
+
+        <span class="c1"># Collect a DataArray for each field in Event, each field in</span>
+        <span class="c1"># configuration, and &#39;seq_num&#39;. The Event &#39;time&#39; will be the</span>
+        <span class="c1"># default coordinate.</span>
+        <span class="n">data_arrays</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Make DataArrays for Event data.</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="c1"># Verify the actual ndim by looking at the data.</span>
+            <span class="n">ndim</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data_table</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">ndim</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="s1">&#39;dims&#39;</span> <span class="ow">in</span> <span class="n">field_metadata</span><span class="p">:</span>
+                <span class="c1"># As of this writing no Devices report dimension names (&#39;dims&#39;)</span>
+                <span class="c1"># but they could in the future.</span>
+                <span class="n">reported_ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">reported_ndim</span> <span class="o">==</span> <span class="n">ndim</span><span class="p">:</span>
+                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># TODO Warn</span>
+                    <span class="o">...</span>
+            <span class="k">if</span> <span class="n">dims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Construct the same default dimension names xarray would.</span>
+                <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;dim_</span><span class="si">{i}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+            <span class="n">data_arrays</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">data_table</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">dims</span><span class="p">,</span>
+                <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="c1"># Make DataArrays for configuration data.</span>
+        <span class="k">for</span> <span class="n">object_name</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;configuration&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">data_keys</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span>
+            <span class="c1"># For configuration, label the dimension specially to</span>
+            <span class="c1"># avoid key collisions.</span>
+            <span class="n">scoped_data_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{object_name}</span><span class="s1">:</span><span class="si">{key}</span><span class="s1">&#39;</span>
+                                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">include</span><span class="p">:</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">scoped_data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">include</span><span class="p">}</span>
+            <span class="k">elif</span> <span class="n">exclude</span><span class="p">:</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">scoped_data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">include</span><span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="n">scoped_data_keys</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">scoped_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="c1"># Verify the actual ndim by looking at the data.</span>
+                <span class="n">ndim</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">])</span><span class="o">.</span><span class="n">ndim</span>
+                <span class="n">dims</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="s1">&#39;dims&#39;</span> <span class="ow">in</span> <span class="n">field_metadata</span><span class="p">:</span>
+                    <span class="c1"># As of this writing no Devices report dimension names (&#39;dims&#39;)</span>
+                    <span class="c1"># but they could in the future.</span>
+                    <span class="n">reported_ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
+                    <span class="k">if</span> <span class="n">reported_ndim</span> <span class="o">==</span> <span class="n">ndim</span><span class="p">:</span>
+                        <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># TODO Warn</span>
+                        <span class="o">...</span>
+                <span class="k">if</span> <span class="n">dims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># Construct the same default dimension names xarray would.</span>
+                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;dim_</span><span class="si">{i}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+                <span class="n">data_arrays</span><span class="p">[</span><span class="n">scoped_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                    <span class="c1"># TODO Once we know we have one Event Descriptor</span>
+                    <span class="c1"># per stream we can be more efficient about this.</span>
+                    <span class="n">data</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">],</span>
+                                    <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">),)</span> <span class="o">+</span> <span class="n">ndim</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)),</span>
+                    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">dims</span><span class="p">,</span>
+                    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+
+        <span class="c1"># Finally, make DataArrays for &#39;seq_num&#39; and &#39;uid&#39;.</span>
+        <span class="n">data_arrays</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">seq_nums</span><span class="p">,</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,),</span>
+            <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;seq_num&#39;</span><span class="p">)</span>
+        <span class="n">data_arrays</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">uids</span><span class="p">,</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,),</span>
+            <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;uid&#39;</span><span class="p">)</span>
+
+        <span class="n">datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">data_vars</span><span class="o">=</span><span class="n">data_arrays</span><span class="p">))</span>
+    <span class="c1"># Merge Datasets from all Event Descriptors into one representing the</span>
+    <span class="c1"># whole stream. (In the future we may simplify to one Event Descriptor</span>
+    <span class="c1"># per stream, but as of this writing we must account for the</span>
+    <span class="c1"># possibility of multiple.)</span>
+    <span class="k">return</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RemoteRunCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.RemoteRunCatalog">[docs]</a><span class="k">class</span> <span class="nc">RemoteRunCatalog</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">RemoteCatalog</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Catalog representing one Run.</span>
+
+<span class="sd">    This is a client-side proxy to a RunCatalog stored on a remote server.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    url: str</span>
+<span class="sd">        Address of the server</span>
+<span class="sd">    headers: dict</span>
+<span class="sd">        HTTP headers to sue in calls</span>
+<span class="sd">    name: str</span>
+<span class="sd">        handle to reference this data</span>
+<span class="sd">    parameters: dict</span>
+<span class="sd">        To pass to the server when it instantiates the data source</span>
+<span class="sd">    metadata: dict</span>
+<span class="sd">        Additional info</span>
+<span class="sd">    kwargs: ignored</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-run-catalog&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                         <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">url</span> <span class="o">=</span> <span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">headers</span> <span class="o">=</span> <span class="n">headers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_source_id</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_get_source_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                           <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
+            <span class="n">req</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">urljoin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="s1">&#39;/v1/source&#39;</span><span class="p">),</span>
+                                <span class="n">data</span><span class="o">=</span><span class="n">msgpack</span><span class="o">.</span><span class="n">packb</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">use_bin_type</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">)</span>
+            <span class="n">req</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">msgpack</span><span class="o">.</span><span class="n">unpackb</span><span class="p">(</span><span class="n">req</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="o">**</span><span class="n">unpack_kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_parse_open_response</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_parse_open_response</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;npartitions&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;metadata&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span>
+            <span class="n">datashape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">npartitions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span> <span class="o">=</span> <span class="n">response</span><span class="p">[</span><span class="s1">&#39;source_id&#39;</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_load_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">dask</span><span class="o">.</span><span class="n">delayed</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">get_partition</span><span class="p">)(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">headers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">,</span> <span class="n">i</span>
+            <span class="p">)</span>
+                          <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">)]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">bag</span><span class="o">.</span><span class="n">from_delayed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span>
+
+    <span class="k">def</span> <span class="nf">_get_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bag</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">to_dask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">bag</span>
+
+    <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_partition</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span></div>
+
+
+<div class="viewcode-block" id="RunCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.RunCatalog">[docs]</a><span class="k">class</span> <span class="nc">RunCatalog</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">Catalog</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Catalog representing one Run.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    get_run_start: callable</span>
+<span class="sd">        Expected signature ``get_run_start() -&gt; RunStart``</span>
+<span class="sd">    get_run_stop : callable</span>
+<span class="sd">        Expected signature ``get_run_stop() -&gt; RunStop``</span>
+<span class="sd">    get_event_descriptors : callable</span>
+<span class="sd">        Expected signature ``get_event_descriptors() -&gt; List[EventDescriptors]``</span>
+<span class="sd">    get_event_cursor : callable</span>
+<span class="sd">        Expected signature ``get_event_cursor(descriptor_uids) -&gt; generator``</span>
+<span class="sd">        where ``generator`` yields Event documents</span>
+<span class="sd">    get_resource : callable</span>
+<span class="sd">        Expected signature ``get_resource(resource_uid) -&gt; Resource``</span>
+<span class="sd">    get_datum : callable</span>
+<span class="sd">        Expected signature ``get_datum(datum_id) -&gt; Datum``</span>
+<span class="sd">    get_datum_cursor : callable</span>
+<span class="sd">        Expected signature ``get_datum_cursor(resource_uid) -&gt; generator``</span>
+<span class="sd">        where ``generator`` yields Datum documents</span>
+<span class="sd">    filler : event_model.Filler</span>
+<span class="sd">    **kwargs :</span>
+<span class="sd">        Additional keyword arguments are passed through to the base class,</span>
+<span class="sd">        Catalog.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;bluesky-run-catalog&#39;</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="s1">&#39;0.0.1&#39;</span>
+    <span class="n">partition_access</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">PARTITION_SIZE</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">get_run_start</span><span class="p">,</span>
+                 <span class="n">get_run_stop</span><span class="p">,</span>
+                 <span class="n">get_event_descriptors</span><span class="p">,</span>
+                 <span class="n">get_event_cursor</span><span class="p">,</span>
+                 <span class="n">get_event_count</span><span class="p">,</span>
+                 <span class="n">get_resource</span><span class="p">,</span>
+                 <span class="n">get_datum</span><span class="p">,</span>
+                 <span class="n">get_datum_cursor</span><span class="p">,</span>
+                 <span class="n">filler</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># All **kwargs are passed up to base class. TODO: spell them out</span>
+        <span class="c1"># explicitly.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">urlpath</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># TODO Not sure why I had to add this.</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span> <span class="o">=</span> <span class="n">get_run_start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span> <span class="o">=</span> <span class="n">get_run_stop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span> <span class="o">=</span> <span class="n">get_event_descriptors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_cursor</span> <span class="o">=</span> <span class="n">get_event_cursor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span> <span class="o">=</span> <span class="n">get_event_count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span> <span class="o">=</span> <span class="n">get_resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span> <span class="o">=</span> <span class="n">get_datum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span> <span class="o">=</span> <span class="n">get_datum_cursor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span> <span class="o">=</span> <span class="n">filler</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;Run Catalog</span><span class="se">\n</span><span class="s2">&quot;</span>
+                   <span class="n">f</span><span class="s2">&quot;  uid=</span><span class="si">{start[&#39;uid&#39;]!r}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                   <span class="n">f</span><span class="s2">&quot;  exit_status={stop.get(&#39;exit_status&#39;)!r}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                   <span class="n">f</span><span class="s2">&quot;  {_ft(start[&#39;time&#39;])} -- {_ft(stop.get(&#39;time&#39;, &#39;?&#39;))}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                   <span class="n">f</span><span class="s2">&quot;  Streams:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                <span class="n">out</span> <span class="o">+=</span> <span class="n">f</span><span class="s2">&quot;    * </span><span class="si">{stream_name}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&lt;Intake catalog: Run *REPR_RENDERING_FAILURE* </span><span class="si">{exc!r}</span><span class="s2">&gt;&quot;</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Count the total number of documents in this run.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_offset</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
+
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">descriptor_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">]</span>
+        <span class="n">count</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">descriptor_uids</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span><span class="p">(</span>
+            <span class="n">descriptor_uids</span><span class="o">=</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">])</span>
+        <span class="n">count</span> <span class="o">+=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span>
+            <span class="n">datashape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">count</span><span class="p">,),</span>
+            <span class="n">npartitions</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
+
+        <span class="c1"># Make a BlueskyEventStream for each stream_name.</span>
+        <span class="k">for</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">):</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">get_run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">,</span>
+                <span class="n">stream_name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
+                <span class="n">get_run_stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">,</span>
+                <span class="n">get_event_descriptors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">,</span>
+                <span class="n">get_event_cursor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_cursor</span><span class="p">,</span>
+                <span class="n">get_event_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span><span class="p">,</span>
+                <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
+                <span class="n">get_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">,</span>
+                <span class="n">get_datum_cursor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span>
+                <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">,</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)},</span>
+                <span class="n">include</span><span class="o">=</span><span class="s1">&#39;{{ include }}&#39;</span><span class="p">,</span>
+                <span class="n">exclude</span><span class="o">=</span><span class="s1">&#39;{{ exclude }}&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
+                <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;intake_bluesky.core.BlueskyEventStream&#39;</span><span class="p">,</span>
+                <span class="n">direct_access</span><span class="o">=</span><span class="s1">&#39;forbid&#39;</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
+                <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ???</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">_INCLUDE_PARAMETER</span><span class="p">,</span> <span class="n">_EXCLUDE_PARAMETER</span><span class="p">],</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)},</span>
+                <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">catalog</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_partition</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span>
+
+<div class="viewcode-block" id="RunCatalog.read_partition"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.RunCatalog.read_partition">[docs]</a>    <span class="k">def</span> <span class="nf">read_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fetch one chunk of documents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()</span>
+        <span class="n">payload</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span>
+        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_offset</span><span class="p">:</span>
+            <span class="n">payload</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span>
+                    <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
+                        <span class="p">((</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()),),</span>
+                        <span class="p">((</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)),</span>
+                    <span class="n">start</span><span class="p">,</span>
+                    <span class="n">stop</span><span class="p">))</span>
+        <span class="n">descriptor_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">]</span>
+        <span class="n">skip</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
+        <span class="n">limit</span> <span class="o">=</span> <span class="n">stop</span> <span class="o">-</span> <span class="n">start</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+        <span class="c1"># print(&#39;start, stop, skip, limit&#39;, start, stop, skip, limit)</span>
+        <span class="k">if</span> <span class="n">limit</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_cursor</span><span class="p">(</span><span class="n">descriptor_uids</span><span class="o">=</span><span class="n">descriptor_uids</span><span class="p">,</span>
+                                            <span class="n">skip</span><span class="o">=</span><span class="n">skip</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+                <span class="k">except</span> <span class="n">event_model</span><span class="o">.</span><span class="n">UnresolvableForeignKeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">datum_id</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">key</span>
+                    <span class="n">datum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="o">=</span><span class="n">datum_id</span><span class="p">)</span>
+                    <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">datum</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+                    <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="p">)</span>
+                    <span class="c1"># Pre-fetch all datum for this resource.</span>
+                    <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">(</span><span class="n">resource_uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">(</span><span class="s1">&#39;datum&#39;</span><span class="p">,</span> <span class="n">datum</span><span class="p">)</span>
+                    <span class="c1"># TODO -- When to clear the datum cache in filler?</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
+                <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">-</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">payload</span></div></div>
+
+
+<span class="n">_EXCLUDE_PARAMETER</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">UserParameter</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;exclude&#39;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;fields to exclude&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;list&#39;</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">_INCLUDE_PARAMETER</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">UserParameter</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;include&#39;</span><span class="p">,</span>
+    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;fields to explicitly include at exclusion of all others&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;list&#39;</span><span class="p">,</span>
+    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BlueskyEventStream"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.BlueskyEventStream">[docs]</a><span class="k">class</span> <span class="nc">BlueskyEventStream</span><span class="p">(</span><span class="n">intake_xarray</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">DataSourceMixin</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Catalog representing one Event Stream from one Run.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    get_run_start: callable</span>
+<span class="sd">        Expected signature ``get_run_start() -&gt; RunStart``</span>
+<span class="sd">    stream_name : string</span>
+<span class="sd">        Stream name, such as &#39;primary&#39;.</span>
+<span class="sd">    get_run_stop : callable</span>
+<span class="sd">        Expected signature ``get_run_stop() -&gt; RunStop``</span>
+<span class="sd">    get_event_descriptors : callable</span>
+<span class="sd">        Expected signature ``get_event_descriptors() -&gt; List[EventDescriptors]``</span>
+<span class="sd">    get_event_cursor : callable</span>
+<span class="sd">        Expected signature ``get_event_cursor(descriptor_uids) -&gt; generator``</span>
+<span class="sd">        where ``generator`` yields Event documents</span>
+<span class="sd">    get_resource : callable</span>
+<span class="sd">        Expected signature ``get_resource(resource_uid) -&gt; Resource``</span>
+<span class="sd">    get_datum : callable</span>
+<span class="sd">        Expected signature ``get_datum(datum_id) -&gt; Datum``</span>
+<span class="sd">    get_datum_cursor : callable</span>
+<span class="sd">        Expected signature ``get_datum_cursor(resource_uid) -&gt; generator``</span>
+<span class="sd">        where ``generator`` yields Datum documents</span>
+<span class="sd">    filler : event_model.Filler</span>
+<span class="sd">    metadata : dict</span>
+<span class="sd">        passed through to base class</span>
+<span class="sd">    include : list, optional</span>
+<span class="sd">        Fields (&#39;data keys&#39;) to include. By default all are included. This</span>
+<span class="sd">        parameter is mutually exclusive with ``exclude``.</span>
+<span class="sd">    exclude : list, optional</span>
+<span class="sd">        Fields (&#39;data keys&#39;) to exclude. By default none are excluded. This</span>
+<span class="sd">        parameter is mutually exclusive with ``include``.</span>
+<span class="sd">    **kwargs :</span>
+<span class="sd">        Additional keyword arguments are passed through to the base class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;xarray&#39;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-event-stream&#39;</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="s1">&#39;0.0.1&#39;</span>
+    <span class="n">partition_access</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">get_run_start</span><span class="p">,</span>
+                 <span class="n">stream_name</span><span class="p">,</span>
+                 <span class="n">get_run_stop</span><span class="p">,</span>
+                 <span class="n">get_event_descriptors</span><span class="p">,</span>
+                 <span class="n">get_event_cursor</span><span class="p">,</span>
+                 <span class="n">get_event_count</span><span class="p">,</span>
+                 <span class="n">get_resource</span><span class="p">,</span>
+                 <span class="n">get_datum</span><span class="p">,</span>
+                 <span class="n">get_datum_cursor</span><span class="p">,</span>
+                 <span class="n">filler</span><span class="p">,</span>
+                 <span class="n">metadata</span><span class="p">,</span>
+                 <span class="n">include</span><span class="p">,</span>
+                 <span class="n">exclude</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># self._partition_size = 10</span>
+        <span class="c1"># self._default_chunks = 10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span> <span class="o">=</span> <span class="n">get_run_start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span> <span class="o">=</span> <span class="n">stream_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span> <span class="o">=</span> <span class="n">get_event_descriptors</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span> <span class="o">=</span> <span class="n">get_run_stop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_cursor</span> <span class="o">=</span> <span class="n">get_event_cursor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span> <span class="o">=</span> <span class="n">get_event_count</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span> <span class="o">=</span> <span class="n">get_resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span> <span class="o">=</span> <span class="n">get_datum</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span> <span class="o">=</span> <span class="n">get_datum_cursor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span> <span class="o">=</span> <span class="n">filler</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">urlpath</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># TODO Not sure why I had to add this.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _open_dataset below</span>
+        <span class="c1"># TODO Is there a more direct way to get non-string UserParameters in?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">include</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">literal_eval</span><span class="p">(</span><span class="n">exclude</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;&lt;Intake catalog: Stream </span><span class="si">{self._stream_name!r}</span><span class="s2"> &quot;</span>
+                   <span class="n">f</span><span class="s2">&quot;from Run {self._get_run_start()[&#39;uid&#39;][:8]}...&gt;&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&lt;Intake catalog: Stream *REPR_RENDERING_FAILURE* </span><span class="si">{exc!r}</span><span class="s2">&gt;&quot;</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span> <span class="nf">_open_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
+        <span class="n">descriptor_docs</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray</span><span class="p">(</span>
+            <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
+            <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
+            <span class="n">descriptor_docs</span><span class="o">=</span><span class="n">descriptor_docs</span><span class="p">,</span>
+            <span class="n">event_docs</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_cursor</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">descriptor_docs</span><span class="p">])),</span>
+            <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">,</span>
+            <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
+            <span class="n">get_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">,</span>
+            <span class="n">get_datum_cursor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span>
+            <span class="n">include</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span>
+            <span class="n">exclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_transpose</span><span class="p">(</span><span class="n">in_data</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Turn a list of dicts into dict of lists</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    in_data : list</span>
+<span class="sd">        A list of dicts which contain at least one dict.</span>
+<span class="sd">        All of the inner dicts must have at least the keys</span>
+<span class="sd">        in `keys`</span>
+
+<span class="sd">    keys : list</span>
+<span class="sd">        The list of keys to extract</span>
+
+<span class="sd">    field : str</span>
+<span class="sd">        The field in the outer dict to use</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    transpose : dict</span>
+<span class="sd">        The transpose of the data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_data</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">ev</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">in_data</span><span class="p">):</span>
+        <span class="n">dd</span> <span class="o">=</span> <span class="n">ev</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">dd</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<span class="k">def</span> <span class="nf">_ft</span><span class="p">(</span><span class="n">timestamp</span><span class="p">):</span>
+    <span class="s2">&quot;format timestamp&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">timestamp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">timestamp</span>
+    <span class="c1"># Truncate microseconds to miliseconds. Do not bother to round.</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S.</span><span class="si">%f</span><span class="s1">&#39;</span><span class="p">))[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">xarray_to_event_gen</span><span class="p">(</span><span class="n">data_xarr</span><span class="p">,</span> <span class="n">ts_xarr</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">start_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_xarr</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]),</span> <span class="n">page_size</span><span class="p">):</span>
+        <span class="n">stop_idx</span> <span class="o">=</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">page_size</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">variable</span><span class="o">.</span><span class="n">values</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">variable</span> <span class="ow">in</span>
+                <span class="n">data_xarr</span><span class="o">.</span><span class="n">isel</span><span class="p">({</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start_idx</span><span class="p">,</span> <span class="n">stop_idx</span><span class="p">)})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">}</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">variable</span><span class="o">.</span><span class="n">values</span>
+              <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">variable</span> <span class="ow">in</span>
+              <span class="n">ts_xarr</span><span class="o">.</span><span class="n">isel</span><span class="p">({</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="nb">slice</span><span class="p">(</span><span class="n">start_idx</span><span class="p">,</span> <span class="n">stop_idx</span><span class="p">)})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+              <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">name</span><span class="p">}</span>
+        <span class="n">event_page</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">seq_num</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;seq_num&#39;</span><span class="p">)</span>
+        <span class="n">ts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;seq_num&#39;</span><span class="p">)</span>
+        <span class="n">uids</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;uid&#39;</span><span class="p">)</span>
+        <span class="n">ts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;uid&#39;</span><span class="p">)</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ts</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_xarr</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">][</span><span class="n">start_idx</span><span class="p">:</span><span class="n">stop_idx</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">uids</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">seq_num</span>
+        <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">yield</span> <span class="n">event_page</span>
+
+
+<div class="viewcode-block" id="parse_handler_registry"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.parse_handler_registry">[docs]</a><span class="k">def</span> <span class="nf">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse mapping of spec name to &#39;import path&#39; into mapping to class itself.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    handler_registry : dict</span>
+<span class="sd">        Values may be string &#39;import paths&#39; to classes or actual classes.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Pass in name; get back actual class.</span>
+
+<span class="sd">    &gt;&gt;&gt; parse_handler_registry({&#39;my_spec&#39;: &#39;package.module.ClassName&#39;})</span>
+<span class="sd">    {&#39;my_spec&#39;: &lt;package.module.ClassName&gt;}</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">handler_str</span> <span class="ow">in</span> <span class="n">handler_registry</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">handler_str</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">class_name</span> <span class="o">=</span> <span class="n">handler_str</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="n">class_</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">class_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">class_</span> <span class="o">=</span> <span class="n">handler_str</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="n">class_</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<span class="n">intake</span><span class="o">.</span><span class="n">registry</span><span class="p">[</span><span class="s1">&#39;remote-bluesky-run-catalog&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteRunCatalog</span>
+<span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">container_map</span><span class="p">[</span><span class="s1">&#39;bluesky-run-catalog&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteRunCatalog</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1.0a1.post12+g793c036',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/copybutton.js"></script>
+      <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+      <script type="text/javascript" src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

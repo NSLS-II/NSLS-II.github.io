@@ -1,0 +1,477 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>intake_bluesky.mongo_layout1 &mdash; Intake Bluesky 0.1.0a1.post12+g793c036 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/copybutton.css" type="text/css" />
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.2.0/css/all.css" type="text/css" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Intake Bluesky
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1.0a1.post12+g793c036
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API and Design Documentation</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Intake Bluesky</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>intake_bluesky.mongo_layout1</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for intake_bluesky.mongo_layout1</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">event_model</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">intake</span>
+<span class="kn">import</span> <span class="nn">intake.catalog</span>
+<span class="kn">import</span> <span class="nn">intake.catalog.local</span>
+<span class="kn">import</span> <span class="nn">intake.source.base</span>
+<span class="kn">import</span> <span class="nn">pymongo</span>
+<span class="kn">import</span> <span class="nn">pymongo.errors</span>
+
+<span class="kn">from</span> <span class="nn">.core</span> <span class="k">import</span> <span class="n">parse_handler_registry</span>
+
+
+<div class="viewcode-block" id="BlueskyMongoCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.mongo_layout1.BlueskyMongoCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyMongoCatalog</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">Catalog</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadatastore_db</span><span class="p">,</span> <span class="n">asset_registry_db</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This Catalog is backed by a pair of MongoDBs with &quot;layout 1&quot;.</span>
+
+<span class="sd">        This layout uses a separate Mongo collection per document type and a</span>
+<span class="sd">        separate Mongo document for each logical document.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        metadatastore_db : pymongo.database.Database or string</span>
+<span class="sd">            Must be a Database or a URI string that includes a database name.</span>
+<span class="sd">        asset_registry_db : pymongo.database.Database or string</span>
+<span class="sd">            Must be a Database or a URI string that includes a database name.</span>
+<span class="sd">        handler_registry : dict, optional</span>
+<span class="sd">            Maps each asset spec to a handler class or a string specifying the</span>
+<span class="sd">            module name and class name, as in (for example)</span>
+<span class="sd">            ``{&#39;SOME_SPEC&#39;: &#39;module.submodule.class_name&#39;}``.</span>
+<span class="sd">        query : dict, optional</span>
+<span class="sd">            MongoDB query. Used internally by the ``search()`` method.</span>
+<span class="sd">        **kwargs :</span>
+<span class="sd">            Additional keyword arguments are passed through to the base class,</span>
+<span class="sd">            Catalog.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-mongo-catalog&#39;</span>  <span class="c1"># noqa</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">metadatastore_db</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">mds_db</span> <span class="o">=</span> <span class="n">_get_database</span><span class="p">(</span><span class="n">metadatastore_db</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">mds_db</span> <span class="o">=</span> <span class="n">metadatastore_db</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">asset_registry_db</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">assets_db</span> <span class="o">=</span> <span class="n">_get_database</span><span class="p">(</span><span class="n">asset_registry_db</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">assets_db</span> <span class="o">=</span> <span class="n">asset_registry_db</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;run_start&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;run_stop&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_event_descriptor_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;event_descriptor&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_event_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resource_collection</span> <span class="o">=</span> <span class="n">assets_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datum_collection</span> <span class="o">=</span> <span class="n">assets_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;datum&#39;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_metadatastore_db</span> <span class="o">=</span> <span class="n">mds_db</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_registry_db</span> <span class="o">=</span> <span class="n">assets_db</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_query</span> <span class="o">=</span> <span class="n">query</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">parsed_handler_registry</span> <span class="o">=</span> <span class="n">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">(</span><span class="n">parsed_handler_registry</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_run_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
+        <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+            <span class="p">{</span><span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">run_start_uid</span><span class="p">})</span>
+        <span class="c1"># It is acceptable to return None if the document does not exist.</span>
+        <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">_get_event_descriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_descriptor_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+            <span class="p">{</span><span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">run_start_uid</span><span class="p">},</span>
+            <span class="n">sort</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">ASCENDING</span><span class="p">)])</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span> <span class="nf">_get_event_cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descriptor_uids</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_event_collection</span>
+                  <span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;$in&#39;</span><span class="p">:</span> <span class="n">descriptor_uids</span><span class="p">}},</span>
+                        <span class="n">sort</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">ASCENDING</span><span class="p">)]))</span>
+        <span class="n">cursor</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">skip</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">_get_event_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descriptor_uids</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_collection</span><span class="o">.</span><span class="n">count_documents</span><span class="p">(</span>
+            <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;$in&#39;</span><span class="p">:</span> <span class="n">descriptor_uids</span><span class="p">}})</span>
+
+    <span class="k">def</span> <span class="nf">_get_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uid</span><span class="p">):</span>
+        <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+            <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">uid</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Could not find Resource with uid=</span><span class="si">{uid}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">_get_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datum_id</span><span class="p">):</span>
+        <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
+            <span class="p">{</span><span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="n">datum_id</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Could not find Datum with datum_id=</span><span class="si">{datum_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">doc</span>
+
+    <span class="k">def</span> <span class="nf">_get_datum_cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource_uid</span><span class="p">):</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_collection</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">resource_uid</span><span class="p">})</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">doc</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># TODO This is cheating, I think.</span>
+
+    <span class="k">def</span> <span class="nf">_make_entries_container</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">catalog</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">class</span> <span class="nc">Entries</span><span class="p">:</span>
+            <span class="s2">&quot;Mock the dict interface around a MongoDB query result.&quot;</span>
+            <span class="k">def</span> <span class="nf">_doc_to_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_doc</span><span class="p">):</span>
+                <span class="n">uid</span> <span class="o">=</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+                <span class="n">run_start_doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+                <span class="n">entry_metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="n">run_start_doc</span><span class="p">,</span>
+                                  <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">(</span><span class="n">uid</span><span class="p">)}</span>
+                <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">get_run_start</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">run_start_doc</span><span class="p">,</span>
+                    <span class="n">get_run_stop</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
+                    <span class="n">get_event_descriptors</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
+                    <span class="n">get_event_cursor</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_cursor</span><span class="p">,</span>
+                    <span class="n">get_event_count</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_count</span><span class="p">,</span>
+                    <span class="n">get_resource</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
+                    <span class="n">get_datum</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">,</span>
+                    <span class="n">get_datum_cursor</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span>
+                    <span class="n">filler</span><span class="o">=</span><span class="n">catalog</span><span class="o">.</span><span class="n">filler</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
+                    <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
+                    <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;intake_bluesky.core.RunCatalog&#39;</span><span class="p">,</span>
+                    <span class="n">direct_access</span><span class="o">=</span><span class="s1">&#39;forbid&#39;</span><span class="p">,</span>  <span class="c1"># ???</span>
+                    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
+                    <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ???</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">metadata</span><span class="o">=</span><span class="n">entry_metadata</span><span class="p">,</span>
+                    <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">catalog</span><span class="o">=</span><span class="n">catalog</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+            <span class="k">def</span> <span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                    <span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)])</span>
+                <span class="k">for</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+
+            <span class="k">def</span> <span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                    <span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)])</span>
+                <span class="k">for</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">cursor</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span>
+                    <span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)])</span>
+                <span class="k">for</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+                <span class="c1"># If this came from a client, we might be getting &#39;-1&#39;.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># Interpret negative N as &quot;the Nth from last entry&quot;.</span>
+                        <span class="n">query</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_query</span>
+                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)</span> <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+                        <span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">cursor</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Interpret positive N as</span>
+                        <span class="c1"># &quot;most recent entry with scan_id == N&quot;.</span>
+                        <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">}]}</span>
+                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+                        <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">cursor</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">}]}</span>
+                    <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">run_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+                <span class="c1"># Avoid iterating through all entries.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="n">Entries</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="BlueskyMongoCatalog.search"><a class="viewcode-back" href="../../api.html#intake_bluesky.mongo_layout1.BlueskyMongoCatalog.search">[docs]</a>    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a new Catalog with a subset of the entries in this Catalog.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        query : dict</span>
+<span class="sd">            MongoDB query.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">:</span>
+            <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="n">query</span><span class="p">]}</span>
+        <span class="n">cat</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span>
+            <span class="n">metadatastore_db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_metadatastore_db</span><span class="p">,</span>
+            <span class="n">asset_registry_db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_asset_registry_db</span><span class="p">,</span>
+            <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;search results&#39;</span><span class="p">,</span>
+            <span class="n">getenv</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getenv</span><span class="p">,</span>
+            <span class="n">getshell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getshell</span><span class="p">,</span>
+            <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="n">storage_options</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">cat</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_get_database</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Called with no args, get_database() returns the database</span>
+        <span class="c1"># specified in the client&#39;s uri --- or raises if there was none.</span>
+        <span class="c1"># There is no public method for checking this in advance, so we</span>
+        <span class="c1"># just catch the error.</span>
+        <span class="k">return</span> <span class="n">client</span><span class="o">.</span><span class="n">get_database</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">ConfigurationError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="n">f</span><span class="s2">&quot;Invalid client: </span><span class="si">{client}</span><span class="s2"> &quot;</span>
+            <span class="n">f</span><span class="s2">&quot;Did you forget to include a database?&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+
+
+<span class="n">intake</span><span class="o">.</span><span class="n">registry</span><span class="p">[</span><span class="s1">&#39;mongo_metadatastore&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BlueskyMongoCatalog</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Brookhaven National Lab.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1.0a1.post12+g793c036',
+            LANGUAGE:'None',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="../../_static/copybutton.js"></script>
+      <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@1/dist/clipboard.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+      <script type="text/javascript" src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
