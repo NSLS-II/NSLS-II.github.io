@@ -145,6 +145,19 @@ Here is a sketch of a :class:`Serializer`
         def close(self):
             self._manager.close()
 
+        # These methods enable the Serializer to be used as a context manager:
+        #
+        # with Serializer(...) as serializer:
+        #     ...
+        #
+        # which always calls close() on exit from the with block.
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exception_details):
+            self.close()
+
         # Each of the methods below corresponds to a document type. As
         # documents flow in through Serializer.__call__, the DocumentRouter base
         # class will forward them to the method with the name corresponding to
@@ -212,6 +225,22 @@ in particular:
    it than to cross-reference between a subclass and a base class.
    Additionally, the details can vary enough from one :class:`Serializer` that
    inheritence tends to get messy.
+
+Add an export function
+----------------------
+
+This is just a simple wrapper around the :class:`Serializer`. It takes a
+generator of ``(name, doc)`` pairs and pushes them through the
+:class:`Serializer`.
+
+.. code-block:: python
+
+   def export(gen, directory, file_prefix='{uid}-', **kwargs):
+       with Serializer(directory, file_prefix, **kwargs) as serializer:
+           for item in gen:
+               serializer(*item)
+
+       return serializer.artifacts
 
 Test the Serializer
 -------------------

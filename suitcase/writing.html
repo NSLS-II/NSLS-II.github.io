@@ -98,6 +98,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#creating-a-new-suitcase-package">Creating a New Suitcase Package</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#create-the-package-with-cookiecutter">Create the package with cookiecutter</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#write-the-serializer">Write the Serializer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#add-an-export-function">Add an export function</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#test-the-serializer">Test the Serializer</a></li>
 </ul>
 </li>
@@ -299,6 +300,19 @@ These should be in <code class="docutils literal notranslate"><span class="pre">
     <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_manager</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
+    <span class="c1"># These methods enable the Serializer to be used as a context manager:</span>
+    <span class="c1">#</span>
+    <span class="c1"># with Serializer(...) as serializer:</span>
+    <span class="c1">#     ...</span>
+    <span class="c1">#</span>
+    <span class="c1"># which always calls close() on exit from the with block.</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">exception_details</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
     <span class="c1"># Each of the methods below corresponds to a document type. As</span>
     <span class="c1"># documents flow in through Serializer.__call__, the DocumentRouter base</span>
     <span class="c1"># class will forward them to the method with the name corresponding to</span>
@@ -365,6 +379,20 @@ in particular:</p>
 it than to cross-reference between a subclass and a base class.
 Additionally, the details can vary enough from one <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code> that
 inheritence tends to get messy.</p>
+</div>
+</div>
+<div class="section" id="add-an-export-function">
+<h3>Add an export function<a class="headerlink" href="#add-an-export-function" title="Permalink to this headline">¶</a></h3>
+<p>This is just a simple wrapper around the <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>. It takes a
+generator of <code class="docutils literal notranslate"><span class="pre">(name,</span> <span class="pre">doc)</span></code> pairs and pushes them through the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">export</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="n">file_prefix</span><span class="o">=</span><span class="s1">&#39;{uid}-&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">Serializer</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_prefix</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">serializer</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">gen</span><span class="p">:</span>
+            <span class="n">serializer</span><span class="p">(</span><span class="o">*</span><span class="n">item</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">serializer</span><span class="o">.</span><span class="n">artifacts</span>
+</pre></div>
 </div>
 </div>
 <div class="section" id="test-the-serializer">
