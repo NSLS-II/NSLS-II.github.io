@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a1.post18+g69b4956 documentation</title>
+  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a1.post29+g8d2170c documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a1.post18+g69b4956
+                0.1.0a1.post29+g8d2170c
               </div>
             
           
@@ -331,14 +331,44 @@
             <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
                 <span class="c1"># If this came from a client, we might be getting &#39;-1&#39;.</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">name</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                    <span class="k">pass</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                        <span class="c1"># Try looking up by *partial* uid.</span>
+                        <span class="n">matches</span> <span class="o">=</span> <span class="p">{}</span>
+                        <span class="k">for</span> <span class="n">uid</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                            <span class="k">if</span> <span class="n">uid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+                                <span class="n">matches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_start_doc</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">matches</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">match_list</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="n">f</span><span class="s2">&quot;Multiple matches to partial uid </span><span class="si">{name!r}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                                <span class="n">f</span><span class="s2">&quot;</span><span class="si">{match_list}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">matches</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># Interpret negative N as &quot;the Nth from last entry&quot;.</span>
+                        <span class="n">time_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
+                                             <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">doc</span><span class="p">:</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+                        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">N</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">time_sorted</span><span class="p">):</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="n">f</span><span class="s2">&quot;Catalog only contains {len(time_sorted)} &quot;</span>
+                                <span class="n">f</span><span class="s2">&quot;runs.&quot;</span><span class="p">)</span>
+                        <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">time_sorted</span><span class="p">[</span><span class="n">N</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Interpret positive N as</span>
+                        <span class="c1"># &quot;most recent entry with scan_id == N&quot;.</span>
+                        <span class="k">for</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                            <span class="k">if</span> <span class="n">run_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scan_id&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span><span class="p">:</span>
+                                <span class="k">break</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;No run with scan_id=</span><span class="si">{N}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
 
             <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
                 <span class="c1"># Avoid iterating through all entries.</span>
@@ -370,7 +400,10 @@
             <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth</span><span class="p">,</span>
             <span class="n">metadata</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
             <span class="n">storage_options</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">cat</span></div></div>
+        <span class="k">return</span> <span class="n">cat</span></div>
+
+    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span></div>
 </pre></div>
 
            </div>

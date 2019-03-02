@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.mongo_layout1 &mdash; Intake Bluesky 0.1.0a1.post18+g69b4956 documentation</title>
+  <title>intake_bluesky.mongo_layout1 &mdash; Intake Bluesky 0.1.0a1.post29+g8d2170c documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a1.post18+g69b4956
+                0.1.0a1.post29+g8d2170c
               </div>
             
           
@@ -332,28 +332,52 @@
 
             <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
                 <span class="c1"># If this came from a client, we might be getting &#39;-1&#39;.</span>
+                <span class="n">collection</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">name</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                    <span class="k">pass</span>
-                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="n">name</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">}]}</span>
+                    <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">run_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">regex_query</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span>
+                                     <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;$regex&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1">.*&#39;</span><span class="p">}}]}</span>
+                        <span class="n">matches</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">regex_query</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">matches</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">matches</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">match_list</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">matches</span><span class="p">)</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="n">f</span><span class="s2">&quot;Multiple matches to partial uid </span><span class="si">{name!r}</span><span class="s2">. &quot;</span>
+                                <span class="n">f</span><span class="s2">&quot;Up to 10 listed here:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                                <span class="n">f</span><span class="s2">&quot;</span><span class="si">{match_list}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                         <span class="c1"># Interpret negative N as &quot;the Nth from last entry&quot;.</span>
                         <span class="n">query</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_query</span>
-                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
-                                  <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)</span> <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
-                        <span class="o">*</span><span class="n">_</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">cursor</span>
+                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="o">-</span><span class="n">N</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                                  <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">cursor</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="n">f</span><span class="s2">&quot;Catalog only contains {len(catalog)} &quot;</span>
+                                <span class="n">f</span><span class="s2">&quot;runs.&quot;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="c1"># Interpret positive N as</span>
                         <span class="c1"># &quot;most recent entry with scan_id == N&quot;.</span>
-                        <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">}]}</span>
-                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                        <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="n">N</span><span class="p">}]}</span>
+                        <span class="n">cursor</span> <span class="o">=</span> <span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
                                   <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)</span>
                                   <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-                        <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">cursor</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">query</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$and&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">catalog</span><span class="o">.</span><span class="n">_query</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;uid&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">}]}</span>
-                    <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">cursor</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;No run with scan_id=</span><span class="si">{N}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">run_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
@@ -370,7 +394,7 @@
         <span class="k">return</span> <span class="n">Entries</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_collection</span><span class="o">.</span><span class="n">count_documents</span><span class="p">({})</span>
 
     <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
