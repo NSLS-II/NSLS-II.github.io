@@ -49,12 +49,19 @@ to:
 
    ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -q issh"'
 
-
 The inventory variables include some encrypted variables, using ansible-vault.
-To use any of these playbooks, you will need the vault password, which is stored
-in LastPass. As of this writing, Stuart Campbell, Thomas Caswell, and Daniel
-Allan have access to it. Stash the password in file named
-``vault_password_file`` in the root directory of this repository.
+To use any of these playbooks, you will need the vault password, which is
+stored in Keybase. Download `Keybase <https://keybase.io/>`_  and create an
+account if you don't have one. Then ask a member of the DAMA group to invite
+you to the ``dama`` Keybase team.  Once you have accepted your invitation to
+the team, you will have access to the ``dama`` team's encrypted shared
+directory. Copy ``vault_password_file`` from there into the root directory of
+the playbooks repository. On Linux or OSX, you can do this like:
+
+.. code-block:: bash
+
+   cp /keybase/team/dama/vault_password_file .
+
 
 You will also need sudo access on the hosts you want to change if that change
 requires privilege escalation.
