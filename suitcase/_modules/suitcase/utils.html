@@ -189,14 +189,22 @@
 <span class="sd">    ----------</span>
 <span class="sd">    directory : str or Path</span>
 <span class="sd">        The directory (as a string or as a Path) to create teh files inside.</span>
+<span class="sd">    allowed_modes : Iterable</span>
+<span class="sd">        Modes accepted by ``MultiFileManager.open``. By default this is</span>
+<span class="sd">        retricted to &quot;exclusive creation&quot; modes (&#39;x&#39;, &#39;xt&#39;, &#39;xb&#39;) which raise</span>
+<span class="sd">        an error if the file already exists. This choice of defaults is meant</span>
+<span class="sd">        to protect the user for unintentionally overwriting old files. In</span>
+<span class="sd">        situations where overwrite (&#39;w&#39;, &#39;wb&#39;) or append (&#39;a&#39;, &#39;r+b&#39;) are</span>
+<span class="sd">        needed, they can be added here.</span>
 
 <span class="sd">    This design is inspired by Python&#39;s zipfile and tarfile libraries.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">,</span> <span class="n">allowed_modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;xt&#39;</span><span class="p">,</span> <span class="s1">&#39;xb&#39;</span><span class="p">)):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reserved_names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_artifacts</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_files</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_allowed_modes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">allowed_modes</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">artifacts</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -246,8 +254,10 @@
 <span class="sd">            &#39;stream_data&#39; or &#39;metadata&#39;.</span>
 <span class="sd">        postfix : string</span>
 <span class="sd">            Postfix for the file name. Must be unique for this Manager.</span>
-<span class="sd">        mode : {&#39;x&#39;, &#39;xt&#39;, xb&#39;}</span>
-<span class="sd">            &#39;x&#39; or &#39;xt&#39; for text, &#39;xb&#39; for binary</span>
+<span class="sd">        mode : string</span>
+<span class="sd">            One of the ``allowed_modes`` set in __init__``. Default set of</span>
+<span class="sd">            options is ``{&#39;x&#39;, &#39;xt&#39;, xb&#39;}`` --- &#39;x&#39; or &#39;xt&#39; for text, &#39;xb&#39; for</span>
+<span class="sd">            binary.</span>
 <span class="sd">        encoding : string or None</span>
 <span class="sd">            Passed through open. See Python open documentation for allowed</span>
 <span class="sd">            values. Only applicable to text mode.</span>
@@ -259,14 +269,12 @@
 <span class="sd">        -------</span>
 <span class="sd">        file : handle</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reserve_name</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">postfix</span><span class="p">)</span>
-        <span class="c1"># create the directories if they don&#39;t yet exist</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;xt&#39;</span><span class="p">,</span> <span class="s1">&#39;xb&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_allowed_modes</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ModeError</span><span class="p">(</span>
-                <span class="n">f</span><span class="s1">&#39;the mode passed to MultiFileManager.open is </span><span class="si">{mode}</span><span class="s1"> but needs&#39;</span>
-                <span class="s1">&#39; to be one of &quot;x&quot;, &quot;xt&quot; or &quot;xb&quot;&#39;</span><span class="p">)</span>
+                <span class="n">f</span><span class="s1">&#39;The mode passed to MultiFileManager.open is </span><span class="si">{mode}</span><span class="s1"> but needs &#39;</span>
+                <span class="n">f</span><span class="s1">&#39;to be one of </span><span class="si">{self._allowed_modes}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reserve_name</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">postfix</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="n">encoding</span><span class="p">,</span> <span class="n">errors</span><span class="o">=</span><span class="n">errors</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">f</span></div>
