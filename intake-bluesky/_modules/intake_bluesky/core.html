@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a1.post29+g8d2170c documentation</title>
+  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a1.post38+gdd4e7fd documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a1.post29+g8d2170c
+                0.1.0a1.post38+gdd4e7fd
               </div>
             
           
@@ -153,6 +153,7 @@
             
   <h1>Source code for intake_bluesky.core</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">ast</span>
+<span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">event_model</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
 <span class="kn">import</span> <span class="nn">dask</span>
@@ -167,6 +168,7 @@
 <span class="kn">import</span> <span class="nn">requests</span>
 <span class="kn">from</span> <span class="nn">requests.compat</span> <span class="k">import</span> <span class="n">urljoin</span>
 <span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">xarray</span>
 
 
@@ -543,7 +545,16 @@
             <span class="n">metadata</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">)</span>
 
         <span class="c1"># Make a BlueskyEventStream for each stream_name.</span>
-        <span class="k">for</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;name&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="n">f</span><span class="s2">&quot;EventDescriptor </span><span class="si">{doc[&#39;uid&#39;]!r}</span><span class="s2"> has no &#39;name&#39;, likely &quot;</span>
+                    <span class="n">f</span><span class="s2">&quot;because it was generated using an old version of &quot;</span>
+                    <span class="n">f</span><span class="s2">&quot;bluesky. The name &#39;primary&#39; will be used.&quot;</span><span class="p">)</span>
+        <span class="n">descriptors_by_name</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
+            <span class="n">descriptors_by_name</span><span class="p">[</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;primary&#39;</span><span class="p">)]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">stream_name</span><span class="p">,</span> <span class="n">descriptors</span> <span class="ow">in</span> <span class="n">descriptors_by_name</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
                 <span class="n">get_run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">,</span>
                 <span class="n">stream_name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
@@ -555,7 +566,7 @@
                 <span class="n">get_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">,</span>
                 <span class="n">get_datum_cursor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span>
                 <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="p">,</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)},</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">},</span>
                 <span class="n">include</span><span class="o">=</span><span class="s1">&#39;{{ include }}&#39;</span><span class="p">,</span>
                 <span class="n">exclude</span><span class="o">=</span><span class="s1">&#39;{{ exclude }}&#39;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
@@ -566,7 +577,7 @@
                 <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
                 <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ???</span>
                 <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">_INCLUDE_PARAMETER</span><span class="p">,</span> <span class="n">_EXCLUDE_PARAMETER</span><span class="p">],</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)},</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">},</span>
                 <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
