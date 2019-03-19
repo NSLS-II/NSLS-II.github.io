@@ -21,7 +21,7 @@ network, and it runs as root.
     bash /opt/builds/run_conda_index
 
 To modify which packages to synchronize, modify the script found in
-`bootstrap-tag-build <https://github.com/NSLS-II/lightsource2-recipes/blob/master/scripts/bootstrapping/bootstrap-tag-build>` and
+`bootstrap-tag-build <https://github.com/NSLS-II/lightsource2-recipes/blob/master/scripts/bootstrapping/bootstrap-tag-build>`_ and
 `nsls2-tag-build-local <https://github.com/NSLS-II/lightsource2-recipes/blob/master/scripts/nsls2-tag-build-local.sh>`_.
 
 .. note::
@@ -31,7 +31,7 @@ To modify which packages to synchronize, modify the script found in
 
 .. note::
     A Token needs to be provided in the script.
-    (`creating-access-tokens <https://docs.anaconda.com/anaconda-cloud/user-guide/tasks/work-with-accounts/#creating-access-tokens>`)
+    (`creating-access-tokens <https://docs.anaconda.com/anaconda-cloud/user-guide/tasks/work-with-accounts/#creating-access-tokens>`_)
 
 Moreover, a sync of ``lightsouce2-tag`` to ``nsls2-tag`` follows a similar process:
 
