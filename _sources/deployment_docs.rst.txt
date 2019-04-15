@@ -24,6 +24,13 @@ Deployment Procedures
    deployment/updating-metapackages
    deployment/upgrading-beamlines
 
+NSLS-II GitHub organizations
+============================
+
+.. toctree::
+
+   gh-orgs-list
+
 Incident Reports
 ================
 
