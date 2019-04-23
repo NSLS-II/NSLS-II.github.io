@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a3.post8+ge908126 documentation</title>
+  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a3.post10+gb10f292 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a3.post8+ge908126
+                0.1.0a3.post10+gb10f292
               </div>
             
           
@@ -242,14 +242,20 @@
         <span class="n">skip_counter</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="n">descriptor_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">descriptor_uids</span><span class="p">)</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
+            <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
                 <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event_page&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
+                    <span class="n">events</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
+                    <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">skip</span> <span class="ow">and</span> <span class="p">(</span><span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">skip_counter</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">):</span>
-                        <span class="k">yield</span> <span class="n">doc</span>
+                        <span class="k">yield</span> <span class="n">event</span>
                     <span class="n">skip_counter</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
                         <span class="k">break</span>
+                <span class="n">events</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_get_event_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">descriptor_uids</span><span class="p">):</span>
         <span class="n">event_count</span> <span class="o">=</span> <span class="mi">0</span>
@@ -280,14 +286,20 @@
     <span class="k">def</span> <span class="nf">_get_datum_cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">resource_uid</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="n">skip_counter</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
+            <span class="n">datums</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
                 <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">resource_uid</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum_page&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">resource_uid</span><span class="p">:</span>
+                    <span class="n">datums</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">resource_uid</span><span class="p">:</span>
+                    <span class="n">datums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">datums</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">skip</span> <span class="ow">and</span> <span class="p">(</span><span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">skip_counter</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">):</span>
-                        <span class="k">yield</span> <span class="n">doc</span>
+                        <span class="k">yield</span> <span class="n">datum</span>
                     <span class="n">skip_counter</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
                         <span class="k">return</span>
+                <span class="n">datums</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_make_entries_container</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">catalog</span> <span class="o">=</span> <span class="bp">self</span>
