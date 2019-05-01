@@ -3,7 +3,7 @@ Recommended Resources
 *********************
 
 For an in-depth introduction, we highly recommend
-`Python Scientific Lecture Notes <http://scipy-lectures.github.io/>`_.`
+`Python Scientific Lecture Notes <http://scipy-lectures.github.io/>`_.
 
 Books We Like
 -------------
@@ -29,5 +29,6 @@ Scientific Python Packages We Use
 Good Scientific Software Habits
 -------------------------------
 
-* `Novice-level introduction from Software Carpentry <http://swcarpentry.github.io/git-novice>`_
+* `Git Cheat Sheet <https://education.github.com/git-cheat-sheet-education.pdf>`_
+* `Novice-level introduction to Git from Software Carpentry <http://swcarpentry.github.io/git-novice>`_
 * `Intermediate-Level explanation of the git workflow we use <https://guides.github.com/introduction/flow/>`_
