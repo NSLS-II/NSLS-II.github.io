@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.5.2.post11+g6539477 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.5.2.post14+g208b87a documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.5.2.post11+g6539477',
+              VERSION:'1.5.2.post14+g208b87a',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.5.2.post11+g6539477
+                1.5.2.post14+g208b87a
               </div>
             
           
@@ -406,11 +406,15 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">state</span> <span class="o">=</span> <span class="n">LoggingPropertyMachine</span><span class="p">(</span><span class="n">RunEngineStateMachine</span><span class="p">)</span>
+    <span class="n">_state</span> <span class="o">=</span> <span class="n">LoggingPropertyMachine</span><span class="p">(</span><span class="n">RunEngineStateMachine</span><span class="p">)</span>
     <span class="n">_UNCACHEABLE_COMMANDS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pause&#39;</span><span class="p">,</span> <span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="s1">&#39;unsubscribe&#39;</span><span class="p">,</span> <span class="s1">&#39;stage&#39;</span><span class="p">,</span>
                              <span class="s1">&#39;unstage&#39;</span><span class="p">,</span> <span class="s1">&#39;monitor&#39;</span><span class="p">,</span> <span class="s1">&#39;unmonitor&#39;</span><span class="p">,</span> <span class="s1">&#39;open_run&#39;</span><span class="p">,</span>
                              <span class="s1">&#39;close_run&#39;</span><span class="p">,</span> <span class="s1">&#39;install_suspender&#39;</span><span class="p">,</span>
                              <span class="s1">&#39;remove_suspender&#39;</span><span class="p">]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span>
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -717,7 +721,7 @@
 
 <span class="sd">        Lossless subscriptions are not unsubscribed.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">!=</span> <span class="s1">&#39;idle&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">!=</span> <span class="s1">&#39;idle&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">halt</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_clear_run_cache</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_clear_call_cache</span><span class="p">()</span>
@@ -797,7 +801,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pausing...&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;paused&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">resumable</span><span class="p">:</span>
             <span class="c1"># cannot resume, so we cannot pause.  Abort the plan.</span>
@@ -893,8 +897,8 @@
                 <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
 
         <span class="c1"># If we are in the wrong state, raise.</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is in a </span><span class="si">%s</span><span class="s2"> state&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is in a </span><span class="si">%s</span><span class="s2"> state&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">)</span>
 
         <span class="n">futs</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">tripped_justifications</span> <span class="o">=</span> <span class="p">[]</span>
@@ -970,10 +974,10 @@
 <span class="sd">            list of Header uids (a.k.a RunStart uids) of run(s)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># The state machine does not capture the whole picture.</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_paused</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_paused</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is the </span><span class="si">{0}</span><span class="s2"> state. &quot;</span>
                                   <span class="s2">&quot;You can only resume for the paused state.&quot;</span>
-                                  <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">))</span>
+                                  <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;resume&#39;</span><span class="p">)</span>
@@ -1015,7 +1019,7 @@
 
     <span class="k">def</span> <span class="nf">_resume_event_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># may be called by &#39;resume&#39; or &#39;abort&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
 
         <span class="c1"># Handle all context managers</span>
         <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">stack</span><span class="p">:</span>
@@ -1207,7 +1211,7 @@
 <span class="sd">        :meth:`RunEngine.halt`</span>
 <span class="sd">        :meth:`RunEngine.stop`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborting: running cleanup and marking &quot;</span>
               <span class="s2">&quot;exit_status as &#39;abort&#39;...&quot;</span><span class="p">)</span>
@@ -1218,7 +1222,7 @@
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="p">:</span>
             <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
 
@@ -1231,14 +1235,14 @@
 <span class="sd">        :meth:`RunEngine.abort`</span>
 <span class="sd">        :meth:`RunEngine.halt`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stopping: running cleanup and marking exit_status &quot;</span>
               <span class="s2">&quot;as &#39;success&#39;...&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">RequestStop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
 
@@ -1251,7 +1255,7 @@
 <span class="sd">        :meth:`RunEngine.abort`</span>
 <span class="sd">        :meth:`RunEngine.stop`</span>
 <span class="sd">        &#39;&#39;&#39;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Halting: skipping cleanup and marking exit_status as &quot;</span>
               <span class="s2">&quot;&#39;abort&#39;...&quot;</span><span class="p">)</span>
@@ -1259,7 +1263,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">PlanHalt</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
 
@@ -1293,7 +1297,7 @@
         <span class="c1"># sentinel to decide if need to add to the response stack or not</span>
         <span class="n">sentinel</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">)</span>
                 <span class="c1"># set resp to the sentinel so that if we fail in the sleep</span>
@@ -1507,7 +1511,7 @@
                           <span class="s1">&#39;Please fix your plan.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="s1">&#39;idle&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;idle&#39;</span>
         <span class="c1"># if the task was cancelled</span>
         <span class="k">if</span> <span class="n">pending_cancel_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">pending_cancel_exception</span>
