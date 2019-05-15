@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.3.4+4.g719c1c2 documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.3.4+5.gd1d7849 documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.3.4+4.g719c1c2
+                0.3.4+5.gd1d7849
               </div>
             
           
@@ -96,7 +96,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../mock-records.html">Mock Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../servers.html">Servers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../shark.html">Shark (pcap/tcpdump parsing)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../loggers.html">Loggers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../loggers.html">Logging</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Channel Access Sans I/O</span></p>
 <ul>
@@ -222,6 +222,7 @@
 <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="n">udp_sock</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
     <span class="c1"># Set Broadcaster log level to match our logger.</span>
     <span class="n">b</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">Broadcaster</span><span class="p">(</span><span class="n">our_role</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">)</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">our_address</span> <span class="o">=</span> <span class="n">udp_sock</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span>
 
     <span class="c1"># Send registration request to the repeater</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Registering with the Channel Access repeater.&#39;</span><span class="p">)</span>
@@ -302,7 +303,7 @@
 
 
 <span class="k">def</span> <span class="nf">make_channel</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="n">udp_sock</span><span class="p">,</span> <span class="n">priority</span><span class="p">,</span> <span class="n">timeout</span><span class="p">):</span>
-    <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;caproto.ch.</span><span class="si">{pv_name}</span><span class="s1">.</span><span class="si">{priority}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">LoggerAdapter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">),</span> <span class="p">{</span><span class="s1">&#39;pv&#39;</span><span class="p">:</span> <span class="n">pv_name</span><span class="p">})</span>
     <span class="n">address</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="n">udp_sock</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">circuit</span> <span class="o">=</span> <span class="n">global_circuits</span><span class="p">[(</span><span class="n">address</span><span class="p">,</span> <span class="n">priority</span><span class="p">)]</span>
@@ -319,7 +320,7 @@
         <span class="n">new</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">address</span><span class="p">,</span>
                                                          <span class="n">timeout</span><span class="p">)</span>
-
+        <span class="n">circuit</span><span class="o">.</span><span class="n">our_address</span> <span class="o">=</span> <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">new</span><span class="p">:</span>
             <span class="c1"># Initialize our new TCP-based CA connection with a VersionRequest.</span>
@@ -554,7 +555,8 @@
         <span class="n">spawn_repeater</span><span class="p">()</span>
     <span class="n">loggers</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">subscriptions</span><span class="p">:</span>
-        <span class="n">loggers</span><span class="p">[</span><span class="n">sub</span><span class="o">.</span><span class="n">pv_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;caproto.ch.</span><span class="si">{sub.pv_name}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">loggers</span><span class="p">[</span><span class="n">sub</span><span class="o">.</span><span class="n">pv_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">LoggerAdapter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">),</span>
+                                                     <span class="p">{</span><span class="s1">&#39;pv&#39;</span><span class="p">:</span> <span class="n">sub</span><span class="o">.</span><span class="n">pv_name</span><span class="p">})</span>
     <span class="n">udp_sock</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">bcast_socket</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">udp_sock</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._broadcaster &mdash; caproto 0.3.4+4.g719c1c2 documentation</title>
+  <title>caproto._broadcaster &mdash; caproto 0.3.4+5.gd1d7849 documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.3.4+4.g719c1c2
+                0.3.4+5.gd1d7849
               </div>
             
           
@@ -96,7 +96,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../mock-records.html">Mock Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../servers.html">Servers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../shark.html">Shark (pcap/tcpdump parsing)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../loggers.html">Loggers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../loggers.html">Logging</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Channel Access Sans I/O</span></p>
 <ul>
@@ -182,11 +182,11 @@
 <span class="kn">from</span> <span class="nn">._utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CLIENT</span><span class="p">,</span> <span class="n">SERVER</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span>
                      <span class="n">RemoteProtocolError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">._state</span> <span class="k">import</span> <span class="n">get_exception</span>
-<span class="kn">from</span> <span class="nn">._commands</span> <span class="k">import</span> <span class="p">(</span><span class="n">RepeaterConfirmResponse</span><span class="p">,</span> <span class="n">RepeaterRegisterRequest</span><span class="p">,</span>
+<span class="kn">from</span> <span class="nn">._commands</span> <span class="k">import</span> <span class="p">(</span><span class="n">Beacon</span><span class="p">,</span> <span class="n">RepeaterConfirmResponse</span><span class="p">,</span> <span class="n">RepeaterRegisterRequest</span><span class="p">,</span>
                         <span class="n">SearchRequest</span><span class="p">,</span> <span class="n">SearchResponse</span><span class="p">,</span> <span class="n">VersionRequest</span><span class="p">,</span>
                         <span class="n">read_datagram</span><span class="p">,</span>
                         <span class="p">)</span>
-
+<span class="kn">from</span> <span class="nn">._log</span> <span class="k">import</span> <span class="n">search_logger</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Broadcaster&#39;</span><span class="p">,)</span>
 
@@ -215,6 +215,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">their_role</span> <span class="o">=</span> <span class="n">SERVER</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">their_role</span> <span class="o">=</span> <span class="n">CLIENT</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">our_address</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_our_addresses</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># map search id (cid) to name</span>
         <span class="c1"># Unlike VirtualCircuit and Channel, there is very little state to</span>
@@ -225,7 +227,16 @@
             <span class="n">initial_value</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">MAX_ID</span><span class="p">),</span>
             <span class="n">dont_clash_with</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span><span class="p">,</span>
         <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;caproto.bcast&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;caproto.bcast&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beacon_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.bcast.beacon&#39;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">our_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_our_addresses</span>
+
+    <span class="nd">@our_addresses</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">our_addresses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_our_addresses</span> <span class="o">=</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="Broadcaster.send"><a class="viewcode-back" href="../../api.html#caproto.Broadcaster.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">commands</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -244,11 +255,15 @@
 <span class="sd">            bytes to send over a socket</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Serializing </span><span class="si">%d</span><span class="s2"> commands into one datagram&quot;</span><span class="p">,</span>
-                       <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">))</span>
         <span class="n">history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">total_commands</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">)</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">command</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">commands</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">),</span> <span class="n">command</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">):</span>
+                <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">name</span>
+            <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_our_addresses</span><span class="p">:</span>
+                <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;our_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">address</span>
+                <span class="n">search_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">total_commands</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">history</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
             <span class="n">bytes_to_send</span> <span class="o">+=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">bytes_to_send</span></div>
@@ -271,16 +286,22 @@
 <span class="sd">        -------</span>
 <span class="sd">        commands : list</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Received datagram from </span><span class="si">%s</span><span class="s2">:</span><span class="si">%d</span><span class="s2"> with </span><span class="si">%d</span><span class="s2"> bytes.&quot;</span><span class="p">,</span>
-                       <span class="o">*</span><span class="n">address</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">byteslike</span><span class="p">))</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">commands</span> <span class="o">=</span> <span class="n">read_datagram</span><span class="p">(</span><span class="n">byteslike</span><span class="p">,</span> <span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">their_role</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">RemoteProtocolError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Broadcaster malformed packet received:&#39;</span>
                                       <span class="n">f</span><span class="s1">&#39; </span><span class="si">{ex.__class__.__name__}</span><span class="s1"> </span><span class="si">{ex}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ex</span>
 
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">address</span><span class="p">,</span>
+                <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&lt;&lt;---&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
         <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> bytes -&gt; </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">command</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">address</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_our_addresses</span><span class="p">:</span>
+                <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;our_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">address</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">Beacon</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">beacon_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">:</span><span class="si">%d</span><span class="s2"> (</span><span class="si">%d</span><span class="s2">B) </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="o">*</span><span class="n">address</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;(</span><span class="si">%d</span><span class="s2">B) </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">commands</span></div>
 
 <div class="viewcode-block" id="Broadcaster.process_commands"><a class="viewcode-back" href="../../api.html#caproto.Broadcaster.process_commands">[docs]</a>    <span class="k">def</span> <span class="nf">process_commands</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">commands</span><span class="p">):</span>
