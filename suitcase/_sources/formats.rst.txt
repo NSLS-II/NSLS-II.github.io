@@ -56,10 +56,10 @@ are for internal archival.
 
 Available:
 
+* suitcase-msgpack (`msgpack <https://msgpack.org/index.html>`_)
 * suitcase-jsonl (`Newline-delimited JSON <http://jsonlines.org>`_)
 * suitcase-mongo
 
 Planned:
 
 * suitcase-bson
-* suitcase-msgpack
