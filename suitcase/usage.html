@@ -255,13 +255,14 @@ document) at a time. Do multiple runs like this:</p>
 options; <code class="xref py py-func docutils literal notranslate"><span class="pre">export()</span></code> is just a wrapper around <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>. But
 where <code class="xref py py-func docutils literal notranslate"><span class="pre">export()</span></code> loops through a list or generator of documents,
 <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code> expect documents to be <em>pushed</em> through, thus:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">suitcase.csv</span> <span class="kn">import</span> <span class="n">Serializer</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Export documents from *one run only* in a streaming fashion.</span>
+
+<span class="kn">from</span> <span class="nn">suitcase.csv</span> <span class="kn">import</span> <span class="n">Serializer</span>
 <span class="n">serializer</span> <span class="o">=</span> <span class="n">Serializer</span><span class="p">(</span><span class="s1">&#39;path/to/files&#39;</span><span class="p">)</span>
 <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
     <span class="n">serializer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
 
 <span class="n">serializer</span><span class="o">.</span><span class="n">artifacts</span>  <span class="c1"># Access the filenames.</span>
-<span class="n">serializer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>  <span class="c1"># Close all the files created.</span>
 </pre></div>
 </div>
 <p>The filenames may be accessed at any time via <code class="docutils literal notranslate"><span class="pre">serializer.artifacts</span></code>. (This
@@ -269,9 +270,59 @@ is what is returned by <code class="xref py py-func docutils literal notranslate
 closed when finished. This closes all the of the resources (e.g. files) that is
 has opened.</p>
 <p>This is suitable for streaming export. Note that a given <code class="xref py py-class docutils literal notranslate"><span class="pre">Serializer</span></code>
-instance may only be used for one run (one RunStart document, RunStop document,
-and whatever in between). A new instance must be created for each new run.</p>
-<p>TODO: Example</p>
+instance <em>may only be used for one run</em> (one RunStart document, RunStop document,
+and whatever in between). A new instance must be created for each new run.
+The <a class="reference external" href="https://blueskyproject.io/event-model/api.html#event_model.RunRouter" title="(in Bluesky Event Model v1.9.0.post5+g54e9259)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunRouter</span></code></a> streamlines this process.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Set up a RunRouter suitable for exporting from many runs.</span>
+
+<span class="kn">from</span> <span class="nn">event_model</span> <span class="kn">import</span> <span class="n">RunRouter</span>
+<span class="kn">from</span> <span class="nn">suitcase.csv</span> <span class="kn">import</span> <span class="n">Serializer</span>
+
+<span class="k">def</span> <span class="nf">factory</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">):</span>
+
+    <span class="n">serializer</span> <span class="o">=</span> <span class="n">Serializer</span><span class="p">(</span><span class="s1">&#39;path/to/files&#39;</span><span class="p">)</span>
+    <span class="n">serializer</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">serializer</span><span class="p">],</span> <span class="p">[]</span>
+
+<span class="n">rr</span> <span class="o">=</span> <span class="n">RunRouter</span><span class="p">([</span><span class="n">factory</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The <a class="reference external" href="https://blueskyproject.io/event-model/api.html#event_model.RunRouter" title="(in Bluesky Event Model v1.9.0.post5+g54e9259)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunRouter</span></code></a> will call our <code class="docutils literal notranslate"><span class="pre">factory</span></code> at the beginning
+of each run, creating a fresh <code class="docutils literal notranslate"><span class="pre">serializer</span></code> instance and routing
+documents through it. We can push documents in directly</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+    <span class="n">rr</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or subscribe them to the bluesky RunEngine to receive documents in a streaming
+fashion during acquition.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For documents containing pointers to external files that need to be “filled”
+(that is, employing Resource and Datum documents), a
+<a class="reference external" href="https://blueskyproject.io/event-model/api.html#event_model.Filler" title="(in Bluesky Event Model v1.9.0.post5+g54e9259)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Filler</span></code></a> must be used as well. This is typically relevant
+for exporting images.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">event_model</span> <span class="kn">import</span> <span class="n">RunRouter</span><span class="p">,</span> <span class="n">Filler</span>
+<span class="kn">import</span> <span class="nn">suitcase.tiff</span>
+
+<span class="k">def</span> <span class="nf">factory</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">):</span>
+
+    <span class="n">filler</span> <span class="o">=</span> <span class="n">Filler</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="n">serializer</span> <span class="o">=</span> <span class="n">suitcase</span><span class="o">.</span><span class="n">tiff_series</span><span class="o">.</span><span class="n">Serializer</span><span class="p">(</span><span class="s1">&#39;path/to/files&#39;</span><span class="p">)</span>
+    <span class="n">serializer</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cb</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">filler</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>  <span class="c1"># Fill in place any externally-stored data.</span>
+        <span class="n">serializer</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">cb</span><span class="p">],</span> <span class="p">[]</span>
+
+<span class="n">rr</span> <span class="o">=</span> <span class="n">RunRouter</span><span class="p">([</span><span class="n">factory</span><span class="p">])</span>
+<span class="n">RE</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">rr</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 <div class="section" id="serialize-to-any-buffer">
 <h2>Serialize to Any Buffer<a class="headerlink" href="#serialize-to-any-buffer" title="Permalink to this headline">¶</a></h2>

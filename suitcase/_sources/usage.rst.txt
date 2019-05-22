@@ -111,13 +111,14 @@ where :func:`export` loops through a list or generator of documents,
 
 .. code-block:: python
 
+   # Export documents from *one run only* in a streaming fashion.
+
    from suitcase.csv import Serializer
    serializer = Serializer('path/to/files')
    for name, doc in docs:
        serializer(name, doc)
 
    serializer.artifacts  # Access the filenames.
-   serializer.close()  # Close all the files created.
 
 The filenames may be accessed at any time via ``serializer.artifacts``. (This
 is what is returned by :func:`export`.) The :class:`Serializer` should be
@@ -125,10 +126,66 @@ closed when finished. This closes all the of the resources (e.g. files) that is
 has opened.
 
 This is suitable for streaming export. Note that a given :class:`Serializer`
-instance may only be used for one run (one RunStart document, RunStop document,
+instance *may only be used for one run* (one RunStart document, RunStop document,
 and whatever in between). A new instance must be created for each new run.
+The :class:`~event_model.RunRouter` streamlines this process.
 
-TODO: Example
+.. code-block:: python
+
+   # Set up a RunRouter suitable for exporting from many runs.
+
+   from event_model import RunRouter
+   from suitcase.csv import Serializer
+
+   def factory(name, start_doc):
+
+       serializer = Serializer('path/to/files')
+       serializer('start', start_doc)
+
+       return [serializer], []
+
+   rr = RunRouter([factory])
+
+The :class:`~event_model.RunRouter` will call our ``factory`` at the beginning
+of each run, creating a fresh ``serializer`` instance and routing
+documents through it. We can push documents in directly
+
+.. code-block:: python
+
+   for name, doc in docs:
+       rr(name, doc)
+
+or subscribe them to the bluesky RunEngine to receive documents in a streaming
+fashion during acquition.
+
+.. code-block:: python
+
+   RE.subscribe(rr)
+
+For documents containing pointers to external files that need to be "filled"
+(that is, employing Resource and Datum documents), a
+:class:`~event_model.Filler` must be used as well. This is typically relevant
+for exporting images.
+
+.. code-block:: python
+
+   from event_model import RunRouter, Filler
+   import suitcase.tiff
+   
+   def factory(name, start_doc):
+   
+       filler = Filler(...)
+       serializer = suitcase.tiff_series.Serializer('path/to/files')
+       serializer('start', start_doc)
+   
+       def cb(name, doc):
+           filler(name, doc)  # Fill in place any externally-stored data.
+           serializer(name, doc)
+   
+       return [cb], []
+   
+   rr = RunRouter([factory])
+   RE.subscribe(rr)
 
 Serialize to Any Buffer
 =======================
