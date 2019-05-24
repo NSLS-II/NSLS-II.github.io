@@ -154,8 +154,6 @@
   <h1>Source code for event_model</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span><span class="p">,</span> <span class="n">namedtuple</span>
 <span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">import</span> <span class="nn">jsonschema</span>
-<span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
@@ -164,11 +162,13 @@
 <span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">ttime</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">jsonschema</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+
 <span class="kn">from</span> <span class="nn">._version</span> <span class="k">import</span> <span class="n">get_versions</span>
 
-<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DocumentNames&#39;</span><span class="p">,</span> <span class="s1">&#39;schemas&#39;</span><span class="p">,</span> <span class="s1">&#39;compose_run&#39;</span><span class="p">]</span>
-
-<span class="n">_validate</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;array&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)})</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;DocumentNames&#39;</span><span class="p">,</span> <span class="s1">&#39;schemas&#39;</span><span class="p">,</span> <span class="s1">&#39;schema_validators&#39;</span><span class="p">,</span> <span class="s1">&#39;compose_run&#39;</span><span class="p">]</span>
 
 
 <span class="k">class</span> <span class="nc">DocumentNames</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
@@ -224,8 +224,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">output_doc</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="n">doc</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-            <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">output_doc</span><span class="p">,</span>
-                                <span class="n">schemas</span><span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">,</span> <span class="n">name</span><span class="p">)])</span>
+            <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">output_doc</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">output_doc</span> <span class="k">if</span> <span class="n">output_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">doc</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
@@ -789,6 +788,25 @@
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">rs_fn</span><span class="p">(</span><span class="s1">&#39;event_model&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">))</span> <span class="k">as</span> <span class="n">fin</span><span class="p">:</span>
         <span class="n">schemas</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fin</span><span class="p">)</span>
 
+
+<span class="k">def</span> <span class="nf">_is_array</span><span class="p">(</span><span class="n">checker</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">is_type</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s1">&#39;array&#39;</span><span class="p">)</span> <span class="ow">or</span>
+        <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="n">_array_type_checker</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">redefine</span><span class="p">(</span><span class="s1">&#39;array&#39;</span><span class="p">,</span> <span class="n">_is_array</span><span class="p">)</span>
+
+
+<span class="n">_Validator</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+    <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="p">,</span>
+    <span class="n">type_checker</span><span class="o">=</span><span class="n">_array_type_checker</span><span class="p">)</span>
+
+
+<span class="n">schema_validators</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">_Validator</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+
 <span class="n">__version__</span> <span class="o">=</span> <span class="n">get_versions</span><span class="p">()[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
 <span class="k">del</span> <span class="n">get_versions</span>
 
@@ -807,7 +825,7 @@
            <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
            <span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">counter</span><span class="p">))}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">doc</span>
 
 
@@ -819,7 +837,7 @@
            <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
            <span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">,</span> <span class="nb">next</span><span class="p">(</span><span class="n">counter</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">N</span><span class="p">)]}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">datum</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">doc</span>
 
 
@@ -839,7 +857,8 @@
            <span class="s1">&#39;resource_kwargs&#39;</span><span class="p">:</span> <span class="n">resource_kwargs</span><span class="p">,</span>
            <span class="s1">&#39;path_semantics&#39;</span><span class="p">:</span> <span class="n">path_semantics</span><span class="p">}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">resource</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">resource</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">ComposeResourceBundle</span><span class="p">(</span>
         <span class="n">doc</span><span class="p">,</span>
         <span class="n">partial</span><span class="p">(</span><span class="n">compose_datum</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">counter</span><span class="o">=</span><span class="n">counter</span><span class="p">),</span>
@@ -863,9 +882,9 @@
            <span class="s1">&#39;run_start&#39;</span><span class="p">:</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
            <span class="s1">&#39;exit_status&#39;</span><span class="p">:</span> <span class="n">exit_status</span><span class="p">,</span>
            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
-           <span class="s1">&#39;num_events&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">event_counter</span><span class="p">)}</span>
+           <span class="s1">&#39;num_events&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">event_counter</span><span class="o">.</span><span class="n">items</span><span class="p">()}}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">doc</span>
 
 
@@ -886,7 +905,7 @@
            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">filled</span><span class="p">,</span>
            <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event_page</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event_page</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
                 <span class="s2">&quot;These sets of keys must match:</span><span class="se">\n</span><span class="s2">&quot;</span>
@@ -920,7 +939,7 @@
            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">filled</span><span class="p">,</span>
            <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]}</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="n">timestamps</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="k">raise</span> <span class="n">EventModelValidationError</span><span class="p">(</span>
                 <span class="s2">&quot;These sets of keys must match:</span><span class="se">\n</span><span class="s2">&quot;</span>
@@ -965,7 +984,7 @@
                 <span class="s2">&quot;data_keys </span><span class="si">{}</span><span class="s2">. The requested data_keys were </span><span class="si">{}</span><span class="s2">. All &quot;</span>
                 <span class="s2">&quot;descriptors in a given stream must have the same &quot;</span>
                 <span class="s2">&quot;data_keys.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">streams</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)))</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">streams</span><span class="p">:</span>
         <span class="n">streams</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
         <span class="n">event_counter</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
@@ -1005,7 +1024,8 @@
     <span class="n">event_counter</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">poison_pill</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">schemas</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">])</span>
+        <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="n">ComposeRunBundle</span><span class="p">(</span>
         <span class="n">doc</span><span class="p">,</span>
         <span class="n">partial</span><span class="p">(</span><span class="n">compose_descriptor</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">streams</span><span class="o">=</span><span class="n">streams</span><span class="p">,</span>
