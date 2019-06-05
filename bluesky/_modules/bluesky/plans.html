@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.plans &mdash; bluesky 1.5.2.post57+ge6d82a0 documentation</title>
+  <title>bluesky.plans &mdash; bluesky 1.5.2.post64+gfd51017 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.5.2.post57+ge6d82a0',
+              VERSION:'1.5.2.post64+gfd51017',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.5.2.post57+ge6d82a0
+                1.5.2.post64+gfd51017
               </div>
             
           
@@ -266,18 +266,27 @@
     <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">inner_count</span><span class="p">())</span></div>
 
 
-<div class="viewcode-block" id="list_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.list_scan.html#bluesky.plans.list_scan">[docs]</a><span class="k">def</span> <span class="nf">list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="list_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.list_scan.html#bluesky.plans.list_scan">[docs]</a><span class="k">def</span> <span class="nf">list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Scan over one variable in steps.</span>
+<span class="sd">    Scan over one or more variables in steps simultaneously (inner product).</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    detectors : list</span>
 <span class="sd">        list of &#39;readable&#39; objects</span>
-<span class="sd">    motor : object</span>
-<span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
-<span class="sd">    steps : list</span>
-<span class="sd">        list of positions</span>
+<span class="sd">    *args :</span>
+<span class="sd">        For one dimension, ``motor, [point1, point2, ....]``.</span>
+<span class="sd">        In general:</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            motor1, [point1, point2, ...],</span>
+<span class="sd">            motor2, [point1, point2, ...],</span>
+<span class="sd">            ...,</span>
+<span class="sd">            motorN, [point1, point2, ...]</span>
+
+<span class="sd">        Motors can be any &#39;settable&#39; object (motor, temp controller, etc.)</span>
+
 <span class="sd">    per_step : callable, optional</span>
 <span class="sd">        hook for customizing action of inner loop (messages per step)</span>
 <span class="sd">        Expected signature:</span>
@@ -288,40 +297,76 @@
 <span class="sd">    See Also</span>
 <span class="sd">    --------</span>
 <span class="sd">    :func:`bluesky.plans.rel_list_scan`</span>
+<span class="sd">    :func:`bluesky.plans.list_grid_scan`</span>
+<span class="sd">    :func:`bluesky.plans.rel_list_grid_scan`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The list of arguments must contain a list of &quot;</span>
+                             <span class="s2">&quot;points for each defined motor&quot;</span><span class="p">)</span>
+
+    <span class="n">md</span> <span class="o">=</span> <span class="n">md</span> <span class="ow">or</span> <span class="p">{}</span>  <span class="c1"># reset md if it is None.</span>
+
+    <span class="c1"># set some variables and check that all lists are the same length</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">motors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">pos_lists</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">length</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="n">pos_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pos_list</span><span class="p">)</span>  <span class="c1"># Ensure list (accepts any finite iterable).</span>
+        <span class="n">lengths</span><span class="p">[</span><span class="n">motor</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_list</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">length</span><span class="p">:</span>
+            <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pos_list</span><span class="p">)</span>
+        <span class="n">motors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">motor</span><span class="p">)</span>
+        <span class="n">pos_lists</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pos_list</span><span class="p">)</span>
+    <span class="n">length_check</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">elem</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="n">lengths</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span>
+                       <span class="nb">list</span><span class="p">(</span><span class="n">lengths</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">length_check</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The lengths of all lists in *args must be the same. &quot;</span>
+                         <span class="s2">&quot;However the lengths in args are : &quot;</span>
+                         <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">lengths</span><span class="p">))</span>
+
+    <span class="n">md_args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">((</span><span class="nb">repr</span><span class="p">(</span><span class="n">motor</span><span class="p">),</span> <span class="n">pos_list</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">))))</span>
+    <span class="n">motor_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">lengths</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
     <span class="n">_md</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;detectors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">det</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="n">detectors</span><span class="p">],</span>
-           <span class="s1">&#39;motors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">motor</span><span class="o">.</span><span class="n">name</span><span class="p">],</span>
-           <span class="s1">&#39;num_points&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span>
-           <span class="s1">&#39;num_intervals&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">steps</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+           <span class="s1">&#39;motors&#39;</span><span class="p">:</span> <span class="n">motor_names</span><span class="p">,</span>
+           <span class="s1">&#39;num_points&#39;</span><span class="p">:</span> <span class="n">length</span><span class="p">,</span>
+           <span class="s1">&#39;num_intervals&#39;</span><span class="p">:</span> <span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
            <span class="s1">&#39;plan_args&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;detectors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">repr</span><span class="p">,</span> <span class="n">detectors</span><span class="p">)),</span>
-                         <span class="s1">&#39;motor&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="n">motor</span><span class="p">),</span> <span class="s1">&#39;steps&#39;</span><span class="p">:</span> <span class="n">steps</span><span class="p">,</span>
+                         <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">md_args</span><span class="p">,</span>
                          <span class="s1">&#39;per_step&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="n">per_step</span><span class="p">)},</span>
            <span class="s1">&#39;plan_name&#39;</span><span class="p">:</span> <span class="s1">&#39;list_scan&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;plan_pattern&#39;</span><span class="p">:</span> <span class="s1">&#39;array&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;plan_pattern_module&#39;</span><span class="p">:</span> <span class="s1">&#39;numpy&#39;</span><span class="p">,</span>
-           <span class="s1">&#39;plan_pattern_args&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">object</span><span class="o">=</span><span class="n">steps</span><span class="p">),</span>
+           <span class="s1">&#39;plan_pattern&#39;</span><span class="p">:</span> <span class="s1">&#39;inner_list_product&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;plan_pattern_module&#39;</span><span class="p">:</span> <span class="n">plan_patterns</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+           <span class="s1">&#39;plan_pattern_args&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="n">md_args</span><span class="p">),</span>
            <span class="s1">&#39;hints&#39;</span><span class="p">:</span> <span class="p">{},</span>
            <span class="p">}</span>
     <span class="n">_md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span> <span class="ow">or</span> <span class="p">{})</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">dimensions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">motor</span><span class="o">.</span><span class="n">hints</span><span class="p">[</span><span class="s1">&#39;fields&#39;</span><span class="p">],</span> <span class="s1">&#39;primary&#39;</span><span class="p">)]</span>
-    <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
-        <span class="k">pass</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;dimensions&#39;</span><span class="p">,</span> <span class="n">dimensions</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">per_step</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">per_step</span> <span class="o">=</span> <span class="n">bps</span><span class="o">.</span><span class="n">one_1d_step</span>
 
-    <span class="nd">@bpp</span><span class="o">.</span><span class="n">stage_decorator</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">motor</span><span class="p">])</span>
-    <span class="nd">@bpp</span><span class="o">.</span><span class="n">run_decorator</span><span class="p">(</span><span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">)</span>
-    <span class="k">def</span> <span class="nf">inner_list_scan</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">steps</span><span class="p">:</span>
-            <span class="k">yield from</span> <span class="n">per_step</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+    <span class="n">x_fields</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">motor</span> <span class="ow">in</span> <span class="n">motors</span><span class="p">:</span>
+        <span class="n">x_fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fields&#39;</span><span class="p">,</span> <span class="p">[]))</span>
 
-    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">inner_list_scan</span><span class="p">())</span></div>
+    <span class="n">default_dimensions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">x_fields</span><span class="p">,</span> <span class="s1">&#39;primary&#39;</span><span class="p">)]</span>
+
+    <span class="n">default_hints</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_fields</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">default_hints</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dimensions</span><span class="o">=</span><span class="n">default_dimensions</span><span class="p">)</span>
+
+    <span class="c1"># now add default_hints and override any hints from the original md (if</span>
+    <span class="c1"># exists)</span>
+    <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">default_hints</span>
+    <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span>
+
+    <span class="n">full_cycler</span> <span class="o">=</span> <span class="n">plan_patterns</span><span class="o">.</span><span class="n">inner_list_product</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">scan_nd</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">full_cycler</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span>
+                               <span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">))</span></div>
 
 
-<div class="viewcode-block" id="rel_list_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.rel_list_scan.html#bluesky.plans.rel_list_scan">[docs]</a><span class="k">def</span> <span class="nf">rel_list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="rel_list_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.rel_list_scan.html#bluesky.plans.rel_list_scan">[docs]</a><span class="k">def</span> <span class="nf">rel_list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Scan over one variable in steps relative to current position.</span>
 
@@ -329,6 +374,20 @@
 <span class="sd">    ----------</span>
 <span class="sd">    detectors : list</span>
 <span class="sd">        list of &#39;readable&#39; objects</span>
+<span class="sd">    *args :</span>
+<span class="sd">        For one dimension, ``motor, [point1, point2, ....]``.</span>
+<span class="sd">        In general:</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            motor1, [point1, point2, ...],</span>
+<span class="sd">            motor2, [point1, point2, ...],</span>
+<span class="sd">            ...,</span>
+<span class="sd">            motorN, [point1, point2, ...]</span>
+
+<span class="sd">        Motors can be any &#39;settable&#39; object (motor, temp controller, etc.)</span>
+<span class="sd">        point1, point2 etc are relative to the current location.</span>
+
 <span class="sd">    motor : object</span>
 <span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
 <span class="sd">    steps : list</span>
@@ -342,17 +401,151 @@
 <span class="sd">    See Also</span>
 <span class="sd">    --------</span>
 <span class="sd">    :func:`bluesky.plans.list_scan`</span>
+<span class="sd">    :func:`bluesky.plans.list_grid_scan`</span>
+<span class="sd">    :func:`bluesky.plans.rel_list_grid_scan`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># TODO read initial positions (redundantly) so they can be put in md here</span>
     <span class="n">_md</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;plan_name&#39;</span><span class="p">:</span> <span class="s1">&#39;rel_list_scan&#39;</span><span class="p">}</span>
     <span class="n">_md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span> <span class="ow">or</span> <span class="p">{})</span>
 
-    <span class="nd">@bpp</span><span class="o">.</span><span class="n">reset_positions_decorator</span><span class="p">([</span><span class="n">motor</span><span class="p">])</span>
-    <span class="nd">@bpp</span><span class="o">.</span><span class="n">relative_set_decorator</span><span class="p">([</span><span class="n">motor</span><span class="p">])</span>
+    <span class="n">motors</span><span class="o">=</span> <span class="p">[</span><span class="n">motor</span> <span class="k">for</span> <span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">)]</span>
+
+    <span class="nd">@bpp</span><span class="o">.</span><span class="n">reset_positions_decorator</span><span class="p">(</span><span class="n">motors</span><span class="p">)</span>
+    <span class="nd">@bpp</span><span class="o">.</span><span class="n">relative_set_decorator</span><span class="p">(</span><span class="n">motors</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">inner_relative_list_scan</span><span class="p">():</span>
-        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span>
-                                     <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">list_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span>
+                                     <span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">))</span>
     <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">inner_relative_list_scan</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="list_grid_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.list_grid_scan.html#bluesky.plans.list_grid_scan">[docs]</a><span class="k">def</span> <span class="nf">list_grid_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">snake_axes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scan over a mesh; each motor is on an independent trajectory.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detectors : list</span>
+<span class="sd">        list of &#39;readable&#39; objects</span>
+
+<span class="sd">    args</span>
+<span class="sd">        patterned like (``motor1, position_list1,``</span>
+<span class="sd">                        ``motor2, position_list2,``</span>
+<span class="sd">                        ``motor3, position_list3,``</span>
+<span class="sd">                        ``...,``</span>
+<span class="sd">                        ``motorN, position_listN``)</span>
+
+<span class="sd">        The first motor is the &quot;slowest&quot;, the outer loop. ``position_list``&#39;s</span>
+<span class="sd">        are lists of positions, all lists must have the same length. Motors</span>
+<span class="sd">        can be any &#39;settable&#39; object (motor, temp controller, etc.).</span>
+
+<span class="sd">    snake_axes : boolean or iterable, optional</span>
+<span class="sd">        which axes should be snaked, either ``False`` (do not snake any axes),</span>
+<span class="sd">        ``True`` (snake all axes) or a list of axes to snake. &quot;Snaking&quot; an axis</span>
+<span class="sd">        is defined as following snake-like, winding trajectory instead of a</span>
+<span class="sd">        simple left-to-right trajectory.</span>
+
+<span class="sd">    per_step : callable, optional</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
+<span class="sd">    md : dict, optional</span>
+<span class="sd">        metadata</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :func:`bluesky.plans.rel_list_grid_scan`</span>
+<span class="sd">    :func:`bluesky.plans.list_scan`</span>
+<span class="sd">    :func:`bluesky.plans.rel_list_scan`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">full_cycler</span> <span class="o">=</span> <span class="n">plan_patterns</span><span class="o">.</span><span class="n">outer_list_product</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">snake_axes</span><span class="p">)</span>
+
+    <span class="n">md_args</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">motor_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">motors</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">)):</span>
+        <span class="n">md_args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="nb">repr</span><span class="p">(</span><span class="n">motor</span><span class="p">),</span> <span class="n">pos_list</span><span class="p">])</span>
+        <span class="n">motor_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">motor</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">motors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">motor</span><span class="p">)</span>
+    <span class="n">_md</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pos_list</span><span class="p">)</span>
+                          <span class="k">for</span> <span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">)),</span>
+           <span class="s1">&#39;snake_axes&#39;</span><span class="p">:</span> <span class="n">snake_axes</span><span class="p">,</span>
+           <span class="s1">&#39;plan_args&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;detectors&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">repr</span><span class="p">,</span> <span class="n">detectors</span><span class="p">)),</span>
+                         <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">md_args</span><span class="p">,</span>
+                         <span class="s1">&#39;per_step&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="n">per_step</span><span class="p">)},</span>
+           <span class="s1">&#39;plan_name&#39;</span><span class="p">:</span> <span class="s1">&#39;list_grid_scan&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;plan_pattern&#39;</span><span class="p">:</span> <span class="s1">&#39;outer_list_product&#39;</span><span class="p">,</span>
+           <span class="s1">&#39;plan_pattern_args&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">args</span><span class="o">=</span><span class="n">md_args</span><span class="p">)</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span><span class="s1">&#39;snake_axes&#39;</span><span class="p">:</span> <span class="n">snake_axes</span><span class="p">}),</span>
+           <span class="s1">&#39;plan_pattern_module&#39;</span><span class="p">:</span> <span class="n">plan_patterns</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+           <span class="s1">&#39;motors&#39;</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">motor_names</span><span class="p">),</span>
+           <span class="s1">&#39;hints&#39;</span><span class="p">:</span> <span class="p">{},</span>
+           <span class="p">}</span>
+    <span class="n">_md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span> <span class="ow">or</span> <span class="p">{})</span>
+    <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;gridding&#39;</span><span class="p">,</span> <span class="s1">&#39;rectilinear&#39;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;dimensions&#39;</span><span class="p">,</span> <span class="p">[(</span><span class="n">m</span><span class="o">.</span><span class="n">hints</span><span class="p">[</span><span class="s1">&#39;fields&#39;</span><span class="p">],</span> <span class="s1">&#39;primary&#39;</span><span class="p">)</span>
+                                               <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">motors</span><span class="p">])</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="o">...</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">scan_nd</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">full_cycler</span><span class="p">,</span>
+                               <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="rel_list_grid_scan"><a class="viewcode-back" href="../../generated/bluesky.plans.rel_list_grid_scan.html#bluesky.plans.rel_list_grid_scan">[docs]</a><span class="k">def</span> <span class="nf">rel_list_grid_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">snake_axes</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Scan over a mesh; each motor is on an independent trajectory. Each point is</span>
+<span class="sd">    relative to the current position.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detectors : list</span>
+<span class="sd">        list of &#39;readable&#39; objects</span>
+
+<span class="sd">    args</span>
+<span class="sd">        patterned like (``motor1, position_list1,``</span>
+<span class="sd">                        ``motor2, position_list2,``</span>
+<span class="sd">                        ``motor3, position_list3,``</span>
+<span class="sd">                        ``...,``</span>
+<span class="sd">                        ``motorN, position_listN``)</span>
+
+<span class="sd">        The first motor is the &quot;slowest&quot;, the outer loop. ``position_list``&#39;s</span>
+<span class="sd">        are lists of positions, all lists must have the same length. Motors</span>
+<span class="sd">        can be any &#39;settable&#39; object (motor, temp controller, etc.).</span>
+
+<span class="sd">    snake_axes : boolean or Iterable, optional</span>
+<span class="sd">        which axes should be snaked, either ``False`` (do not snake any axes),</span>
+<span class="sd">        ``True`` (snake all axes) or a list of axes to snake. &quot;Snaking&quot; an axis</span>
+<span class="sd">        is defined as following snake-like, winding trajectory instead of a</span>
+<span class="sd">        simple left-to-right trajectory.</span>
+
+<span class="sd">    per_step : callable, optional</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
+<span class="sd">    md : dict, optional</span>
+<span class="sd">        metadata</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :func:`bluesky.plans.list_grid_scan`</span>
+<span class="sd">    :func:`bluesky.plans.list_scan`</span>
+<span class="sd">    :func:`bluesky.plans.rel_list_scan`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_md</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;plan_name&#39;</span><span class="p">:</span> <span class="s1">&#39;rel_list_grid_scan&#39;</span><span class="p">}</span>
+    <span class="n">_md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span> <span class="ow">or</span> <span class="p">{})</span>
+
+    <span class="n">motors</span> <span class="o">=</span> <span class="p">[</span><span class="n">motor</span> <span class="k">for</span> <span class="n">motor</span><span class="p">,</span> <span class="n">pos_list</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">args</span><span class="p">)]</span>
+
+    <span class="nd">@bpp</span><span class="o">.</span><span class="n">reset_positions_decorator</span><span class="p">(</span><span class="n">motors</span><span class="p">)</span>
+    <span class="nd">@bpp</span><span class="o">.</span><span class="n">relative_set_decorator</span><span class="p">(</span><span class="n">motors</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner_relative_list_grid_scan</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">list_grid_scan</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                                          <span class="n">snake_axes</span><span class="o">=</span><span class="n">snake_axes</span><span class="p">,</span>
+                                          <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">inner_relative_list_grid_scan</span><span class="p">())</span></div>
 
 
 <span class="k">def</span> <span class="nf">_scan_1d</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -874,9 +1067,9 @@
 <span class="sd">    cycler : Cycler</span>
 <span class="sd">        list of dictionaries mapping motors to positions</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -980,9 +1173,9 @@
 <span class="sd">    num : integer</span>
 <span class="sd">        number of points</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1073,9 +1266,9 @@
 <span class="sd">        indicating whether to following snake-like, winding trajectory or a</span>
 <span class="sd">        simple left-to-right trajectory.</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1145,9 +1338,9 @@
 <span class="sd">        is a boolean indicating whether to following snake-like, winding</span>
 <span class="sd">        trajectory or a simple left-to-right trajectory.</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1202,9 +1395,9 @@
 <span class="sd">    num : integer</span>
 <span class="sd">        number of points</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1336,9 +1529,9 @@
 <span class="sd">    tilt : float, optional</span>
 <span class="sd">        Tilt angle in radians, default 0.0</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1408,9 +1601,9 @@
 <span class="sd">    tilt : float, optional</span>
 <span class="sd">        Tilt angle in radians, default 0.0</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1463,9 +1656,9 @@
 <span class="sd">    tilt : float, optional</span>
 <span class="sd">        Tilt angle in radians, default 0.0</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1538,9 +1731,9 @@
 <span class="sd">    tilt : float, optional</span>
 <span class="sd">        Tilt angle in radians, default 0.0</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -1573,9 +1766,9 @@
 <span class="sd">    detectors : list</span>
 <span class="sd">        list of &#39;readable&#39; objects</span>
 <span class="sd">    x_motor : object</span>
-<span class="sd">        any &#39;setable&#39; object (motor, temp controller, etc.)</span>
+<span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
 <span class="sd">    y_motor : object</span>
-<span class="sd">        any &#39;setable&#39; object (motor, temp controller, etc.)</span>
+<span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
 <span class="sd">    x_center : float</span>
 <span class="sd">        x center</span>
 <span class="sd">    y_center : float</span>
@@ -1589,8 +1782,8 @@
 <span class="sd">    y_num : float</span>
 <span class="sd">        Number of y axis points.</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for cutomizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plans.one_nd_step (the default) for</span>
+<span class="sd">        hook for cutomizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plans.one_nd_step` (the default) for</span>
 <span class="sd">        details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
@@ -1644,9 +1837,9 @@
 <span class="sd">    detectors : list</span>
 <span class="sd">        list of &#39;readable&#39; objects</span>
 <span class="sd">    x_motor : object</span>
-<span class="sd">        any &#39;setable&#39; object (motor, temp controller, etc.)</span>
+<span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
 <span class="sd">    y_motor : object</span>
-<span class="sd">        any &#39;setable&#39; object (motor, temp controller, etc.)</span>
+<span class="sd">        any &#39;settable&#39; object (motor, temp controller, etc.)</span>
 <span class="sd">    x_range : float</span>
 <span class="sd">        x width of spiral</span>
 <span class="sd">    y_range : float</span>
@@ -1656,8 +1849,8 @@
 <span class="sd">    y_num : float</span>
 <span class="sd">        Number of y axis points.</span>
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for cutomizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plans.one_nd_step (the default) for</span>
+<span class="sd">        hook for cutomizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plans.one_nd_step` (the default) for</span>
 <span class="sd">        details.</span>
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
@@ -1820,9 +2013,9 @@
 <span class="sd">        will move between ``start / 2`` and ``stop / 2``</span>
 
 <span class="sd">    per_step : callable, optional</span>
-<span class="sd">        hook for cutomizing action of inner loop (messages per step)</span>
-<span class="sd">        See docstring of bluesky.plan_stubs.one_nd_step (the default) for</span>
-<span class="sd">        details.</span>
+<span class="sd">        hook for cutomizing action of inner loop (messages per step).</span>
+<span class="sd">        See docstring of :func:`bluesky.plan_stubs.one_nd_step` (the default)</span>
+<span class="sd">        for details.</span>
 
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
