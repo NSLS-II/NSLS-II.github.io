@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a7.post3+gf3fced8 documentation</title>
+  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a7.post14+g3efe713 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a7.post3+gf3fced8
+                0.1.0a7.post14+g3efe713
               </div>
             
           
@@ -152,118 +152,17 @@
            <div itemprop="articleBody">
             
   <h1>Source code for intake_bluesky.jsonl</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">collections.abc</span>
-<span class="kn">import</span> <span class="nn">event_model</span>
-<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span>
-<span class="kn">import</span> <span class="nn">glob</span>
-<span class="kn">import</span> <span class="nn">intake</span>
-<span class="kn">import</span> <span class="nn">intake.catalog</span>
-<span class="kn">import</span> <span class="nn">intake.catalog.local</span>
-<span class="kn">import</span> <span class="nn">intake.source.base</span>
+<span></span><span class="kn">import</span> <span class="nn">glob</span>
 <span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">pathlib</span>
-<span class="kn">from</span> <span class="nn">mongoquery</span> <span class="k">import</span> <span class="n">Query</span>
 
-<span class="kn">from</span> <span class="nn">.core</span> <span class="k">import</span> <span class="n">parse_handler_registry</span>
-
-
-<span class="k">class</span> <span class="nc">_Entries</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
-    <span class="s2">&quot;Mock the dict interface around a MongoDB query result.&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">catalog</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span> <span class="o">=</span> <span class="n">catalog</span>
-
-    <span class="k">def</span> <span class="nf">_doc_to_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_doc</span><span class="p">):</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-        <span class="n">entry_metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="n">run_start_doc</span><span class="p">,</span>
-                          <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">(</span><span class="n">uid</span><span class="p">)}</span>
-
-        <span class="k">def</span> <span class="nf">get_run_start</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">run_start_doc</span>
-
-        <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">get_run_start</span><span class="o">=</span><span class="n">get_run_start</span><span class="p">,</span>
-            <span class="n">get_run_stop</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_event_descriptors</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_event_cursor</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_cursor</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_event_count</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_event_count</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_resource</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_datum</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">get_datum_cursor</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span> <span class="n">uid</span><span class="p">),</span>
-            <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">filler</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
-            <span class="n">name</span><span class="o">=</span><span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
-            <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
-            <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;intake_bluesky.core.BlueskyRun&#39;</span><span class="p">,</span>
-            <span class="n">direct_access</span><span class="o">=</span><span class="s1">&#39;forbid&#39;</span><span class="p">,</span>  <span class="c1"># ???</span>
-            <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
-            <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ???</span>
-            <span class="n">parameters</span><span class="o">=</span><span class="p">[],</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="n">entry_metadata</span><span class="p">,</span>
-            <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-            <span class="n">catalog</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_runs</span>
-
-    <span class="k">def</span> <span class="nf">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
-        <span class="c1"># If this came from a client, we might be getting &#39;-1&#39;.</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                <span class="c1"># Try looking up by *partial* uid.</span>
-                <span class="n">matches</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="k">for</span> <span class="n">uid</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                    <span class="k">if</span> <span class="n">uid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
-                        <span class="n">matches</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_start_doc</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">matches</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">match_list</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="n">f</span><span class="s2">&quot;Multiple matches to partial uid </span><span class="si">{name!r}</span><span class="s2">:</span><span class="se">\n</span><span class="s2">&quot;</span>
-                        <span class="n">f</span><span class="s2">&quot;</span><span class="si">{match_list}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">run_start_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">matches</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># Sort in reverse chronological order (most recent first).</span>
-            <span class="n">time_sorted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_starts</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
-                                 <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">doc</span><span class="p">:</span> <span class="o">-</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
-            <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># Interpret negative N as &quot;the Nth from last entry&quot;.</span>
-                <span class="k">if</span> <span class="o">-</span><span class="n">N</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">time_sorted</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span>
-                        <span class="n">f</span><span class="s2">&quot;Catalog only contains {len(time_sorted)} &quot;</span>
-                        <span class="n">f</span><span class="s2">&quot;runs.&quot;</span><span class="p">)</span>
-                <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">time_sorted</span><span class="p">[</span><span class="o">-</span><span class="n">N</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Interpret positive N as</span>
-                <span class="c1"># &quot;most recent entry with scan_id == N&quot;.</span>
-                <span class="k">for</span> <span class="n">run_start_doc</span> <span class="ow">in</span> <span class="n">time_sorted</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">run_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scan_id&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span><span class="p">:</span>
-                        <span class="k">break</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;No run with scan_id=</span><span class="si">{N}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-        <span class="c1"># Avoid iterating through all entries.</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">False</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
-
-    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.in_memory</span> <span class="k">import</span> <span class="n">BlueskyInMemoryCatalog</span>
 
 
-<div class="viewcode-block" id="BlueskyJSONLCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.jsonl.BlueskyJSONLCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyJSONLCatalog</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">Catalog</span><span class="p">):</span>
+<div class="viewcode-block" id="BlueskyJSONLCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.jsonl.BlueskyJSONLCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyJSONLCatalog</span><span class="p">(</span><span class="n">BlueskyInMemoryCatalog</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-jsonl-catalog&#39;</span>  <span class="c1"># noqa</span>
+
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -281,130 +180,43 @@
 <span class="sd">            Maps each asset spec to a handler class or a string specifying the</span>
 <span class="sd">            module name and class name, as in (for example)</span>
 <span class="sd">            ``{&#39;SOME_SPEC&#39;: &#39;module.submodule.class_name&#39;}``.</span>
+<span class="sd">        query : dict, optional</span>
+<span class="sd">            Mongo query that filters entries&#39; RunStart documents</span>
 <span class="sd">        **kwargs :</span>
 <span class="sd">            Additional keyword arguments are passed through to the base class,</span>
 <span class="sd">            Catalog.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-jsonl-catalog&#39;</span>  <span class="c1"># noqa</span>
-
         <span class="c1"># Tolerate a single path (as opposed to a list).</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">)):</span>
             <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="n">paths</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># This maps run_start_uids to file paths.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_starts</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># This maps run_start_uids to run_start_docs.</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_query</span> <span class="o">=</span> <span class="n">query</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">parsed_handler_registry</span> <span class="o">=</span> <span class="n">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">(</span><span class="n">parsed_handler_registry</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filename_to_mtime</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">handler_registry</span><span class="o">=</span><span class="n">handler_registry</span><span class="p">,</span>
+                         <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
+                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">:</span>
-            <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">run_file</span> <span class="ow">in</span> <span class="n">file_list</span><span class="p">:</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">run_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="n">mtime</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getmtime</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mtime</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filename_to_mtime</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+                    <span class="c1"># This file has not changed since last time we loaded it.</span>
+                    <span class="k">continue</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_filename_to_mtime</span><span class="p">[</span><span class="n">filename</span><span class="p">]</span> <span class="o">=</span> <span class="n">mtime</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">name</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+                        <span class="n">name</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
                     <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
-                        <span class="k">if</span> <span class="ow">not</span> <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">():</span>
                             <span class="c1"># Empty file, maybe being written to currently</span>
                             <span class="k">continue</span>
 
-                    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                            <span class="n">f</span><span class="s2">&quot;Invalid file </span><span class="si">{run_file}</span><span class="s2">: &quot;</span>
-                            <span class="n">f</span><span class="s2">&quot;first line must be a valid start document.&quot;</span><span class="p">)</span>
-
-                    <span class="k">if</span> <span class="n">Query</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_query</span><span class="p">)</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">):</span>
-                        <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_file</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_run_starts</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_start_doc</span>
-
-    <span class="k">def</span> <span class="nf">_get_run_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">run_file</span><span class="o">.</span><span class="n">readlines</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">doc</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-
-    <span class="k">def</span> <span class="nf">_get_event_descriptors</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
-        <span class="n">descriptors</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span>
-                    <span class="n">descriptors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">descriptors</span>
-
-    <span class="k">def</span> <span class="nf">_get_event_cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">descriptor_uids</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">skip_counter</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">descriptor_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">descriptor_uids</span><span class="p">)</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="n">events</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event_page&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
-                    <span class="n">events</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
-                <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
-                    <span class="n">events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">skip</span> <span class="ow">and</span> <span class="p">(</span><span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">skip_counter</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">):</span>
-                        <span class="k">yield</span> <span class="n">event</span>
-                    <span class="n">skip_counter</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
-                        <span class="k">break</span>
-                <span class="n">events</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">_get_event_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">descriptor_uids</span><span class="p">):</span>
-        <span class="n">event_count</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">descriptor_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">descriptor_uids</span><span class="p">)</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">descriptor_set</span><span class="p">:</span>
-                    <span class="n">event_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="k">return</span> <span class="n">event_count</span>
-
-    <span class="k">def</span> <span class="nf">_get_resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">uid</span><span class="p">):</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">uid</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">doc</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Resource uid </span><span class="si">{uid}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_get_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">datum_id</span><span class="p">):</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">datum_id</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">doc</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Datum_id </span><span class="si">{datum_id}</span><span class="s2"> not found.&quot;</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">_get_datum_cursor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">,</span> <span class="n">resource_uid</span><span class="p">,</span> <span class="n">skip</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">skip_counter</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">[</span><span class="n">run_start_uid</span><span class="p">],</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">run_file</span><span class="p">:</span>
-            <span class="n">datums</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">run_file</span><span class="p">:</span>
-                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum_page&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">resource_uid</span><span class="p">:</span>
-                    <span class="n">datums</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span>
-                <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span> <span class="ow">and</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">resource_uid</span><span class="p">:</span>
-                    <span class="n">datums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">datums</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">skip</span> <span class="ow">and</span> <span class="p">(</span><span class="n">limit</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">skip_counter</span> <span class="o">&lt;</span> <span class="n">limit</span><span class="p">):</span>
-                        <span class="k">yield</span> <span class="n">datum</span>
-                    <span class="n">skip_counter</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">if</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">skip_counter</span> <span class="o">&gt;=</span> <span class="n">limit</span><span class="p">:</span>
-                        <span class="k">return</span>
-                <span class="n">datums</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">_make_entries_container</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">_Entries</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+                <span class="k">def</span> <span class="nf">gen</span><span class="p">():</span>
+                    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
+                            <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+                            <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{})</span>
 
 <div class="viewcode-block" id="BlueskyJSONLCatalog.search"><a class="viewcode-back" href="../../api.html#intake_bluesky.jsonl.BlueskyJSONLCatalog.search">[docs]</a>    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -426,10 +238,7 @@
             <span class="n">auth</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">auth</span><span class="p">,</span>
             <span class="n">metadata</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
             <span class="n">storage_options</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">storage_options</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">cat</span></div>
-
-    <span class="k">def</span> <span class="nf">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_runs</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">cat</span></div></div>
 </pre></div>
 
            </div>
