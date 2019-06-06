@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.mpl_plotting &mdash; bluesky 1.5.2.post64+gfd51017 documentation</title>
+  <title>bluesky.callbacks.mpl_plotting &mdash; bluesky 1.5.2.post116+ga4fc28e documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../../',
-              VERSION:'1.5.2.post64+gfd51017',
+              VERSION:'1.5.2.post116+ga4fc28e',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.5.2.post64+gfd51017
+                1.5.2.post116+ga4fc28e
               </div>
             
           
@@ -201,11 +201,41 @@
 <span class="kn">from</span> <span class="nn">cycler</span> <span class="k">import</span> <span class="n">cycler</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
-
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">.core</span> <span class="k">import</span> <span class="n">CallbackBase</span><span class="p">,</span> <span class="n">get_obj_fields</span>
 
 
-<div class="viewcode-block" id="LivePlot"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LivePlot">[docs]</a><span class="k">class</span> <span class="nc">LivePlot</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+<span class="c1"># use function + LRU cache to hide Matplotib import until needed</span>
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_get_teleporter</span><span class="p">():</span>
+    <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="k">import</span> <span class="n">QtCore</span>
+
+    <span class="k">class</span> <span class="nc">Teleporter</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">QObject</span><span class="p">):</span>
+        <span class="n">name_doc_escape</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Teleporter</span>
+
+
+<span class="k">class</span> <span class="nc">QtAwareCallback</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">use_teleporter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">use_teleporter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">matplotlib</span>
+            <span class="n">use_teleporter</span> <span class="o">=</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">use_teleporter</span><span class="p">:</span>
+            <span class="n">Teleporter</span> <span class="o">=</span> <span class="n">_get_teleporter</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="o">=</span> <span class="n">Teleporter</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__call__</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">escape</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">CallbackBase</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="LivePlot"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LivePlot">[docs]</a><span class="k">class</span> <span class="nc">LivePlot</span><span class="p">(</span><span class="n">QtAwareCallback</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Build a function that updates a plot from a stream of Events.</span>
 
@@ -247,7 +277,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">legend_keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="s1">&#39;run&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_teleporter</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_teleporter&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">fig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Values were given for both `fig` and `ax`. &quot;</span>
@@ -355,7 +385,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="LiveScatter"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LiveScatter">[docs]</a><span class="k">class</span> <span class="nc">LiveScatter</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+<div class="viewcode-block" id="LiveScatter"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LiveScatter">[docs]</a><span class="k">class</span> <span class="nc">LiveScatter</span><span class="p">(</span><span class="n">QtAwareCallback</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Plot scattered 2D data in a &quot;heat map&quot;.</span>
 
 <span class="sd">    Alternatively, if the data is placed on a regular grid, you can use</span>
@@ -388,6 +418,7 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">xlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">clim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_teleporter</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_teleporter&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
         <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -477,7 +508,7 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="LiveGrid"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LiveGrid">[docs]</a><span class="k">class</span> <span class="nc">LiveGrid</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
+<div class="viewcode-block" id="LiveGrid"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.mpl_plotting.LiveGrid">[docs]</a><span class="k">class</span> <span class="nc">LiveGrid</span><span class="p">(</span><span class="n">QtAwareCallback</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Plot gridded 2D data in a &quot;heat map&quot;.</span>
 
 <span class="sd">    This assumes that readings are placed on a regular grid and can be placed</span>
@@ -530,7 +561,8 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raster_shape</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">clim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span>
                  <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span>
-                 <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_positive</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y_positive</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">):</span>
+                 <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_positive</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y_positive</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
         <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -568,8 +600,8 @@
                             <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">aspect</span><span class="p">,</span>
                             <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">)</span>
 
-        <span class="c1"># make sure the &#39;positive direction&#39; of the axes matches what is defined in</span>
-        <span class="c1">#axes_positive</span>
+        <span class="c1"># make sure the &#39;positive direction&#39; of the axes matches what</span>
+        <span class="c1"># is defined in axes_positive</span>
         <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xlim</span><span class="p">()</span>
         <span class="k">if</span> <span class="p">((</span><span class="n">xmin</span> <span class="o">&gt;</span> <span class="n">xmax</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_positive</span> <span class="o">==</span> <span class="s1">&#39;right&#39;</span><span class="p">)</span> <span class="ow">or</span>
                 <span class="p">(</span><span class="n">xmax</span> <span class="o">&gt;</span> <span class="n">xmin</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_positive</span> <span class="o">==</span> <span class="s1">&#39;left&#39;</span><span class="p">)):</span>

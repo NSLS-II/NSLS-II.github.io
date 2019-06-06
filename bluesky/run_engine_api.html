@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>RunEngine API Documentation &mdash; bluesky 1.5.2.post64+gfd51017 documentation</title>
+  <title>RunEngine API Documentation &mdash; bluesky 1.5.2.post116+ga4fc28e documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'./',
-              VERSION:'1.5.2.post64+gfd51017',
+              VERSION:'1.5.2.post116+ga4fc28e',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.5.2.post64+gfd51017
+                1.5.2.post116+ga4fc28e
               </div>
             
           
@@ -204,7 +204,7 @@
 <h1>RunEngine API Documentation<a class="headerlink" href="#runengine-api-documentation" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="bluesky.run_engine.RunEngine">
-<em class="property">class </em><code class="descclassname">bluesky.run_engine.</code><code class="descname">RunEngine</code><span class="sig-paren">(</span><em>md=None</em>, <em>*</em>, <em>loop=None</em>, <em>preprocessors=None</em>, <em>context_managers=None</em>, <em>md_validator=None</em>, <em>scan_id_source=&lt;function default_scan_id_source&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">bluesky.run_engine.</code><code class="descname">RunEngine</code><span class="sig-paren">(</span><em>md=None</em>, <em>*</em>, <em>loop=None</em>, <em>preprocessors=None</em>, <em>context_managers=None</em>, <em>md_validator=None</em>, <em>scan_id_source=&lt;function default_scan_id_source&gt;</em>, <em>during_task=&lt;function default_during_task&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine" title="Permalink to this definition">¶</a></dt>
 <dd><p>The Run Engine execute messages and emits Documents.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -252,6 +252,27 @@ increment scan_id by 1 each time. However you could pass in a
 customized function to get a scan_id from any source.
 Expected signature: f(md)
 Expected return: updated scan_id value</p>
+</dd>
+<dt><strong>during_task</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable, optional</span></dt>
+<dd><p class="first">Function to be run to block the main thread during <cite>RE.__call__</cite></p>
+<p>The required signature is</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">blocking_func</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="s2">&quot;Returns when ev is set&quot;</span>
+</pre></div>
+</div>
+<dl class="last docutils">
+<dt>The default value handles the cases of:</dt>
+<dd><ul class="first last simple">
+<li>Matplotlib is not imported (just wait on the event)</li>
+<li>Matplotlib is imported, but not using a Qt, notebook or ipympl
+backend (just wait on the event)</li>
+<li>Matplotlib is imported and using a Qt backend (run the Qt app
+on the main thread until the run finishes)</li>
+<li>Matplotlib is imported and using a nbagg or ipympl backend (
+wait on the event and poll to push updates to the browser)</li>
+</ul>
+</dd>
+</dl>
 </dd>
 </dl>
 </td>

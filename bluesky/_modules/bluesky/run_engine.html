@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.5.2.post64+gfd51017 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.5.2.post116+ga4fc28e documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.5.2.post64+gfd51017',
+              VERSION:'1.5.2.post116+ga4fc28e',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.5.2.post64+gfd51017
+                1.5.2.post116+ga4fc28e
               </div>
             
           
@@ -210,18 +210,34 @@
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">ExitStack</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
+
+<span class="kn">import</span> <span class="nn">concurrent</span>
 
 <span class="kn">from</span> <span class="nn">event_model</span> <span class="k">import</span> <span class="n">DocumentNames</span><span class="p">,</span> <span class="n">schema_validators</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.machines</span> <span class="k">import</span> <span class="n">StateMachine</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.extras</span> <span class="k">import</span> <span class="n">PropertyMachine</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.errors</span> <span class="k">import</span> <span class="n">TransitionError</span>
 
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">asyncio</span> <span class="k">import</span> <span class="n">current_task</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="c1"># handle py &lt; 3,7</span>
+    <span class="kn">from</span> <span class="nn">asyncio.tasks</span> <span class="k">import</span> <span class="n">Task</span>
+    <span class="n">current_task</span> <span class="o">=</span> <span class="n">Task</span><span class="o">.</span><span class="n">current_task</span>
+    <span class="k">del</span> <span class="n">Task</span>
+
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span> <span class="n">normalize_subs_input</span><span class="p">,</span>
                     <span class="n">AsyncInput</span><span class="p">,</span> <span class="n">new_uid</span><span class="p">,</span> <span class="n">NoReplayAllowed</span><span class="p">,</span>
                     <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">,</span> <span class="n">RunEngineInterrupted</span><span class="p">,</span>
                     <span class="n">IllegalMessageSequence</span><span class="p">,</span> <span class="n">FailedPause</span><span class="p">,</span> <span class="n">FailedStatus</span><span class="p">,</span>
                     <span class="n">InvalidCommand</span><span class="p">,</span> <span class="n">PlanHalt</span><span class="p">,</span> <span class="n">Msg</span><span class="p">,</span> <span class="n">ensure_generator</span><span class="p">,</span>
-                    <span class="n">single_gen</span><span class="p">,</span> <span class="n">short_uid</span><span class="p">)</span>
+                    <span class="n">single_gen</span><span class="p">,</span> <span class="n">short_uid</span><span class="p">,</span> <span class="n">default_during_task</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">_RunEnginePanic</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="o">...</span>
 
 
 <span class="k">class</span> <span class="nc">RunEngineStateMachine</span><span class="p">(</span><span class="n">StateMachine</span><span class="p">):</span>
@@ -240,8 +256,19 @@
     <span class="k">class</span> <span class="nc">States</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;state.name = state.value&quot;&quot;&quot;</span>
         <span class="n">IDLE</span> <span class="o">=</span> <span class="s1">&#39;idle&#39;</span>
+
         <span class="n">RUNNING</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+
+        <span class="n">PAUSING</span> <span class="o">=</span> <span class="s1">&#39;pausing&#39;</span>
         <span class="n">PAUSED</span> <span class="o">=</span> <span class="s1">&#39;paused&#39;</span>
+
+        <span class="n">HALTING</span> <span class="o">=</span> <span class="s1">&#39;halting&#39;</span>
+        <span class="n">STOPPING</span> <span class="o">=</span> <span class="s1">&#39;stopping&#39;</span>
+        <span class="n">ABORTING</span> <span class="o">=</span> <span class="s1">&#39;aborting&#39;</span>
+
+        <span class="n">SUSPENDING</span> <span class="o">=</span> <span class="s1">&#39;suspending&#39;</span>
+
+        <span class="n">PANICKED</span> <span class="o">=</span> <span class="s1">&#39;panicked&#39;</span>
 
         <span class="nd">@classmethod</span>
         <span class="k">def</span> <span class="nf">states</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
@@ -254,9 +281,17 @@
             <span class="c1"># Notice that &#39;transitions&#39; and &#39;named_transitions&#39; have</span>
             <span class="c1"># opposite to &lt;--&gt; from structure.</span>
             <span class="c1"># from_state : [valid_to_states]</span>
-            <span class="s1">&#39;idle&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;running&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;running&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;paused&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;paused&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;running&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;idle&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;running&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;running&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;pausing&#39;</span><span class="p">,</span> <span class="s1">&#39;halting&#39;</span><span class="p">,</span> <span class="s1">&#39;stopping&#39;</span><span class="p">,</span>
+                        <span class="s1">&#39;aborting&#39;</span><span class="p">,</span> <span class="s1">&#39;suspending&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;pausing&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;paused&#39;</span><span class="p">,</span> <span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;halting&#39;</span><span class="p">,</span> <span class="s1">&#39;aborting&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;suspending&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;running&#39;</span><span class="p">,</span> <span class="s1">&#39;halting&#39;</span><span class="p">,</span> <span class="s1">&#39;aborting&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;paused&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;running&#39;</span><span class="p">,</span> <span class="s1">&#39;halting&#39;</span><span class="p">,</span> <span class="s1">&#39;stopping&#39;</span><span class="p">,</span> <span class="s1">&#39;aborting&#39;</span><span class="p">,</span>
+                       <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;halting&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;stopping&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;aborting&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;idle&#39;</span><span class="p">,</span> <span class="s1">&#39;panicked&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;panicked&#39;</span><span class="p">:</span> <span class="p">[]</span>
         <span class="p">}</span>
         <span class="n">named_checkers</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">(</span><span class="s1">&#39;can_pause&#39;</span><span class="p">,</span> <span class="s1">&#39;paused&#39;</span><span class="p">),</span>
@@ -271,13 +306,21 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">machine_type</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
-        <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__set__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="n">own</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">own</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">obj</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__set__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">own</span><span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Change state on </span><span class="si">%r</span><span class="s2"> from </span><span class="si">%r</span><span class="s2"> -&gt; </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
                      <span class="n">obj</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">old_value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">instance</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
 
 
 <span class="c1"># See RunEngine.__call__.</span>
@@ -290,6 +333,15 @@
 
 <span class="k">def</span> <span class="nf">default_scan_id_source</span><span class="p">(</span><span class="n">md</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">md</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;scan_id&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+
+<span class="k">def</span> <span class="nf">_state_locked</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">inner</span>
 
 
 <div class="viewcode-block" id="RunEngine"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine">[docs]</a><span class="k">class</span> <span class="nc">RunEngine</span><span class="p">:</span>
@@ -338,6 +390,23 @@
 <span class="sd">        customized function to get a scan_id from any source.</span>
 <span class="sd">        Expected signature: f(md)</span>
 <span class="sd">        Expected return: updated scan_id value</span>
+
+<span class="sd">    during_task : callable, optional</span>
+<span class="sd">        Function to be run to block the main thread during `RE.__call__`</span>
+
+<span class="sd">        The required signature is ::</span>
+
+<span class="sd">              def blocking_func(ev: Threading.Event) -&gt; None:</span>
+<span class="sd">                  &quot;Returns when ev is set&quot;</span>
+
+<span class="sd">        The default value handles the cases of:</span>
+<span class="sd">           - Matplotlib is not imported (just wait on the event)</span>
+<span class="sd">           - Matplotlib is imported, but not using a Qt, notebook or ipympl</span>
+<span class="sd">             backend (just wait on the event)</span>
+<span class="sd">           - Matplotlib is imported and using a Qt backend (run the Qt app</span>
+<span class="sd">             on the main thread until the run finishes)</span>
+<span class="sd">           - Matplotlib is imported and using a nbagg or ipympl backend (</span>
+<span class="sd">             wait on the event and poll to push updates to the browser)</span>
 
 <span class="sd">    Attributes</span>
 <span class="sd">    ----------</span>
@@ -415,10 +484,21 @@
 
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">scan_id_source</span><span class="o">=</span><span class="n">default_scan_id_source</span><span class="p">):</span>
+                 <span class="n">scan_id_source</span><span class="o">=</span><span class="n">default_scan_id_source</span><span class="p">,</span>
+                 <span class="n">during_task</span><span class="o">=</span><span class="n">default_during_task</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+            <span class="n">loop</span> <span class="o">=</span> <span class="n">get_bluesky_event_loop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_th</span> <span class="o">=</span> <span class="n">_ensure_event_loop_running</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span> <span class="o">=</span> <span class="n">during_task</span>
+
+        <span class="c1"># When set, RunEngine.__call__ should stop blocking.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+        <span class="c1"># When cleared, RunEngine._run will pause until set.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="n">loop</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">set</span><span class="p">)</span>
 
         <span class="c1"># Make a logger for this specific RE instance, using the instance&#39;s</span>
         <span class="c1"># Python id, to keep from mixing output from separate instances.</span>
@@ -496,6 +576,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;success&#39;</span>  <span class="c1"># optimistic default</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># reason for abort</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># asyncio.Task associated with call to self._run</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># future proxy to the task above</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># from self._status_object_completed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># will hold an asyncio.Event</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># the plan instance from __call__</span>
@@ -699,6 +780,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_counter</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
+    <span class="nd">@_state_locked</span>
     <span class="k">def</span> <span class="nf">_clear_call_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s2">&quot;Clean up for a new __call__ (which may encompass multiple runs).&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_metadata_per_call</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -714,6 +796,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;success&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span> <span class="o">=</span> <span class="kc">None</span>
@@ -801,44 +884,28 @@
 <span class="sd">            If True, pause at the next checkpoint.</span>
 <span class="sd">            False by default.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">future</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run_coroutine_threadsafe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_request_pause_coro</span><span class="p">(</span><span class="n">defer</span><span class="p">),</span>
+            <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+        <span class="c1"># TODO add a timeout here?</span>
+        <span class="k">return</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_request_pause_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">defer</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># We are pausing. Cancel any deferred pause previously requested.</span>
         <span class="k">if</span> <span class="n">defer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Deferred pause acknowledged. Continuing to checkpoint.&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
-        <span class="c1"># We are pausing. Cancel any deferred pause previously requested.</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pausing...&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Pausing...&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;pausing&#39;</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">resumable</span><span class="p">:</span>
-            <span class="c1"># cannot resume, so we cannot pause.  Abort the plan.</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No checkpoint; cannot pause.&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborting: running cleanup and marking &quot;</span>
-                  <span class="s2">&quot;exit_status as &#39;abort&#39;...&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">FailedPause</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="p">:</span>
-                <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-            <span class="k">return</span>
-        <span class="c1"># stop accepting new tasks in the event loop (existing tasks will</span>
-        <span class="c1"># still be processed)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-        <span class="c1"># Remove any monitoring callbacks, but keep refs in</span>
-        <span class="c1"># self._monitor_params to re-instate them later.</span>
-        <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-        <span class="c1"># During pause, all motors should be stopped. Call stop() on every</span>
-        <span class="c1"># object we ever set().</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_movable_objects</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="c1"># Notify Devices of the pause in case they want to clean up.</span>
-        <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">):</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">obj</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
-                <span class="k">except</span> <span class="n">NoReplayAllowed</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_meth</span><span class="p">()</span></div>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_record_interruption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -885,6 +952,10 @@
 <span class="sd">        uids : list</span>
 <span class="sd">            list of uids (i.e. RunStart Document uids) of run(s)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;panicked&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is panicked and &quot;</span>
+                               <span class="s2">&quot;cannot be recovered. &quot;</span>
+                               <span class="s2">&quot;You must restart bluesky.&quot;</span><span class="p">)</span>
         <span class="c1"># This scheme lets us make &#39;plan&#39; and &#39;subs&#39; POSITIONAL ONLY, reserving</span>
         <span class="c1"># all keyword arguments for user metdata.</span>
         <span class="n">arguments</span> <span class="o">=</span> <span class="n">_call_sig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata_kw</span><span class="p">)</span><span class="o">.</span><span class="n">arguments</span>
@@ -946,29 +1017,24 @@
         <span class="k">if</span> <span class="n">futs</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">single_gen</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait_for&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">futs</span><span class="p">)))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Executing plan </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span>
 
-        <span class="c1"># Handle all context managers</span>
-        <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">stack</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">mgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span><span class="p">:</span>
-                <span class="n">stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">mgr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">())</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Executing plan </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">()</span>
-            <span class="k">finally</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
-                    <span class="c1"># get exceptions from the main task</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">exc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">exception</span><span class="p">()</span>
-                    <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
-                        <span class="n">exc</span> <span class="o">=</span> <span class="kc">None</span>
-                    <span class="c1"># if the main task exception is not None, re-raise</span>
-                    <span class="c1"># it (unless it is a canceled error)</span>
-                    <span class="k">if</span> <span class="n">exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="n">exc</span>
+        <span class="k">def</span> <span class="nf">_build_task</span><span class="p">():</span>
+            <span class="c1"># make sure _run will block at the top</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run_coroutine_threadsafe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run</span><span class="p">(),</span>
+                                                              <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
+            <span class="k">def</span> <span class="nf">set_blocking_event</span><span class="p">(</span><span class="n">future</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="n">set_blocking_event</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resume_task</span><span class="p">(</span><span class="n">init_func</span><span class="o">=</span><span class="n">_build_task</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
 
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span></div>
 
@@ -982,6 +1048,11 @@
 <span class="sd">        uids : list</span>
 <span class="sd">            list of Header uids (a.k.a RunStart uids) of run(s)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;panicked&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is panicked and &quot;</span>
+                               <span class="s2">&quot;cannot be recovered. &quot;</span>
+                               <span class="s2">&quot;You must restart bluesky.&quot;</span><span class="p">)</span>
+
         <span class="c1"># The state machine does not capture the whole picture.</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_paused</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is the </span><span class="si">{0}</span><span class="s2"> state. &quot;</span>
@@ -1000,10 +1071,10 @@
         <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;resume&#39;</span><span class="p">):</span>
                 <span class="n">obj</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resume_task</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_rewind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Clean up in preparation for resuming from a pause or suspension.</span>
@@ -1026,28 +1097,69 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="n">new_plan</span>
 
-    <span class="k">def</span> <span class="nf">_resume_event_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># may be called by &#39;resume&#39; or &#39;abort&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+    <span class="k">def</span> <span class="nf">_resume_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_func</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Clear the blocking Event so that we can wait on it below.</span>
+        <span class="c1"># The task will set it when it is done, as it was previously</span>
+        <span class="c1"># configured to do it __call__.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
         <span class="c1"># Handle all context managers</span>
         <span class="k">with</span> <span class="n">ExitStack</span><span class="p">()</span> <span class="k">as</span> <span class="n">stack</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">mgr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">context_managers</span><span class="p">:</span>
                 <span class="n">stack</span><span class="o">.</span><span class="n">enter_context</span><span class="p">(</span><span class="n">mgr</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+
+            <span class="k">if</span> <span class="n">init_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">init_func</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
                 <span class="k">return</span>
+
+            <span class="c1"># The _run task is waiting on this Event. Let is continue.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">set</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">()</span>
+                <span class="c1"># Block until plan is complete or exception is raised.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                    <span class="kn">import</span> <span class="nn">ctypes</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="c1"># we can not interrupt a python thread from the outside</span>
+                    <span class="c1"># but there is an API to schedule an exception to be raised</span>
+                    <span class="c1"># the next time that thread would interpret byte code.</span>
+                    <span class="c1"># The documentation of this function includes the sentence</span>
+                    <span class="c1">#</span>
+                    <span class="c1">#   To prevent naive misuse, you must write your</span>
+                    <span class="c1">#   own C extension to call this.</span>
+                    <span class="c1">#</span>
+                    <span class="c1"># Here we cheat a bit and use ctypes.</span>
+                    <span class="n">num_threads</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">pythonapi</span><span class="o">.</span><span class="n">PyThreadState_SetAsyncExc</span><span class="p">(</span>
+                        <span class="n">ctypes</span><span class="o">.</span><span class="n">c_ulong</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_th</span><span class="o">.</span><span class="n">ident</span><span class="p">),</span>
+                        <span class="n">ctypes</span><span class="o">.</span><span class="n">py_object</span><span class="p">(</span><span class="n">_RunEnginePanic</span><span class="p">))</span>
+                    <span class="c1"># however, if the thread is in a system call (such</span>
+                    <span class="c1"># as sleep or I/O) there is no way to interrupt it</span>
+                    <span class="c1"># (per decree of Guido) thus we give it a second</span>
+                    <span class="c1"># to sort it&#39;s self out</span>
+                    <span class="n">task_finished</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="c1"># before giving up and putting the RE in a</span>
+                    <span class="c1"># non-recoverable panicked state.</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">task_finished</span> <span class="ow">or</span> <span class="n">num_threads</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;panicked&#39;</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">raised_er</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">halt</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="k">raise</span> <span class="n">raised_er</span>
             <span class="k">finally</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
                     <span class="c1"># get exceptions from the main task</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">exc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">exception</span><span class="p">()</span>
-                    <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">:</span>
+                        <span class="n">exc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_fut</span><span class="o">.</span><span class="n">exception</span><span class="p">()</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">,</span>
+                            <span class="n">concurrent</span><span class="o">.</span><span class="n">futures</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">):</span>
                         <span class="n">exc</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="c1"># if the main task exception is not None, re-raise</span>
                     <span class="c1"># it (unless it is a canceled error)</span>
-                    <span class="k">if</span> <span class="n">exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">exc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                            <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exc</span><span class="p">,</span> <span class="n">_RunEnginePanic</span><span class="p">)):</span>
                         <span class="k">raise</span> <span class="n">exc</span>
 
 <div class="viewcode-block" id="RunEngine.install_suspender"><a class="viewcode-back" href="../../state-machine.html#bluesky.run_engine.RunEngine.install_suspender">[docs]</a>    <span class="k">def</span> <span class="nf">install_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suspender</span><span class="p">):</span>
@@ -1095,8 +1207,7 @@
             <span class="n">suspender</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_suspenders</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">suspender</span><span class="p">)</span></div>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_remove_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_remove_suspender</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        See :meth: `RunEngine.remove_suspender`</span>
 
@@ -1143,17 +1254,24 @@
 <span class="sd">            explanation of why the suspension has been requested</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">resumable</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No checkpoint; cannot suspend.&quot;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborting: running cleanup and marking &quot;</span>
-                  <span class="s2">&quot;exit_status as &#39;abort&#39;...&quot;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">FailedPause</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Suspending....To get prompt hit Ctrl-C twice to pause.&quot;</span><span class="p">)</span>
-            <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Suspension occurred at </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ts</span><span class="p">))</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Suspending....To get prompt hit Ctrl-C twice to pause.&quot;</span><span class="p">)</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Suspension occurred at </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ts</span><span class="p">))</span>
+
+        <span class="k">async</span> <span class="k">def</span> <span class="nf">_request_suspend</span><span class="p">(</span><span class="n">pre_plan</span><span class="p">,</span> <span class="n">post_plan</span><span class="p">,</span> <span class="n">justification</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">resumable</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No checkpoint; cannot suspend.&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborting: running cleanup and marking &quot;</span>
+                      <span class="s2">&quot;exit_status as &#39;abort&#39;...&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">FailedPause</span><span class="p">()</span>
+                <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;aborting&#39;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">was_paused</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
             <span class="k">if</span> <span class="n">justification</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Justification for this suspension:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">justification</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;suspend&#39;</span><span class="p">)</span>
@@ -1206,10 +1324,18 @@
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">single_gen</span><span class="p">(</span>
                 <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;rewindable&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">)))</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
             <span class="c1"># The event loop is still running. The pre_plan will be processed,</span>
             <span class="c1"># and then the RunEngine will be hung up on processing the</span>
             <span class="c1"># &#39;wait_for&#39; message until `fut` is set.</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;suspending&#39;</span>
+                <span class="c1"># bump the _run task out of what ever it is awaiting</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">,</span>
+            <span class="n">_request_suspend</span><span class="p">(</span><span class="n">pre_plan</span><span class="p">,</span> <span class="n">post_plan</span><span class="p">,</span> <span class="n">justification</span><span class="p">))</span></div>
 
 <div class="viewcode-block" id="RunEngine.abort"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.abort">[docs]</a>    <span class="k">def</span> <span class="nf">abort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1220,20 +1346,29 @@
 <span class="sd">        :meth:`RunEngine.halt`</span>
 <span class="sd">        :meth:`RunEngine.stop`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__interrupter_helper</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_abort_coro</span><span class="p">(</span><span class="n">reason</span><span class="p">))</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_abort_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reason</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Aborting: running cleanup and marking &quot;</span>
               <span class="s2">&quot;exit_status as &#39;abort&#39;...&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="n">reason</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">RequestAbort</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
+
+        <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;aborting&#39;</span>
+        <span class="k">if</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">RequestAbort</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="p">:</span>
             <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.stop"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1244,16 +1379,20 @@
 <span class="sd">        :meth:`RunEngine.abort`</span>
 <span class="sd">        :meth:`RunEngine.halt`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__interrupter_helper</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stop_coro</span><span class="p">())</span></div>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_stop_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stopping: running cleanup and marking exit_status &quot;</span>
               <span class="s2">&quot;as &#39;success&#39;...&quot;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">RequestStop</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
+        <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;stopping&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.halt"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.halt">[docs]</a>    <span class="k">def</span> <span class="nf">halt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;</span>
@@ -1264,17 +1403,47 @@
 <span class="sd">        :meth:`RunEngine.abort`</span>
 <span class="sd">        :meth:`RunEngine.stop`</span>
 <span class="sd">        &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__interrupter_helper</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_halt_coro</span><span class="p">())</span></div>
+
+    <span class="k">def</span> <span class="nf">__interrupter_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coro</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="s1">&#39;panicked&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;The RunEngine is panicked and &quot;</span>
+                               <span class="s2">&quot;cannot be recovered. &quot;</span>
+                               <span class="s2">&quot;You must restart bluesky.&quot;</span><span class="p">)</span>
+
+        <span class="n">coro_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">def</span> <span class="nf">end_cb</span><span class="p">(</span><span class="n">fut</span><span class="p">):</span>
+            <span class="n">coro_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">start_task</span><span class="p">():</span>
+            <span class="k">nonlocal</span> <span class="n">task</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">coro</span><span class="p">)</span>
+            <span class="n">task</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="n">end_cb</span><span class="p">)</span>
+
+        <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span><span class="n">start_task</span><span class="p">)</span>
+        <span class="n">coro_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resume_task</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">task</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_halt_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="o">.</span><span class="n">is_idle</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">TransitionError</span><span class="p">(</span><span class="s2">&quot;RunEngine is already idle.&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Halting: skipping cleanup and marking exit_status as &quot;</span>
               <span class="s2">&quot;&#39;abort&#39;...&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">PlanHalt</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_resume_event_loop</span><span class="p">()</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span></div>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">PlanHalt</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
+        <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;halting&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_stop_movable_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="s2">&quot;Call obj.stop() for all objects we have moved. Log any exceptions.&quot;</span>
@@ -1289,8 +1458,7 @@
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to stop </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Pull messages from the plan, process them, send results back.</span>
 
 <span class="sd">        Upon exit, clean up.</span>
@@ -1300,14 +1468,65 @@
 <span class="sd">        - Try to remove any monitoring subscriptions left on by the plan.</span>
 <span class="sd">        - If interrupting the middle of a run, try to emit a RunStop document.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="c1"># grab the current task.  We need to do this here because the</span>
+        <span class="c1"># object returned by `run_coroutine_threadsafe` is a future</span>
+        <span class="c1"># that acts as a proxy that does not have the correct behavior</span>
+        <span class="c1"># when `.cancel` is called on it.</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="n">current_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+        <span class="n">stashed_exception</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">debug</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.msg&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">name</span><span class="p">))</span><span class="o">.</span><span class="n">debug</span>
-        <span class="n">pending_cancel_exception</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="c1"># sentinel to decide if need to add to the response stack or not</span>
         <span class="n">sentinel</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;pausing&#39;</span><span class="p">,</span> <span class="s1">&#39;suspending&#39;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">resumable</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+                        <span class="n">stashed_exception</span> <span class="o">=</span> <span class="n">FailedPause</span><span class="p">()</span>
+                        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="p">:</span>
+                            <span class="n">task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;aborting&#39;</span>
+                        <span class="k">continue</span>
+                <span class="c1"># currently only using &#39;suspending&#39; to get us into the</span>
+                <span class="c1"># block above, we do not have a &#39;suspended&#39; state</span>
+                <span class="c1"># (yet)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;suspending&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="c1"># A pause has been requested. First, put everything in a</span>
+                    <span class="c1"># resting state.</span>
+                    <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;pausing&#39;</span>
+                    <span class="c1"># Remove any monitoring callbacks, but keep refs in</span>
+                    <span class="c1"># self._monitor_params to re-instate them later.</span>
+                    <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+                    <span class="c1"># During pause, all motors should be stopped. Call stop()</span>
+                    <span class="c1"># on every object we ever set().</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stop_movable_objects</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="c1"># Notify Devices of the pause in case they want to</span>
+                    <span class="c1"># clean up.</span>
+                    <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;pause&#39;</span><span class="p">):</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">obj</span><span class="o">.</span><span class="n">pause</span><span class="p">()</span>
+                            <span class="k">except</span> <span class="n">NoReplayAllowed</span><span class="p">:</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_meth</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;paused&#39;</span>
+                    <span class="c1"># Let RunEngine.__call__ return...</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
+                        <span class="c1"># may be called by &#39;resume&#39;, &#39;stop&#39;, &#39;abort&#39;, &#39;halt&#39;</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
+
+                    <span class="c1"># If we are here, we have come back to life either to</span>
+                    <span class="c1"># continue (resume) or to clean up before exiting.</span>
+
                 <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">)</span>
                 <span class="c1"># set resp to the sentinel so that if we fail in the sleep</span>
                 <span class="c1"># we do not add an extra response</span>
@@ -1316,7 +1535,7 @@
                     <span class="c1"># the new response to be added</span>
                     <span class="n">new_response</span> <span class="o">=</span> <span class="kc">None</span>
 
-                    <span class="c1"># This &#39;yield from&#39; must be here to ensure that</span>
+                    <span class="c1"># This &#39;await&#39; must be here to ensure that</span>
                     <span class="c1"># this coroutine breaks out of its current behavior</span>
                     <span class="c1"># before trying to get the next message from the</span>
                     <span class="c1"># top of the generator stack in case there has</span>
@@ -1328,18 +1547,24 @@
                     <span class="c1"># This sleep has to be inside of this try block so</span>
                     <span class="c1"># that any of the &#39;async&#39; exceptions get thrown in the</span>
                     <span class="c1"># correct place</span>
-                    <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
                     <span class="c1"># always pop off a result, we are either sending it back in</span>
                     <span class="c1"># or throwing an exception in, in either case the left hand</span>
                     <span class="c1"># side of the yield in the plan will be moved past</span>
                     <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+                    <span class="c1"># if any status tasks have failed, grab the exceptions.</span>
+                    <span class="c1"># give priority to things pushed in from outside</span>
+                    <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">stashed_exception</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="c1"># The case where we have a stashed exception</span>
-                    <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">stashed_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span>
                             <span class="nb">isinstance</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)):</span>
                         <span class="c1"># throw the exception at the current plan</span>
                         <span class="k">try</span><span class="p">:</span>
                             <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">throw</span><span class="p">(</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">or</span> <span class="n">resp</span><span class="p">)</span>
+                                <span class="n">stashed_exception</span> <span class="ow">or</span> <span class="n">resp</span><span class="p">)</span>
                         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                             <span class="c1"># The current plan did not handle it,</span>
                             <span class="c1"># maybe the next plan (if any) would like</span>
@@ -1349,7 +1574,7 @@
                             <span class="c1"># it a new response</span>
                             <span class="n">resp</span> <span class="o">=</span> <span class="n">sentinel</span>
                             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">):</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">e</span>
+                                <span class="n">stashed_exception</span> <span class="o">=</span> <span class="n">e</span>
                                 <span class="k">continue</span>
                             <span class="c1"># no plans left and still an unhandled exception</span>
                             <span class="c1"># re-raise to exit the infinite loop</span>
@@ -1358,7 +1583,7 @@
                         <span class="c1"># clear the stashed exception, the top plan</span>
                         <span class="c1"># handled it.</span>
                         <span class="k">else</span><span class="p">:</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">None</span>
+                            <span class="n">stashed_exception</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="c1"># The normal case of clean operation</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="k">try</span><span class="p">:</span>
@@ -1384,7 +1609,7 @@
                             <span class="c1"># it a new response</span>
                             <span class="n">resp</span> <span class="o">=</span> <span class="n">sentinel</span>
                             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">):</span>
-                                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">e</span>
+                                <span class="n">stashed_exception</span> <span class="o">=</span> <span class="n">e</span>
                                 <span class="k">continue</span>
                             <span class="c1"># or reraise to get out of the infinite loop</span>
                             <span class="k">else</span><span class="p">:</span>
@@ -1420,7 +1645,7 @@
                         <span class="c1"># this is one of two places that &#39;async&#39;</span>
                         <span class="c1"># exceptions (coming in via throw) can be</span>
                         <span class="c1"># raised</span>
-                        <span class="n">new_response</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">coro</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                        <span class="n">new_response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">coro</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
                     <span class="c1"># special case `CancelledError` and let the outer</span>
                     <span class="c1"># exception block deal with it.</span>
@@ -1443,17 +1668,34 @@
                     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;An unknown external library has improperly raised &quot;</span>
                           <span class="s2">&quot;KeyboardInterrupt. Intercepting and triggering &quot;</span>
                           <span class="s2">&quot;a HALT.&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">call_soon</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">halt</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_halt_coro</span><span class="p">()</span>
                 <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;pausing&#39;</span><span class="p">:</span>
+                        <span class="c1"># if we got a CancelledError and we are in the</span>
+                        <span class="c1"># &#39;pausing&#39; state clear the run permit and</span>
+                        <span class="c1"># bounce to the top</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;halting&#39;</span><span class="p">,</span> <span class="s1">&#39;stopping&#39;</span><span class="p">,</span> <span class="s1">&#39;aborting&#39;</span><span class="p">):</span>
+                        <span class="c1"># if we got this while just keep going in tear-down</span>
+                        <span class="n">exception_map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;halting&#39;</span><span class="p">:</span> <span class="n">PlanHalt</span><span class="p">,</span>
+                                         <span class="s1">&#39;stopping&#39;</span><span class="p">:</span> <span class="n">RequestStop</span><span class="p">,</span>
+                                         <span class="s1">&#39;aborting&#39;</span><span class="p">:</span> <span class="n">RequestAbort</span><span class="p">}</span>
+                        <span class="c1"># if the exception is not set bounce to the top</span>
+                        <span class="k">if</span> <span class="n">stashed_exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">stashed_exception</span> <span class="o">=</span> <span class="n">exception_map</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">]</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;suspending&#39;</span><span class="p">:</span>
+                        <span class="c1"># just bounce to the top</span>
+                        <span class="k">continue</span>
                     <span class="c1"># if we are handling this twice, raise and leave the plans</span>
                     <span class="c1"># alone</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">is</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">stashed_exception</span> <span class="ow">is</span> <span class="n">e</span><span class="p">:</span>
                         <span class="k">raise</span> <span class="n">e</span>
                     <span class="c1"># the case where FailedPause, RequestAbort or a coro</span>
                     <span class="c1"># raised error is not already stashed in _exception</span>
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">e</span>
-                    <span class="n">pending_cancel_exception</span> <span class="o">=</span> <span class="n">e</span>
+                    <span class="k">if</span> <span class="n">stashed_exception</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">stashed_exception</span> <span class="o">=</span> <span class="n">e</span>
                 <span class="k">finally</span><span class="p">:</span>
                     <span class="c1"># if we poped a response and did not pop a plan, we need</span>
                     <span class="c1"># to put the new response back on the stack</span>
@@ -1463,13 +1705,17 @@
         <span class="k">except</span> <span class="p">(</span><span class="ne">StopIteration</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;success&#39;</span>
             <span class="c1"># TODO Is the sleep here necessary?</span>
-            <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="k">except</span> <span class="p">(</span><span class="n">FailedPause</span><span class="p">,</span> <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">,</span>
                 <span class="n">PlanHalt</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
             <span class="c1"># TODO Is the sleep here necessary?</span>
-            <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">GeneratorExit</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;fail&#39;</span>  <span class="c1"># Exception raises during &#39;running&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span> <span class="kn">from</span> <span class="nn">err</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;fail&#39;</span>  <span class="c1"># Exception raises during &#39;running&#39;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
@@ -1485,7 +1731,7 @@
             <span class="c1"># Some might not support partial collection. We swallow errors.</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;collect&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="p">))</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;collect&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="p">))</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to collect </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
             <span class="c1"># in case we were interrupted between &#39;stage&#39; and &#39;unstage&#39;</span>
@@ -1507,7 +1753,7 @@
             <span class="c1"># Emit RunStop if necessary.</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_run</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">))</span>
+                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_run</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">))</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
                         <span class="s2">&quot;Failed to close run </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
@@ -1515,38 +1761,36 @@
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">p</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-                <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;The plan </span><span class="si">{!r}</span><span class="s1"> tried to yield a value on close.  &#39;</span>
                           <span class="s1">&#39;Please fix your plan.&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;idle&#39;</span>
-        <span class="c1"># if the task was cancelled</span>
-        <span class="k">if</span> <span class="n">pending_cancel_exception</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">pending_cancel_exception</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Cleaned up from plan </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">stashed_exception</span><span class="p">,</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">CancelledError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">stashed_exception</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_wait_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to wait until msg.obj has completed. Better</span>
-<span class="sd">        yet, see the docstring for ``asyncio.wait`` for what msg.obj should</span>
-<span class="sd">        be...</span>
-
-<span class="sd">        TODO: Get someone who knows how this works to check this note, since</span>
-<span class="sd">        it is almost assuredly total bs</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_wait_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to wait for futures</span>
 
 <span class="sd">        Expected message object is:</span>
 
-<span class="sd">            Msg(&#39;wait_for&#39;, None, futures, **kwargs)</span>
+<span class="sd">            Msg(&#39;wait_for&#39;, None, awaitable_factories, **kwargs)</span>
 
-<span class="sd">        Where ``obj`` and **kwargs are the position and keyword-only arguments</span>
-<span class="sd">        for ``asyncio.await``</span>
+<span class="sd">        The keyword arguments will be passed through to `asyncio.wait`.</span>
+
+<span class="sd">        The callables in awaitable_factories must have the signature ::</span>
+
+<span class="sd">           def fut_fac() -&gt; awaitable:</span>
+<span class="sd">               &#39;This must work multiple times&#39;</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">futs</span><span class="p">,</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">args</span>
-        <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">futs</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">futs</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">futs</span><span class="p">]</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">futs</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_open_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_open_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to start a new &quot;run&quot;</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -1583,9 +1827,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">md_validator</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
 
         <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="o">**</span><span class="n">md</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted RunStart (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
         <span class="c1"># Emit an Event Descriptor for recording any interruptions as Events.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_interruptions</span><span class="p">:</span>
@@ -1596,12 +1840,11 @@
                                       <span class="n">name</span><span class="o">=</span><span class="s1">&#39;interruptions&#39;</span><span class="p">,</span>
                                       <span class="n">data_keys</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;interruption&#39;</span><span class="p">:</span> <span class="n">dk</span><span class="p">},</span>
                                       <span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
-            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">interruptions_desc</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">interruptions_desc</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_close_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_close_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to write the RunStop document</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -1641,13 +1884,12 @@
                    <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
                    <span class="n">num_events</span><span class="o">=</span><span class="n">num_events</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_clear_run_cache</span><span class="p">()</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted RunStop (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Trigger the run engine to start bundling future obj.read() calls for</span>
 <span class="sd">         an Event document</span>
 
@@ -1686,8 +1928,7 @@
                     <span class="s2">&quot;Msg(&#39;create&#39;) now requires a stream name, given as &quot;</span>
                     <span class="s2">&quot;Msg(&#39;create&#39;, name) or Msg(&#39;create&#39;, name=name)&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add a reading to the open event bundle.</span>
 
@@ -1750,8 +1991,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_config_values_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_values</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_config_ts_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_ts</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Monitor a signal. Emit event documents asynchronously.</span>
 
@@ -1812,12 +2052,11 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">emit_event</span><span class="p">,</span> <span class="n">kwargs</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">desc_doc</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">desc_doc</span><span class="p">)</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">emit_event</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_unmonitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_unmonitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Stop monitoring; i.e., remove the callback emitting event documents.</span>
 
@@ -1832,10 +2071,9 @@
         <span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
         <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Save the event that is currently being bundled</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -1902,7 +2140,7 @@
                        <span class="n">data_keys</span><span class="o">=</span><span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
                        <span class="n">configuration</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">desc_key</span><span class="p">,</span>
                        <span class="n">hints</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">object_keys</span><span class="o">=</span><span class="n">object_keys</span><span class="p">)</span>
-            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event Descriptor with name </span><span class="si">%r</span><span class="s2"> containing &quot;</span>
                            <span class="s2">&quot;data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">desc_key</span><span class="p">,</span>
                            <span class="n">data_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor_uid</span><span class="p">)</span>
@@ -1915,7 +2153,7 @@
             <span class="c1"># Add a &#39;run_start&#39; field to the resource document on its way out.</span>
             <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
                 <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
-            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
 
         <span class="c1"># Event documents</span>
         <span class="n">seq_num</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">seq_num_key</span><span class="p">])</span>
@@ -1935,12 +2173,11 @@
         <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">descriptor</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
                    <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="o">=</span><span class="n">timestamps</span><span class="p">,</span>
                    <span class="n">seq_num</span><span class="o">=</span><span class="n">seq_num</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">event_uid</span><span class="p">,</span> <span class="n">filled</span><span class="o">=</span><span class="n">filled</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event with data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
                        <span class="n">event_uid</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Drop the event that is currently being bundled</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -1960,8 +2197,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Dropped open event bundle&quot;</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_kickoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_kickoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Start a flyscan object</span>
 
 <span class="sd">        Parameters</span>
@@ -2010,12 +2246,11 @@
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="c1"># for ophyd &lt; v0.8.0</span>
             <span class="n">ret</span><span class="o">.</span><span class="n">finished_cb</span> <span class="o">=</span> <span class="n">done_callback</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">ret</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Tell a flyer, &#39;stop collecting, whenever you are ready&#39;.</span>
 
@@ -2050,12 +2285,11 @@
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="c1"># for ophyd &lt; v0.8.0</span>
             <span class="n">ret</span><span class="o">.</span><span class="n">finished_cb</span> <span class="o">=</span> <span class="n">done_callback</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">ret</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Collect data cached by a flyer and emit descriptor and event documents.</span>
 
@@ -2079,7 +2313,7 @@
                 <span class="c1"># Add a &#39;run_start&#39; field to the resource document on its way out.</span>
                 <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
                     <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
-                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
 
         <span class="n">named_data_keys</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe_collect</span><span class="p">()</span>
         <span class="c1"># e.g., {name_for_desc1: data_keys_for_desc1,</span>
@@ -2101,7 +2335,7 @@
                            <span class="n">data_keys</span><span class="o">=</span><span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
                            <span class="n">name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span> <span class="n">hints</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span>
                            <span class="n">object_keys</span><span class="o">=</span><span class="n">object_keys</span><span class="p">)</span>
-                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event Descriptor with name </span><span class="si">%r</span><span class="s2"> &quot;</span>
                                <span class="s2">&quot;containing data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">stream_name</span><span class="p">,</span>
                                <span class="n">data_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor_uid</span><span class="p">)</span>
@@ -2140,24 +2374,22 @@
             <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event with data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span>
                                <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">ev</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">ev</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">bulk_data</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">stream</span><span class="p">:</span>
-            <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">bulk_events</span><span class="p">,</span> <span class="n">bulk_data</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">bulk_events</span><span class="p">,</span> <span class="n">bulk_data</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted bulk events for descriptors with uids &quot;</span>
                            <span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">bulk_data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_null</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_null</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A no-op message, mainly for debugging and testing.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">pass</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_set</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set a device and cache the returned status object.</span>
 
@@ -2189,13 +2421,12 @@
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="c1"># for ophyd &lt; v0.8.0</span>
             <span class="n">ret</span><span class="o">.</span><span class="n">finished_cb</span> <span class="o">=</span> <span class="n">done_callback</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ret</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_trigger</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Trigger a device and cache the returned status object.</span>
 
@@ -2221,13 +2452,12 @@
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="c1"># for ophyd &lt; v0.8.0</span>
             <span class="n">ret</span><span class="o">.</span><span class="n">finished_cb</span> <span class="o">=</span> <span class="n">done_callback</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ret</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Block progress until every object that was triggered or set</span>
 <span class="sd">        with the keyword argument `group=&lt;GROUP&gt;` is done.</span>
 
@@ -2251,7 +2481,7 @@
                     <span class="c1"># the information these encapsulate to create a progress</span>
                     <span class="c1"># bar.</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">waiting_hook</span><span class="p">(</span><span class="n">status_objs</span><span class="p">)</span>
-                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait_for&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">futs</span><span class="p">))</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_wait_for</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait_for&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">futs</span><span class="p">))</span>
             <span class="k">finally</span><span class="p">:</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiting_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="c1"># Notify the waiting_hook function that we have moved on by</span>
@@ -2273,12 +2503,13 @@
 <span class="sd">            tells us whether the __call__ this status object is over</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="o">.</span><span class="n">success</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">pardon_failures</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">FailedStatus</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+            <span class="c1"># TODO: need a better channel to move this information back</span>
+            <span class="c1"># to the run task.</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">FailedStatus</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
         <span class="n">p_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_sleep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_sleep</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Sleep the event loop</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2287,10 +2518,9 @@
 
 <span class="sd">        where `sleep_time` is in seconds</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_pause</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_pause</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Request the run engine to pause</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2300,10 +2530,9 @@
 <span class="sd">        See RunEngine.request_pause() docstring for explanation of the three</span>
 <span class="sd">        keyword arguments in the `Msg` signature</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">request_pause</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_pause_coro</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_resume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_resume</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Request the run engine to resume</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2321,8 +2550,7 @@
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;resume&#39;</span><span class="p">):</span>
                 <span class="n">obj</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to create a checkpoint so that we can rewind</span>
 <span class="sd">        to this point if necessary</span>
 
@@ -2334,14 +2562,14 @@
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;Cannot &#39;checkpoint&#39; after &#39;create&#39; &quot;</span>
                                          <span class="s2">&quot;and before &#39;save&#39;. Aborting!&quot;</span><span class="p">)</span>
 
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span><span class="p">:</span>
             <span class="c1"># We are at a checkpoint; we are done deferring the pause.</span>
             <span class="c1"># Give the _check_for_signals coroutine time to look for</span>
             <span class="c1"># additional SIGINTs that would trigger an abort.</span>
-            <span class="k">yield from</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">request_pause</span><span class="p">(</span><span class="n">defer</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_request_pause_coro</span><span class="p">(</span><span class="n">defer</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_reset_checkpoint_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_meth</span><span class="p">()</span>
@@ -2361,8 +2589,7 @@
 
     <span class="n">_reset_checkpoint_state_coro</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">coroutine</span><span class="p">(</span><span class="n">_reset_checkpoint_state</span><span class="p">)</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_clear_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_clear_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Clear a set checkpoint</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2374,8 +2601,7 @@
         <span class="c1"># clear stashed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_rewindable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_rewindable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Set rewindable state of RunEngine</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2389,8 +2615,7 @@
 
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">rewindable</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_configure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Configure an object</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2420,8 +2645,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_cache_config</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to stage the object</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2434,11 +2658,10 @@
             <span class="k">return</span> <span class="p">[]</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">stage</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>  <span class="c1"># add first in case of failure below</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">result</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_unstage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_unstage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to unstage the object</span>
 
 <span class="sd">        Expected message object is:</span>
@@ -2452,11 +2675,10 @@
         <span class="n">result</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">unstage</span><span class="p">()</span>
         <span class="c1"># use `discard()` to ignore objects that are not in the staged set.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">result</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Stop a device.</span>
 
@@ -2466,8 +2688,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>  <span class="c1"># nominally, this returns None</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Add a subscription after the run has started.</span>
 
@@ -2496,11 +2717,10 @@
         <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_temp_callback_ids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">token</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Remove a subscription during a call -- useful for a multi-run call</span>
 <span class="sd">        where subscriptions are wanted for some runs but not others.</span>
@@ -2520,10 +2740,9 @@
             <span class="n">token</span><span class="p">,</span> <span class="o">=</span> <span class="n">args</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">unsubscribe</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_temp_callback_ids</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Process a &#39;input&#39; Msg. Expected Msg:</span>
 
@@ -2533,10 +2752,9 @@
         <span class="n">prompt</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;prompt&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
         <span class="n">async_input</span> <span class="o">=</span> <span class="n">AsyncInput</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="n">async_input</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">async_input</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">async_input</span><span class="p">(</span><span class="n">prompt</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="n">async_input</span><span class="p">(</span><span class="n">prompt</span><span class="p">))</span>
 
-    <span class="nd">@asyncio</span><span class="o">.</span><span class="n">coroutine</span>
-    <span class="k">def</span> <span class="nf">emit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">emit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
         <span class="s2">&quot;Process blocking callbacks and schedule non-blocking callbacks.&quot;</span>
         <span class="n">schema_validators</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
@@ -2620,8 +2838,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_token_mapping</span><span class="p">[</span><span class="n">public_token</span><span class="p">]</span> <span class="o">=</span> <span class="n">private_tokens</span>
             <span class="k">return</span> <span class="n">public_token</span>
 
-        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DocumentNames</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">DocumentNames</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">DocumentNames</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
         <span class="n">private_token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cb_registry</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">)</span>
         <span class="n">public_token</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_counter</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_token_mapping</span><span class="p">[</span><span class="n">public_token</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">private_token</span><span class="p">]</span>
@@ -2701,6 +2918,38 @@
             <span class="s2">&quot;GOOD: sample=&#39;dirt&#39; &quot;</span>
             <span class="s2">&quot;GOOD: sample={&#39;color&#39;: &#39;red&#39;, &#39;number&#39;: 5} &quot;</span>
             <span class="s2">&quot;BAD: sample=[1, 2] &quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_ensure_event_loop_running</span><span class="p">(</span><span class="n">loop</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run an asyncio event loop forever on a background thread.</span>
+
+<span class="sd">    This is idempotent: if the loop is already running nothing will be done.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">loop</span><span class="o">.</span><span class="n">is_running</span><span class="p">():</span>
+        <span class="n">th</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">loop</span><span class="o">.</span><span class="n">run_forever</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">th</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">_ensure_event_loop_running</span><span class="o">.</span><span class="n">loop_to_thread</span><span class="p">[</span><span class="n">loop</span><span class="p">]</span> <span class="o">=</span> <span class="n">th</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">th</span> <span class="o">=</span> <span class="n">_ensure_event_loop_running</span><span class="o">.</span><span class="n">loop_to_thread</span><span class="p">[</span><span class="n">loop</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">th</span>
+
+
+<span class="n">_ensure_event_loop_running</span><span class="o">.</span><span class="n">loop_to_thread</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakKeyDictionary</span><span class="p">()</span>
+
+<span class="n">_bluesky_event_loop</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">get_bluesky_event_loop</span><span class="p">():</span>
+    <span class="k">global</span> <span class="n">_bluesky_event_loop</span>
+    <span class="k">if</span> <span class="n">_bluesky_event_loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_bluesky_event_loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_bluesky_event_loop</span>
+
+
+<span class="k">def</span> <span class="nf">set_bluesky_event_loop</span><span class="p">(</span><span class="n">loop</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">_bluesky_event_loop</span>
+    <span class="n">_bluesky_event_loop</span> <span class="o">=</span> <span class="n">loop</span>
 </pre></div>
 
            </div>
