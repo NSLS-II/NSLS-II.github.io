@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.10.0.post5+g1122403 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.10.0.post8+gdcfdb49 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.10.0.post5+g1122403
+                1.10.0.post8+gdcfdb49
               </div>
             
           
@@ -503,6 +503,8 @@
 <span class="sd">        A cache of Resource documents. If None, a dict is used.</span>
 <span class="sd">    datum_cache : dict, optional</span>
 <span class="sd">        A cache of Datum documents. If None, a dict is used.</span>
+<span class="sd">    descriptor_cache : dict, optional</span>
+<span class="sd">        A cache of EventDescriptor documents. If None, a dict is used.</span>
 <span class="sd">    retry_intervals : Iterable, optional</span>
 <span class="sd">        If data is not found on the first try, there may a race between the</span>
 <span class="sd">        I/O systems creating the external data and this stream of Documents</span>
@@ -543,6 +545,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler_registry</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">handler_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">resource_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">datum_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">descriptor_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">retry_intervals</span><span class="o">=</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.002</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.016</span><span class="p">,</span> <span class="mf">0.032</span><span class="p">,</span>
                                   <span class="mf">0.064</span><span class="p">,</span> <span class="mf">0.128</span><span class="p">,</span> <span class="mf">0.256</span><span class="p">,</span> <span class="mf">0.512</span><span class="p">,</span> <span class="mf">1.024</span><span class="p">)):</span>
         <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -560,9 +563,12 @@
             <span class="n">resource_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_resource_cache</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">datum_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">datum_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_datum_cache</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">descriptor_cache</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">descriptor_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_default_descriptor_cache</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_handler_cache</span> <span class="o">=</span> <span class="n">handler_cache</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span> <span class="o">=</span> <span class="n">resource_cache</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span> <span class="o">=</span> <span class="n">datum_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span> <span class="o">=</span> <span class="n">descriptor_cache</span>
         <span class="k">if</span> <span class="n">retry_intervals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">retry_intervals</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">retry_intervals</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">retry_intervals</span><span class="p">)</span>
@@ -573,6 +579,10 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">get_default_resource_cache</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_default_descriptor_cache</span><span class="p">():</span>
         <span class="k">return</span> <span class="p">{}</span>
 
     <span class="nd">@staticmethod</span>
@@ -623,7 +633,15 @@
         <span class="k">return</span> <span class="n">doc</span>
 
     <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">is_filled</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;filled&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">filled</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># This document is not telling us which, if any, keys are filled.</span>
+            <span class="c1"># Infer that none of the external data is filled.</span>
+            <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span>
+            <span class="n">filled</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">val</span>
+                      <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">is_filled</span> <span class="ow">in</span> <span class="n">filled</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">:</span>
@@ -704,6 +722,7 @@
         <span class="k">return</span> <span class="n">doc</span>
 
     <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
         <span class="k">return</span> <span class="n">doc</span>
 
     <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
