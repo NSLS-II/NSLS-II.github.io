@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Release History &mdash; bluesky 1.6.0rc1.post2+g7bb9687 documentation</title>
+  <title>Release History &mdash; bluesky 1.6.0rc1.post4+gd26253e documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'./',
-              VERSION:'1.6.0rc1.post2+g7bb9687',
+              VERSION:'1.6.0rc1.post4+gd26253e',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -69,7 +69,7 @@
             
             
               <div class="version">
-                1.6.0rc1.post2+g7bb9687
+                1.6.0rc1.post4+gd26253e
               </div>
             
           
@@ -383,19 +383,19 @@ users in the context of using bluesky from Jupyter notebooks.</p>
 helpful error messages, enumerated further below.</p>
 <div class="section" id="event-loop-re-factor">
 <h3>Event loop re-factor<a class="headerlink" href="#event-loop-re-factor" title="Permalink to this headline">¶</a></h3>
-<p>Previously, we had been repeatedly starting and stopping the asyncio
-event loop in <cite>~bluesky.RunEngine.__call__</cite>,
-<cite>~bluesky.RunEngine.request_pause</cite>, <cite>~bluesky.RunEngine.stop</cite>, in
-<cite>~bluesky.RunEngine.abort</cite>, <cite>~bluesky.RunEngine.halt</cite>, and
-<cite>~bluesky.RunEngine.resume</cite>.  This worked, but is bad practice.  It
-complicates attempts to integrate with the event loop with other
-tools.  Further, because as of tornado 5, tornado reports its self as
-an asyncio event loop so attempts to start another asyncio event loop
-inside of a task fails which means bluesky will not run in a jupyter
-notebook.  To fix this we now continuously run the event loop on a
-background thread and the <cite>~bluesky.RunEngine</cite> object manages the
-interaction with creating tasks on that event loop.  To first order,
-users should not notice this change, however details of how</p>
+<p>Previously, the <code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code> had been repeatedly starting and
+stopping the asyncio event loop in <code class="xref py py-meth docutils literal"><span class="pre">__call__()</span></code>,
+<code class="xref py py-meth docutils literal"><span class="pre">request_pause()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">stop()</span></code>, in
+<code class="xref py py-meth docutils literal"><span class="pre">abort()</span></code>, <code class="xref py py-meth docutils literal"><span class="pre">halt()</span></code>, and
+<code class="xref py py-meth docutils literal"><span class="pre">resume()</span></code>.  This worked, but is bad practice.  It
+complicates attempts to integrate with the event loop with other tools.
+Further, because as of tornado 5, tornado reports its self as an asyncio event
+loop so attempts to start another asyncio event loop inside of a task fails
+which means bluesky will not run in a jupyter notebook.  To fix this we now
+continuously run the event loop on a background thread and the
+<code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code> object manages the interaction with creating tasks
+on that event loop.  To first order, users should not notice this change,
+however details of how</p>
 <div class="section" id="api-changes">
 <h4>API Changes<a class="headerlink" href="#api-changes" title="Permalink to this headline">¶</a></h4>
 <div class="section" id="install-qt-kicker-deprecated">
@@ -415,21 +415,22 @@ Qt event loop directly.</p>
 </div>
 <div class="section" id="during-task-kwarg-to-runengine-init">
 <h5><em>during_task</em> kwarg to <code class="xref py py-meth docutils literal"><span class="pre">RunEngine.__init__()</span></code><a class="headerlink" href="#during-task-kwarg-to-runengine-init" title="Permalink to this headline">¶</a></h5>
-<p>We need to block the main thread in <cite>.RunEngine.__call__</cite> (and
-<cite>.RunEngine.resume</cite>) until the user supplied plan is complete.
+<p>We need to block the main thread in <code class="xref py py-meth docutils literal"><span class="pre">__call__()</span></code> (and
+<code class="xref py py-meth docutils literal"><span class="pre">resume()</span></code>) until the user supplied plan is complete.
 Previously, we would do this by calling <code class="docutils literal"><span class="pre">self.loop.run_forever()</span></code> to
 start the asyncio event loop.  We would then stop the event loop an
-the bottom of <cite>.RunEngine._run</cite> and in <cite>~.RunEngine.request_pause</cite> to
-un-block the main thread and return control to the user terminal.
-Now we must find an alternative way to achieve this effect.</p>
-<p>There is a a <cite>Threading.Event</cite> on the <cite>.RunEngine</cite> that will be set
-when the task for <cite>.RunEngine._run</cite> in completed, however we can not
-simple wait on that event as that would again cause the Qt windows to
-freeze.  We also do not want to bake a Matplotlib / Qt dependency
-directly into the <cite>.RunEngine</cite> so we added a hook, set at init time,
-for a function that passed the <cite>~Thread.Event</cite> and is responsible for
-blocking until it is set.  This function can do other things (such as
-run the Qt event loop) during that time.  The required signature is</p>
+the bottom of <code class="xref py py-meth docutils literal"><span class="pre">_run()</span></code> and in
+<code class="xref py py-meth docutils literal"><span class="pre">request_pause()</span></code> to un-block the main thread and return
+control to the user terminal.  Now we must find an alternative way to achieve
+this effect.</p>
+<p>There is a a <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.7)"><code class="xref py py-class docutils literal"><span class="pre">threading.Event</span></code></a> on the <code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code> that
+will be set when the task for <code class="xref py py-meth docutils literal"><span class="pre">_run()</span></code> in completed,
+however we can not simple wait on that event as that would again cause the Qt
+windows to freeze.  We also do not want to bake a Matplotlib / Qt dependency
+directly into the <code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code> so we added a hook, set at init
+time, for a function that passed the <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.7)"><code class="xref py py-class docutils literal"><span class="pre">threading.Event</span></code></a> and is
+responsible for blocking until it is set.  This function can do other things
+(such as run the Qt event loop) during that time.  The required signature is</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">blocking_func</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="s2">&quot;Returns when ev is set&quot;</span>
 </pre></div>
@@ -443,7 +444,7 @@ the case of Matplotlib not being imported.</p>
 result in re-using the coroutines passed through.  This has always
 been broken, but due to the way were stopping the event loop to pause
 the scan it was passing tests.</p>
-<p>Instead of directly passing the values passed into <cite>asyncio.wait</cite>, we
+<p>Instead of directly passing the values passed into <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait" title="(in Python v3.7)"><code class="xref py py-func docutils literal"><span class="pre">asyncio.wait()</span></code></a>, we
 now expect that the iterable passed in is callables with the signature:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">fut_fac</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">awaitable</span><span class="p">:</span>
     <span class="s1">&#39;This must work multiple times&#39;</span>
