@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.10.0.post21+g3d755ea documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.10.0.post44+gea141f1 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.10.0.post21+g3d755ea
+                1.10.0.post44+gea141f1
               </div>
             
           
@@ -1198,6 +1198,173 @@
         <span class="n">datum</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;datum_id&#39;</span><span class="p">:</span> <span class="n">datum_id</span><span class="p">,</span> <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="n">datum_kwargs</span><span class="p">,</span>
                  <span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">resource</span><span class="p">}</span>
         <span class="k">yield</span> <span class="n">datum</span></div>
+
+
+<span class="k">def</span> <span class="nf">rechunk_event_pages</span><span class="p">(</span><span class="n">event_pages</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resizes the event_pages in a iterable of event_pages.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_pages: Iterabile</span>
+<span class="sd">        An iterable of event_pages</span>
+<span class="sd">    chunk_size: integer</span>
+<span class="sd">        Size of pages to yield</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    event_page : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">remainder</span> <span class="o">=</span> <span class="n">chunk_size</span>
+    <span class="n">chunk_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">page_chunks</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">remainder</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Yields chunks of a event_page.</span>
+<span class="sd">        The first chunk will be of size remainder, the following chunks will be</span>
+<span class="sd">        of size chunk_size. The last chunk will be what ever is left over.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="n">page_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># Number of events in the page.</span>
+
+        <span class="c1"># Make a list of the chunk indexes.</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)]</span>
+        <span class="n">chunks</span><span class="o">.</span><span class="n">extend</span><span class="p">([(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span>
+                       <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">remainder</span><span class="p">,</span> <span class="n">page_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">)])</span>
+
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+                   <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+                   <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+                            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()},</span>
+                   <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span> <span class="n">stop</span><span class="p">]</span>
+                                  <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()},</span>
+                   <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+                              <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}}</span>
+
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">event_pages</span><span class="p">:</span>
+        <span class="n">new_chunks</span> <span class="o">=</span> <span class="n">page_chunks</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">new_chunks</span><span class="p">:</span>
+            <span class="n">remainder</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>  <span class="c1"># Subtract the size of the chunk.</span>
+            <span class="n">chunk_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">remainder</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">merge_event_pages</span><span class="p">(</span><span class="n">chunk_list</span><span class="p">)</span>
+                <span class="n">remainder</span> <span class="o">=</span> <span class="n">chunk_size</span>
+                <span class="n">chunk_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">chunk_list</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">merge_event_pages</span><span class="p">(</span><span class="n">chunk_list</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">merge_event_pages</span><span class="p">(</span><span class="n">event_pages</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combines a iterable of event_pages to a single event_page.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_pages: Iterabile</span>
+<span class="sd">        An iterable of event_pages</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ------</span>
+<span class="sd">    event_page : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pages</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">event_pages</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span>
+                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()},</span>
+            <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span>
+                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()},</span>
+            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span>
+                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}}</span>
+
+
+<span class="k">def</span> <span class="nf">rechunk_datum_pages</span><span class="p">(</span><span class="n">datum_pages</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resizes the datum_pages in a iterable of event_pages.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    datum_pages: Iterabile</span>
+<span class="sd">        An iterable of datum_pages</span>
+<span class="sd">    chunk_size: integer</span>
+<span class="sd">        Size of pages to yield</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    datum_page : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">remainder</span> <span class="o">=</span> <span class="n">chunk_size</span>
+    <span class="n">chunk_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">page_chunks</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">remainder</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Yields chunks of a datum_page.</span>
+<span class="sd">        The first chunk will be of size remainder, the following chunks will be</span>
+<span class="sd">        of size chunk_size. The last chunk will be what ever is left over.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]</span>
+        <span class="n">page_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>  <span class="c1"># Number of datum in the page.</span>
+
+        <span class="c1"># Make a list of the chunk indexes.</span>
+        <span class="n">chunks</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">0</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)]</span>
+        <span class="n">chunks</span><span class="o">.</span><span class="n">extend</span><span class="p">([(</span><span class="n">i</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">chunk_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span>
+                       <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">remainder</span><span class="p">,</span> <span class="n">page_size</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">)])</span>
+
+        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">chunks</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">],</span>
+                   <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+                   <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">]</span>
+                                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">page</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}}</span>
+
+    <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">datum_pages</span><span class="p">:</span>
+        <span class="n">new_chunks</span> <span class="o">=</span> <span class="n">page_chunks</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="n">remainder</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">new_chunks</span><span class="p">:</span>
+            <span class="n">remainder</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="n">chunk</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>  <span class="c1"># Subtract the size of the chunk.</span>
+            <span class="n">chunk_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">remainder</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">merge_datum_pages</span><span class="p">(</span><span class="n">chunk_list</span><span class="p">)</span>
+                <span class="n">remainder</span> <span class="o">=</span> <span class="n">chunk_size</span>
+                <span class="n">chunk_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">chunk_list</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">merge_datum_pages</span><span class="p">(</span><span class="n">chunk_list</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">merge_datum_pages</span><span class="p">(</span><span class="n">datum_pages</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combines a iterable of datum_pages to a single datum_page.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    datum_pages: Iterabile</span>
+<span class="sd">        An iterable of datum_pages</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ------</span>
+<span class="sd">    datum_page : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pages</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">datum_pages</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;resource&#39;</span><span class="p">],</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+            <span class="s1">&#39;datum_kwargs&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span>
+                    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;datum_kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()}}</span>
 
 
 <span class="k">def</span> <span class="nf">bulk_events_to_event_pages</span><span class="p">(</span><span class="n">bulk_events</span><span class="p">):</span>
