@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Plans &mdash; bluesky 1.6.0rc1.post4+gd26253e documentation</title>
+  <title>Plans &mdash; bluesky 1.6.0rc1.post13+gf05f03a documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'./',
-              VERSION:'1.6.0rc1.post4+gd26253e',
+              VERSION:'1.6.0rc1.post13+gf05f03a',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.6.0rc1.post4+gd26253e
+                1.6.0rc1.post13+gf05f03a
               </div>
             
           
@@ -491,6 +491,44 @@ documentation.</p>
 <span class="n">RE</span><span class="p">(</span><span class="n">count</span><span class="p">([</span><span class="n">noisy_det</span><span class="p">],</span> <span class="n">num</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Why doesn’t <a class="reference internal" href="generated/bluesky.plans.count.html#bluesky.plans.count" title="bluesky.plans.count"><code class="xref py py-func docutils literal"><span class="pre">count()</span></code></a> have an <code class="docutils literal"><span class="pre">exposure_time</span></code> parameter?</p>
+<p>Modern CCD detectors typically parametrize exposure time with <em>multiple</em>
+parameters (acquire time, acquire period, num exposures, …) as do scalers
+(preset time, auto count time). There is no one “exposure time” that can be
+applied to all detectors.</p>
+<p>Additionally, when using multiple detectors as in <code class="docutils literal"><span class="pre">count([det1,</span> <span class="pre">det2]))</span></code>,
+the user would need to provide a separate exposure time for each detector in
+the general case, which would grow wordy.</p>
+<p>One option is to set the time-related parameter(s) as a separate step.</p>
+<p>For interactive use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Just an example. Your detector might have different names or numbers of</span>
+<span class="c1"># exposure-related parameters---which is the point.</span>
+<span class="n">det</span><span class="o">.</span><span class="n">exposure_time</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">det</span><span class="o">.</span><span class="n">acquire_period</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="mf">3.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>From a plan:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># Just an example. Your detector might have different names or numbers of</span>
+<span class="c1"># exposure-related parameters---which is the point.</span>
+ <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plan_stubs</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span>
+     <span class="n">det</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span>
+     <span class="n">det</span><span class="o">.</span><span class="n">acquire_period</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Another is to write a custom plan that wraps <a class="reference internal" href="generated/bluesky.plans.count.html#bluesky.plans.count" title="bluesky.plans.count"><code class="xref py py-func docutils literal"><span class="pre">count()</span></code></a> and sets the
+exposure time. This plan can encode the details that bluesky in general
+can’t know.</p>
+<div class="last highlight-python"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">count_with_time</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">delay</span><span class="p">,</span> <span class="n">exposure_time</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="c1"># Assume all detectors have one exposure time component called</span>
+    <span class="c1"># &#39;exposure_time&#39; that fully specifies its exposure.</span>
+    <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="n">detectors</span><span class="p">:</span>
+        <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plan_stubs</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">detector</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">,</span> <span class="n">exposure_time</span><span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">num</span><span class="p">,</span> <span class="n">delay</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="n">md</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
 <table border="1" class="longtable docutils">
 <colgroup>
 <col width="10%" />
@@ -525,6 +563,46 @@ pseudo-axis. It’s all the same to the plans. Examples:</p>
 </div>
 <div class="figure">
 <img alt="_images/plans-2.png" src="_images/plans-2.png" />
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Why don’t scans have a <code class="docutils literal"><span class="pre">delay</span></code> parameter?</p>
+<p>You may have noticed that <a class="reference internal" href="generated/bluesky.plans.count.html#bluesky.plans.count" title="bluesky.plans.count"><code class="xref py py-func docutils literal"><span class="pre">count()</span></code></a> has a <code class="docutils literal"><span class="pre">delay</span></code> parameter but none
+of the scans do. This is intentional.</p>
+<p>The common reason for wanting a delay in a scan is to allow a motor to
+settle or a temperature controller to reach equilibrium. It is better to
+configure this on the respective devices, so that scans will always add the
+appropriate delay for the particular device being scanned.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">motor</span><span class="o">.</span><span class="n">settle_time</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">temperature_controller</span><span class="o">.</span><span class="n">settle_time</span> <span class="o">=</span> <span class="mi">10</span>
+</pre></div>
+</div>
+<p>For many cases, this is more convenient and more robust than typing a delay
+parameter in every invocation of the scan. You only have to set it once, and
+it applies thereafter.</p>
+<p>This is why bluesky leaves <code class="docutils literal"><span class="pre">delay</span></code> out of the scans, to guide users toward
+an approach that will likely be a better fit than the one that might occur
+to them first. For situations where a <code class="docutils literal"><span class="pre">delay</span></code> parameter really is the
+right tool for the job, it is of course always possible to add a <code class="docutils literal"><span class="pre">delay</span></code>
+parameter yourself by writing a custom plan. Here is one approach, using a
+<a class="reference internal" href="#per-step-hook"><span class="std std-ref">per_step hook</span></a>.</p>
+<div class="last highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">bluesky.plans</span>
+<span class="kn">import</span> <span class="nn">bluesky.plan_stubs</span>
+
+<span class="k">def</span> <span class="nf">scan_with_delay</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="s2">&quot;Accepts all the normal &#39;scan&#39; parameters, plus an optional delay.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">one_nd_step_with_delay</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">):</span>
+        <span class="s2">&quot;This is a copy of bluesky.plan_stubs.one_nd_step with a sleep added.&quot;</span>
+        <span class="n">motors</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plan_stubs</span><span class="o">.</span><span class="n">move_per_step</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plan_stubs</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plan_stubs</span><span class="o">.</span><span class="n">trigger_and_read</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">motors</span><span class="p">))</span>
+
+    <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;per_step&#39;</span><span class="p">,</span> <span class="n">one_nd_step_with_delay</span><span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">bluesky</span><span class="o">.</span><span class="n">plans</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 <table border="1" class="longtable docutils">
 <colgroup>
@@ -1041,7 +1119,7 @@ beginning of each run and collect their data at the end</li>
 <ul class="simple">
 <li><a class="reference internal" href="generated/bluesky.preprocessors.baseline_wrapper.html#bluesky.preprocessors.baseline_wrapper" title="bluesky.preprocessors.baseline_wrapper"><code class="xref py py-func docutils literal"><span class="pre">baseline_wrapper()</span></code></a></li>
 <li><a class="reference internal" href="generated/bluesky.preprocessors.monitor_during_wrapper.html#bluesky.preprocessors.monitor_during_wrapper" title="bluesky.preprocessors.monitor_during_wrapper"><code class="xref py py-func docutils literal"><span class="pre">monitor_during_wrapper()</span></code></a></li>
-<li><code class="xref py py-func docutils literal"><span class="pre">flyer_during_wrapper()</span></code></li>
+<li><a class="reference internal" href="generated/bluesky.preprocessors.fly_during_wrapper.html#bluesky.preprocessors.fly_during_wrapper" title="bluesky.preprocessors.fly_during_wrapper"><code class="xref py py-func docutils literal"><span class="pre">fly_during_wrapper()</span></code></a></li>
 </ul>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
