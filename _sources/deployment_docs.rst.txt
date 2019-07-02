@@ -19,6 +19,7 @@ Deployment Procedures
 
 .. toctree::
 
+   deployment/timeline
    deployment/releasing-software
    deployment/resyncing-conda
    deployment/updating-metapackages
