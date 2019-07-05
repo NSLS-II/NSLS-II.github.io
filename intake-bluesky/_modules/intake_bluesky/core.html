@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a9 documentation</title>
+  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a9.post56+g110baec documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a9
+                0.1.0a9.post56+g110baec
               </div>
             
           
@@ -153,11 +153,14 @@
             
   <h1>Source code for intake_bluesky.core</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">event_model</span>
-<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
 <span class="kn">import</span> <span class="nn">dask</span>
 <span class="kn">import</span> <span class="nn">dask.bag</span>
+<span class="kn">from</span> <span class="nn">dask</span> <span class="k">import</span> <span class="n">array</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">heapq</span>
 <span class="kn">import</span> <span class="nn">importlib</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.base</span>
@@ -170,12 +173,11 @@
 <span class="kn">import</span> <span class="nn">numpy</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">xarray</span>
-<span class="kn">import</span> <span class="nn">heapq</span>
 
 
 <span class="k">def</span> <span class="nf">to_event_pages</span><span class="p">(</span><span class="n">get_event_cursor</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Decorator that changes get_event_cursor get_event_pages.</span>
+<span class="sd">    Decorator that changes get_event_cursor to get_event_pages.</span>
 
 <span class="sd">    get_event_cursor yields events, get_event_pages yields event_pages.</span>
 
@@ -201,7 +203,7 @@
 
 <span class="k">def</span> <span class="nf">to_datum_pages</span><span class="p">(</span><span class="n">get_datum_cursor</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Decorator that changes get_datum_cursor get_datum_pages.</span>
+<span class="sd">    Decorator that changes get_datum_cursor to get_datum_pages.</span>
 
 <span class="sd">    get_datum_cursor yields datum, get_datum_pages yields datum_pages.</span>
 
@@ -249,10 +251,9 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    gens : generators</span>
-<span class="sd">        Generators of (name, dict) pairs where the dict contains a &#39;time&#39;</span>
-<span class="sd">        key.</span>
-<span class="sd">     Yields</span>
-<span class="sd">    -------</span>
+<span class="sd">        Generators of (name, dict) pairs where the dict contains a &#39;time&#39; key.</span>
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
 <span class="sd">    val : tuple</span>
 <span class="sd">        The next (name, dict) pair in time order</span>
 
@@ -272,6 +273,40 @@
         <span class="n">_</span><span class="p">,</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span> <span class="o">=</span> <span class="n">heapq</span><span class="o">.</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
         <span class="k">yield</span> <span class="n">val</span>
         <span class="n">safe_next</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">interlace_event_page_chunks</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Take event_page generators and interlace their results by timestamp.</span>
+
+<span class="sd">    This is a modification of https://github.com/bluesky/databroker/pull/378/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gens : generators</span>
+<span class="sd">        Generators of (name, dict) pairs where the dict contains a &#39;time&#39; key.</span>
+<span class="sd">    chunk_size : integer</span>
+<span class="sd">        Size of pages to yield</span>
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    val : tuple</span>
+<span class="sd">        The next (name, dict) pair in time order</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">iters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">iter</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_event_pages</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">]</span>
+    <span class="n">heap</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">safe_next</span><span class="p">(</span><span class="n">indx</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iters</span><span class="p">[</span><span class="n">indx</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iters</span><span class="p">)):</span>
+        <span class="n">safe_next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">heap</span><span class="p">:</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span> <span class="o">=</span> <span class="n">heapq</span><span class="o">.</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">val</span>
 
 
 <div class="viewcode-block" id="documents_to_xarray"><a class="viewcode-back" href="../../api.html#intake_bluesky.core.documents_to_xarray">[docs]</a><span class="k">def</span> <span class="nf">documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span>
@@ -843,9 +878,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _open_dataset below</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">include</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">exclude</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
-            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span>
-        <span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
@@ -911,7 +944,7 @@
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gen_func</span><span class="p">,</span> <span class="n">gen_args</span><span class="p">,</span> <span class="n">gen_kwargs</span><span class="p">,</span> <span class="n">filler</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="n">filler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">filler</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">({})</span>
+            <span class="n">filler</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">({},</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
         <span class="n">document_cache</span> <span class="o">=</span> <span class="n">DocumentCache</span><span class="p">()</span>
 
@@ -1056,6 +1089,185 @@
 
 <span class="n">intake</span><span class="o">.</span><span class="n">registry</span><span class="p">[</span><span class="s1">&#39;remote-bluesky-run&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteBlueskyRun</span>
 <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">container_map</span><span class="p">[</span><span class="s1">&#39;bluesky-run&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteBlueskyRun</span>
+
+
+<span class="k">def</span> <span class="nf">concat_dataarray_pages</span><span class="p">(</span><span class="n">dataarray_pages</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combines a iterable of dataarray_pages to a single dataarray_page.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataarray_pages: Iterabile</span>
+<span class="sd">        An iterable of event_pages with xarray.dataArrays in the data,</span>
+<span class="sd">        timestamp, and filled fields.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ------</span>
+<span class="sd">    event_page : dict</span>
+<span class="sd">        A single event_pages with xarray.dataArrays in the data,</span>
+<span class="sd">        timestamp, and filled fields.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pages</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dataarray_pages</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pages</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="n">data_keys</span> <span class="o">=</span> <span class="n">dataarray_pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">page</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">]))</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">])</span>
+                     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">},</span>
+            <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">])</span>
+                           <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">},</span>
+            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="n">pages</span><span class="p">])</span>
+                       <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}}</span>
+
+
+<span class="k">def</span> <span class="nf">event_page_to_dataarray_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts the event_page&#39;s data, timestamps, and filled to xarray.DataArray.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    event_page: dict</span>
+<span class="sd">        A EventPage document</span>
+<span class="sd">    dims: tuple</span>
+<span class="sd">        Tuple of dimension names associated with the array</span>
+<span class="sd">    coords: dict-like</span>
+<span class="sd">        Dictionary-like container of coordinate arrays</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ------</span>
+<span class="sd">    event_page : dict</span>
+<span class="sd">        An event_pages with xarray.dataArrays in the data,</span>
+<span class="sd">        timestamp, and filled fields.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">coords</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]}</span>
+    <span class="k">if</span> <span class="n">dims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">dims</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span>
+
+    <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="n">data_keys</span> <span class="o">=</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">event_page</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+                     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">},</span>
+            <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">},</span>
+            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                            <span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}}</span>
+
+
+<span class="k">def</span> <span class="nf">dataarray_page_to_dataset_page</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts the dataarray_page&#39;s data, timestamps, and filled to xarray.DataSet.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataarray_page: dict</span>
+<span class="sd">    Returns</span>
+<span class="sd">    ------</span>
+<span class="sd">    dataset_page : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">array_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">,</span> <span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="n">dataarray_page</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">],</span>
+            <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">dataarray_page</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">array_keys</span><span class="p">},</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+            <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">[</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span>
+            <span class="s1">&#39;filled&#39;</span><span class="p">:</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">())}</span>
+
+
+<span class="k">class</span> <span class="nc">DaskFiller</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;DaskFiller inplace is not supported.&quot;</span><span class="p">)</span>
+        <span class="c1"># The DaskFiller will not mutate documents pass in by the user, but it</span>
+        <span class="c1"># will ask the base class to mutate *internal* copies in place, so we</span>
+        <span class="c1"># set inplace=True here, even though the user documents will never be</span>
+        <span class="c1"># modified in place.</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+
+        <span class="nd">@dask</span><span class="o">.</span><span class="n">delayed</span>
+        <span class="k">def</span> <span class="nf">delayed_fill</span><span class="p">(</span><span class="n">event_page</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fill_event_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">event_page</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">])</span>
+
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span>
+        <span class="n">needs_filling</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                         <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">val</span><span class="p">}</span>
+        <span class="n">filled_doc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">needs_filling</span><span class="p">:</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">extract_dtype</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">filled_doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">from_delayed</span><span class="p">(</span>
+                <span class="n">delayed_fill</span><span class="p">(</span><span class="n">filled_doc</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filled_doc</span>
+
+    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+
+        <span class="nd">@dask</span><span class="o">.</span><span class="n">delayed</span>
+        <span class="k">def</span> <span class="nf">delayed_fill</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fill_event</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">])</span>
+
+        <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span>
+        <span class="n">needs_filling</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                         <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">val</span><span class="p">}</span>
+        <span class="n">filled_doc</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">needs_filling</span><span class="p">:</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">extract_dtype</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">filled_doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">from_delayed</span><span class="p">(</span>
+                <span class="n">delayed_fill</span><span class="p">(</span><span class="n">filled_doc</span><span class="p">,</span> <span class="n">key</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filled_doc</span>
+
+
+<span class="k">def</span> <span class="nf">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Work around bug in https://github.com/bluesky/ophyd/pull/746</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Ideally this code would just be</span>
+    <span class="c1"># descriptor[&#39;data_keys&#39;][key][&#39;shape&#39;]</span>
+    <span class="c1"># but we have to do some heuristics to make up for errors in the reporting.</span>
+
+    <span class="c1"># Broken ophyd reports (x, y, 0). We want (num_images, y, x).</span>
+    <span class="n">data_key</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">object_keys</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_keys&#39;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">for</span> <span class="n">object_name</span><span class="p">,</span> <span class="n">data_keys</span> <span class="ow">in</span> <span class="n">object_keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Could not figure out shape of </span><span class="si">{key}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">num_images</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;configuration&#39;</span><span class="p">][</span><span class="n">object_name</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_images&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">num_images</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">shape</span>
+
+
+<span class="k">def</span> <span class="nf">extract_dtype</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Work around the fact that we currently report jsonschema data types.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reported</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">reported</span> <span class="o">==</span> <span class="s1">&#39;array&#39;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span>  <span class="c1"># guess!</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">reported</span>
 </pre></div>
 
            </div>
