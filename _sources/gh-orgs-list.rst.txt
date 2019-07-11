@@ -7,7 +7,8 @@ NSLS-II GitHub organizations
 * `NSLS-II-CHX <https://github.com/NSLS-II-CHX>`_
 * `NSLS-II-CMS <https://github.com/NSLS-II-CMS>`_
 * `NSLS-II-CSX <https://github.com/NSLS-II-CSX>`_
-* `NSLS-II-ESM <https://github.com/NSLS-II-ESM>`_
+* `NSLS-II-ESM-1 <https://github.com/NSLS-II-ESM-1>`_
+* `NSLS-II-ESM-2 <https://github.com/NSLS-II-ESM-2>`_
 * `NSLS-II-FIS <https://github.com/NSLS-II-FIS>`_
 * `NSLS-II-FMX <https://github.com/NSLS-II-FMX>`_
 * `NSLS-II-FXI <https://github.com/NSLS-II-FXI>`_
