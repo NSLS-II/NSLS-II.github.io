@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.best_effort &mdash; bluesky 1.6.0rc1.post46+gf18f759 documentation</title>
+  <title>bluesky.callbacks.best_effort &mdash; bluesky 1.6.0rc1.post48+g833986d documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../../',
-              VERSION:'1.6.0rc1.post46+gf18f759',
+              VERSION:'1.6.0rc1.post48+g833986d',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc1.post46+gf18f759
+                1.6.0rc1.post48+g833986d
               </div>
             
           
@@ -373,173 +373,176 @@
                 <span class="n">fixed_dim_fields</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span> <span class="o">=</span> <span class="n">fixed_dim_fields</span>
 
-
-        <span class="c1"># ## DECIDE WHICH KIND OF PLOT CAN BE USED ## #</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">noplot_streams</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">columns</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_points&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span>
-                <span class="p">(</span><span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">)</span> <span class="ow">and</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">omit_single_point_plot</span><span class="p">):</span>
-            <span class="k">return</span>
-
-        <span class="c1"># This is a heuristic approach until we think of how to hint this in a</span>
-        <span class="c1"># generalizable way.</span>
-        <span class="k">if</span> <span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">:</span>
-            <span class="n">dim_fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">dim_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>  <span class="c1"># &#39;time&#39; once LivePlot can do that</span>
-
-        <span class="c1"># Create a figure or reuse an existing one.</span>
-
-        <span class="n">fig_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> vs </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">columns</span><span class="p">)),</span>
-                                     <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)))</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overplot</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="c1"># If any open figure matches &#39;figname {number}&#39;, use it. If there</span>
-            <span class="c1"># are multiple, the most recently touched one will be used.</span>
-            <span class="n">pat1</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="s1">&#39;$&#39;</span><span class="p">)</span>
-            <span class="n">pat2</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39; \d+$&#39;</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_figlabels</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">pat1</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pat2</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
-                    <span class="n">fig_name</span> <span class="o">=</span> <span class="n">label</span>
-                    <span class="k">break</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">fig_name</span><span class="p">):</span>
-                <span class="c1"># Generate a unique name by appending a number.</span>
-                <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
-                    <span class="n">new_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fig_name</span><span class="p">,</span> <span class="n">number</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="ow">not</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">new_name</span><span class="p">):</span>
-                        <span class="n">fig_name</span> <span class="o">=</span> <span class="n">new_name</span>
-                        <span class="k">break</span>
-        <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">ndims</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
-            <span class="c1"># we need 1 or 2 dims to do anything, do not make empty figures</span>
-            <span class="k">return</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fig_factory</span><span class="p">:</span>
-            <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fig_factory</span><span class="p">(</span><span class="n">fig_name</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fig_name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span><span class="p">:</span>
-            <span class="c1"># This is apparently a fresh figure. Make axes.</span>
-            <span class="c1"># The complexity here is due to making a shared x axis. This can be</span>
-            <span class="c1"># simplified when Figure supports the `subplots` method in a future</span>
-            <span class="c1"># release of matplotlib.</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mf">6.4</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">950</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="o">*</span> <span class="mi">400</span><span class="p">)</span> <span class="o">/</span> <span class="n">fig</span><span class="o">.</span><span class="n">dpi</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)):</span>
-                <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-                        <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
-                    <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-                        <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">,</span> <span class="s1">&#39;sharey&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we now support 3D?!&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span>
-                                         <span class="o">**</span><span class="n">share_kwargs</span><span class="p">)</span>
-        <span class="n">axes</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span>
-
         <span class="c1"># Ensure that no independent variables (&#39;dimensions&#39;) are</span>
         <span class="c1"># duplicated here.</span>
         <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_dim_fields</span><span class="p">]</span>
 
-        <span class="c1"># ## LIVE PLOT AND PEAK ANALYSIS ## #</span>
+        <span class="c1"># ## DECIDE WHICH KIND OF PLOT CAN BE USED ## #</span>
 
-        <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">x_key</span><span class="p">,</span> <span class="o">=</span> <span class="n">dim_fields</span>
-            <span class="k">for</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
-                <span class="n">dtype</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">y_key</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="s1">&#39;integer&#39;</span><span class="p">):</span>
-                    <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Omitting </span><span class="si">{}</span><span class="s2"> from plot because dtype is </span><span class="si">{}</span><span class="s2">&quot;</span>
-                         <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">y_key</span><span class="p">,</span> <span class="n">dtype</span><span class="p">))</span>
-                    <span class="k">continue</span>
-                <span class="c1"># Create an instance of LivePlot and an instance of PeakStats.</span>
-                <span class="n">live_plot</span> <span class="o">=</span> <span class="n">LivePlotPlusPeaks</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
-                                              <span class="n">peak_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="p">)</span>
-                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
-                <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                <span class="n">peak_stats</span> <span class="o">=</span> <span class="n">PeakStats</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">)</span>
-                <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
-                <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="n">plot_data</span> <span class="o">=</span> <span class="kc">True</span>
 
-                <span class="c1"># Stash them in state.</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_plot</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">peak_stats</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plots_enabled</span><span class="p">:</span>
+            <span class="n">plot_data</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">stream_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">noplot_streams</span><span class="p">:</span>
+            <span class="n">plot_data</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">plot_data</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_points&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="p">(</span><span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">omit_single_point_plot</span><span class="p">):</span>
+            <span class="n">plot_data</span> <span class="o">=</span> <span class="kc">False</span>
 
-            <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-            <span class="c1"># Decide whether to use LiveGrid or LiveScatter. LiveScatter is the</span>
-            <span class="c1"># safer one to use, so it is the fallback..</span>
-            <span class="n">gridding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gridding&#39;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">gridding</span> <span class="o">==</span> <span class="s1">&#39;rectilinear&#39;</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">dim_fields</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">extents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;extents&#39;</span><span class="p">]</span>
-                    <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
-                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Need both &#39;shape&#39; and &#39;extents&#39; in plan metadata to &quot;</span>
-                         <span class="s2">&quot;create LiveGrid.&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">data_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extents</span><span class="p">])</span>
-                    <span class="n">y_step</span><span class="p">,</span> <span class="n">x_step</span> <span class="o">=</span> <span class="n">data_range</span> <span class="o">/</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
-                    <span class="n">adjusted_extent</span> <span class="o">=</span> <span class="p">[</span><span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                                       <span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                                       <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                                       <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span>
-                    <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
-                        <span class="c1"># MAGIC NUMBERS based on what tacaswell thinks looks OK</span>
-                        <span class="n">data_aspect_ratio</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">data_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                        <span class="n">MAR</span> <span class="o">=</span> <span class="mi">2</span>
-                        <span class="k">if</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">MAR</span> <span class="o">&lt;</span> <span class="n">data_aspect_ratio</span> <span class="o">&lt;</span> <span class="n">MAR</span><span class="p">):</span>
-                            <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;equal&#39;</span>
-                            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
-                        <span class="k">else</span><span class="p">:</span>
-                            <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;auto&#39;</span>
-                            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;datalim&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">plot_data</span><span class="p">:</span>
 
-                        <span class="n">live_grid</span> <span class="o">=</span> <span class="n">LiveGrid</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
-                                             <span class="n">xlabel</span><span class="o">=</span><span class="n">fast</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="n">slow</span><span class="p">,</span>
-                                             <span class="n">extent</span><span class="o">=</span><span class="n">adjusted_extent</span><span class="p">,</span>
-                                             <span class="n">aspect</span><span class="o">=</span><span class="n">aspect</span><span class="p">,</span>
-                                             <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
-
-                        <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
-                        <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_grid</span>
+            <span class="c1"># This is a heuristic approach until we think of how to hint this in a</span>
+            <span class="c1"># generalizable way.</span>
+            <span class="k">if</span> <span class="n">stream_name</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_stream</span><span class="p">:</span>
+                <span class="n">dim_fields</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim_fields</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span> <span class="o">=</span> <span class="n">dim_fields</span>
-                <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                <span class="n">dim_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>  <span class="c1"># &#39;time&#39; once LivePlot can do that</span>
+
+            <span class="c1"># Create a figure or reuse an existing one.</span>
+
+            <span class="n">fig_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> vs </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">columns</span><span class="p">)),</span>
+                                        <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)))</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overplot</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># If any open figure matches &#39;figname {number}&#39;, use it. If there</span>
+                <span class="c1"># are multiple, the most recently touched one will be used.</span>
+                <span class="n">pat1</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="s1">&#39;$&#39;</span><span class="p">)</span>
+                <span class="n">pat2</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;^&#39;</span> <span class="o">+</span> <span class="n">fig_name</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39; \d+$&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">plt</span><span class="o">.</span><span class="n">get_figlabels</span><span class="p">():</span>
+                    <span class="k">if</span> <span class="n">pat1</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="ow">or</span> <span class="n">pat2</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">label</span><span class="p">):</span>
+                        <span class="n">fig_name</span> <span class="o">=</span> <span class="n">label</span>
+                        <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">fig_name</span><span class="p">):</span>
+                    <span class="c1"># Generate a unique name by appending a number.</span>
+                    <span class="k">for</span> <span class="n">number</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+                        <span class="n">new_name</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1"> </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fig_name</span><span class="p">,</span> <span class="n">number</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">plt</span><span class="o">.</span><span class="n">fignum_exists</span><span class="p">(</span><span class="n">new_name</span><span class="p">):</span>
+                            <span class="n">fig_name</span> <span class="o">=</span> <span class="n">new_name</span>
+                            <span class="k">break</span>
+            <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dim_fields</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">ndims</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="c1"># we need 1 or 2 dims to do anything, do not make empty figures</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fig_factory</span><span class="p">:</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fig_factory</span><span class="p">(</span><span class="n">fig_name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">fig_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span><span class="p">:</span>
+                <span class="c1"># This is apparently a fresh figure. Make axes.</span>
+                <span class="c1"># The complexity here is due to making a shared x axis. This can be</span>
+                <span class="c1"># simplified when Figure supports the `subplots` method in a future</span>
+                <span class="c1"># release of matplotlib.</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">set_size_inches</span><span class="p">(</span><span class="mf">6.4</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">950</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span> <span class="o">*</span> <span class="mi">400</span><span class="p">)</span> <span class="o">/</span> <span class="n">fig</span><span class="o">.</span><span class="n">dpi</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)):</span>
+                    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
+                        <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                            <span class="n">share_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;sharex&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">,</span> <span class="s1">&#39;sharey&#39;</span><span class="p">:</span> <span class="n">ax</span><span class="p">}</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we now support 3D?!&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span>
+                                            <span class="o">**</span><span class="n">share_kwargs</span><span class="p">)</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">axes</span>
+
+            <span class="c1"># ## LIVE PLOT AND PEAK ANALYSIS ## #</span>
+
+            <span class="k">if</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="n">x_key</span><span class="p">,</span> <span class="o">=</span> <span class="n">dim_fields</span>
+                <span class="k">for</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                    <span class="n">dtype</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">y_key</span><span class="p">][</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;number&#39;</span><span class="p">,</span> <span class="s1">&#39;integer&#39;</span><span class="p">):</span>
+                        <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Omitting </span><span class="si">{}</span><span class="s2"> from plot because dtype is </span><span class="si">{}</span><span class="s2">&quot;</span>
+                            <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">y_key</span><span class="p">,</span> <span class="n">dtype</span><span class="p">))</span>
+                        <span class="k">continue</span>
+                    <span class="c1"># Create an instance of LivePlot and an instance of PeakStats.</span>
+                    <span class="n">live_plot</span> <span class="o">=</span> <span class="n">LivePlotPlusPeaks</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span>
+                                                <span class="n">peak_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="p">)</span>
+                    <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                    <span class="n">live_plot</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="n">peak_stats</span> <span class="o">=</span> <span class="n">PeakStats</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_key</span><span class="p">)</span>
+                    <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                    <span class="n">peak_stats</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+                    <span class="c1"># Stash them in state.</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_plot</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_peak_stats</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">y_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">peak_stats</span>
+
+                <span class="k">for</span> <span class="n">ax</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">ndims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># Decide whether to use LiveGrid or LiveScatter. LiveScatter is the</span>
+                <span class="c1"># safer one to use, so it is the fallback..</span>
+                <span class="n">gridding</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hints&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gridding&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">gridding</span> <span class="o">==</span> <span class="s1">&#39;rectilinear&#39;</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="n">slow</span><span class="p">,</span> <span class="n">fast</span> <span class="o">=</span> <span class="n">dim_fields</span>
                     <span class="k">try</span><span class="p">:</span>
                         <span class="n">extents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;extents&#39;</span><span class="p">]</span>
+                        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
                     <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                        <span class="n">xlim</span> <span class="o">=</span> <span class="n">ylim</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Need both &#39;shape&#39; and &#39;extents&#39; in plan metadata to &quot;</span>
+                            <span class="s2">&quot;create LiveGrid.&quot;</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span> <span class="o">=</span> <span class="n">extents</span>
-                    <span class="n">live_scatter</span> <span class="o">=</span> <span class="n">LiveScatter</span><span class="p">(</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
-                                               <span class="n">xlim</span><span class="o">=</span><span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="n">ylim</span><span class="p">,</span>
-                                               <span class="c1"># Let clim autoscale.</span>
-                                               <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
-                    <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
-                    <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_scatter</span>
+                        <span class="n">data_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">e</span><span class="p">))</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">extents</span><span class="p">])</span>
+                        <span class="n">y_step</span><span class="p">,</span> <span class="n">x_step</span> <span class="o">=</span> <span class="n">data_range</span> <span class="o">/</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">s</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">]</span>
+                        <span class="n">adjusted_extent</span> <span class="o">=</span> <span class="p">[</span><span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">extents</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">x_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                                        <span class="n">extents</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">y_step</span> <span class="o">/</span> <span class="mi">2</span><span class="p">]</span>
+                        <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                            <span class="c1"># MAGIC NUMBERS based on what tacaswell thinks looks OK</span>
+                            <span class="n">data_aspect_ratio</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">data_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">data_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                            <span class="n">MAR</span> <span class="o">=</span> <span class="mi">2</span>
+                            <span class="k">if</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">MAR</span> <span class="o">&lt;</span> <span class="n">data_aspect_ratio</span> <span class="o">&lt;</span> <span class="n">MAR</span><span class="p">):</span>
+                                <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;equal&#39;</span>
+                                <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;box&#39;</span><span class="p">)</span>
+                            <span class="k">else</span><span class="p">:</span>
+                                <span class="n">aspect</span> <span class="o">=</span> <span class="s1">&#39;auto&#39;</span>
+                                <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s1">&#39;datalim&#39;</span><span class="p">)</span>
 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we do not support 3D+ in BEC yet &quot;</span>
-                                      <span class="s2">&quot;(and it should have bailed above)&quot;</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-            <span class="k">pass</span>
+                            <span class="n">live_grid</span> <span class="o">=</span> <span class="n">LiveGrid</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
+                                                <span class="n">xlabel</span><span class="o">=</span><span class="n">fast</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="n">slow</span><span class="p">,</span>
+                                                <span class="n">extent</span><span class="o">=</span><span class="n">adjusted_extent</span><span class="p">,</span>
+                                                <span class="n">aspect</span><span class="o">=</span><span class="n">aspect</span><span class="p">,</span>
+                                                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+
+                            <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                            <span class="n">live_grid</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_live_grids</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_grid</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span> <span class="o">=</span> <span class="n">dim_fields</span>
+                    <span class="k">for</span> <span class="n">I_key</span><span class="p">,</span> <span class="n">ax</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">extents</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;extents&#39;</span><span class="p">]</span>
+                        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                            <span class="n">xlim</span> <span class="o">=</span> <span class="n">ylim</span> <span class="o">=</span> <span class="kc">None</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span> <span class="o">=</span> <span class="n">extents</span>
+                        <span class="n">live_scatter</span> <span class="o">=</span> <span class="n">LiveScatter</span><span class="p">(</span><span class="n">x_key</span><span class="p">,</span> <span class="n">y_key</span><span class="p">,</span> <span class="n">I_key</span><span class="p">,</span>
+                                                <span class="n">xlim</span><span class="o">=</span><span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="n">ylim</span><span class="p">,</span>
+                                                <span class="c1"># Let clim autoscale.</span>
+                                                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+                        <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">)</span>
+                        <span class="n">live_scatter</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_live_scatters</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]][</span><span class="n">I_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">live_scatter</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;we do not support 3D+ in BEC yet &quot;</span>
+                                        <span class="s2">&quot;(and it should have bailed above)&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">pass</span>
 
         <span class="c1"># ## TABLE ## #</span>
 
