@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Recording Metadata &mdash; bluesky 1.6.0rc1.post48+g833986d documentation</title>
+  <title>Recording Metadata &mdash; bluesky 1.6.0rc1.post52+gfb290d4 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'./',
-              VERSION:'1.6.0rc1.post48+g833986d',
+              VERSION:'1.6.0rc1.post52+gfb290d4',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.6.0rc1.post48+g833986d
+                1.6.0rc1.post52+gfb290d4
               </div>
             
           
@@ -427,49 +427,28 @@ dictionary interface. The simplest is just a plain Python dictionary.</p>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="p">{}</span>
 </pre></div>
 </div>
-<p>To persist metadata between sessions, bluesky uses
-<code class="xref py py-class docutils literal"><span class="pre">HistoryDict</span></code> — a Python dictionary backed by a sqlite
-database file. Any changes made to <code class="docutils literal"><span class="pre">RE.md</span></code> are synced to the file before
-IPython exits.</p>
-<p>The easiest way to create a <code class="xref py py-class docutils literal"><span class="pre">HistoryDict</span></code> is to use the
-convenience function, <a class="reference internal" href="#bluesky.utils.get_history" title="bluesky.utils.get_history"><code class="xref py py-func docutils literal"><span class="pre">get_history()</span></code></a>. It searches for a
-pre-existing history file in one of several standard locations and, if it
-doesn’t find one, it creates a new one. (See the
-<a class="reference internal" href="#bluesky.utils.get_history" title="bluesky.utils.get_history"><code class="xref py py-func docutils literal"><span class="pre">get_history()</span></code></a> documentation below for details, including
-the search path.)</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.utils</span> <span class="kn">import</span> <span class="n">get_history</span>
-<span class="n">RE</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">get_history</span><span class="p">()</span>
+<p>To persist metadata between sessions, bluesky recommends
+<code class="xref py py-class docutils literal"><span class="pre">bluesky.utils.PersistentDict</span></code> — a Python dictionary synced with a
+directory of files on disk. Any changes made to <code class="docutils literal"><span class="pre">RE.md</span></code> are synced to the
+file, so the contents of <code class="docutils literal"><span class="pre">RE.md</span></code> can persist between sessions.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bluesky.utils</span> <span class="kn">import</span> <span class="kn">import</span> <span class="nn">PersistentDict</span>
+<span class="n">RE</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">PersistentDict</span><span class="p">(</span><span class="s1">&#39;some/path/here&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Alternatively, create a <code class="docutils literal"><span class="pre">HistoryDict</span></code> manually anywhere you please:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">historydict</span> <span class="kn">import</span> <span class="n">HistoryDict</span>
-<span class="n">RE</span><span class="o">.</span><span class="n">md</span> <span class="o">=</span> <span class="n">HistoryDict</span><span class="p">(</span><span class="s1">&#39;your/path/here&#39;</span><span class="p">)</span>
+<p>Bluesky does not provide a strong recommendation on that path; that a detail
+left to the local deployment.</p>
+<p>Bluesky formerly recommended using <code class="xref py py-class docutils literal"><span class="pre">HistoryDict</span></code> — a
+Python dictionary backed by a sqlite database file. This approach proved
+problematic with the threading introduced in bluesky v1.6.0, so it is no longer
+recommended. If you have been following that recommendation, you should migrate
+your metadata from <cite>~historydict.HistoryDict</cite> to
+<code class="xref py py-class docutils literal"><span class="pre">PersistentDict</span></code>. First, update your configuration to
+make <code class="docutils literal"><span class="pre">RE.md</span></code> a <code class="xref py py-class docutils literal"><span class="pre">PersistentDict</span></code> as shown above. Then,
+migrate like so:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">old_md</span> <span class="o">=</span> <span class="n">get_history</span><span class="p">()</span>
+<span class="n">RE</span><span class="o">.</span><span class="n">md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">old_md</span><span class="p">)</span>
 </pre></div>
 </div>
-<dl class="function">
-<dt id="bluesky.utils.get_history">
-<code class="descclassname">bluesky.utils.</code><code class="descname">get_history</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/utils.html#get_history"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.utils.get_history" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a dict-like object for stashing metadata.</p>
-<p>If historydict is not installed, return a dict.</p>
-<dl class="docutils">
-<dt>If historydict is installed, look for a sqlite file in:</dt>
-<dd><ul class="first last simple">
-<li>$BLUESKY_HISTORY_PATH, if defined</li>
-<li>~/.config/bluesky/bluesky_history.db</li>
-<li>/etc/bluesky/bluesky_history.db</li>
-</ul>
-</dd>
-<dt>If no existing file is found, create a new sqlite file in:</dt>
-<dd><ul class="first last simple">
-<li>$BLUESKY_HISTORY_PATH, if defined</li>
-<li>~/.config/bluesky/bluesky_history.db, otherwise</li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<p>See also the
-<a class="reference external" href="https://github.com/Nikea/historydict#historydict">historydict documentation</a>.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p>The <code class="docutils literal"><span class="pre">RE.md</span></code> object can also be set when the RunEngine is instantiated:</p>
