@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.utils &mdash; bluesky 1.6.0rc1.post62+ge2ff2e2 documentation</title>
+  <title>bluesky.utils &mdash; bluesky 1.6.0rc1.post66+g7441a1b documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc1.post62+ge2ff2e2',
+              VERSION:'1.6.0rc1.post66+g7441a1b',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc1.post62+ge2ff2e2
+                1.6.0rc1.post66+g7441a1b
               </div>
             
           
@@ -1093,36 +1093,51 @@
             <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">register_transform</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&lt;&#39;</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">register_transform</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&lt;&#39;</span><span class="p">,</span> <span class="n">ip</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Register RunEngine IPython magic convenience transform</span>
-
 <span class="sd">    Assuming the default parameters</span>
-
 <span class="sd">    This maps `&lt; stuff(*args, **kwargs)` -&gt; `RE(stuff(*args, **kwargs))`</span>
-
 <span class="sd">    RE is assumed to be available in the global namespace</span>
-
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    RE : str</span>
 <span class="sd">        The name of a valid RunEngine instance in the global IPython namespace</span>
-
 <span class="sd">    prefix : str, optional</span>
 <span class="sd">        The prefix to trigger this transform on.  If this collides with</span>
 <span class="sd">        valid python syntax or an existing transform you are on your own.</span>
+<span class="sd">    ip : IPython shell, optional</span>
+<span class="sd">        If not passed, uses `IPython.get_ipython()` to get the current shell</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="kn">import</span> <span class="nn">IPython</span>
-    <span class="kn">from</span> <span class="nn">IPython.core.inputtransformer</span> <span class="k">import</span> <span class="n">StatelessInputTransformer</span>
 
-    <span class="nd">@StatelessInputTransformer</span><span class="o">.</span><span class="n">wrap</span>
-    <span class="k">def</span> <span class="nf">tr_re</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
-            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">):]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">line</span>
-    <span class="n">ip</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">get_ipython</span><span class="p">()</span>
-    <span class="n">ip</span><span class="o">.</span><span class="n">input_splitter</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
-    <span class="n">ip</span><span class="o">.</span><span class="n">input_transformer_manager</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">ip</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ip</span> <span class="o">=</span> <span class="n">IPython</span><span class="o">.</span><span class="n">get_ipython</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">IPython</span><span class="o">.</span><span class="n">__version__</span> <span class="o">&gt;=</span> <span class="s1">&#39;7&#39;</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">tr_re</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">lines</span>
+            <span class="n">line</span><span class="p">,</span> <span class="o">=</span> <span class="n">lines</span>
+            <span class="n">head</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">tail</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">split</span> <span class="o">==</span> <span class="n">prefix</span> <span class="ow">and</span> <span class="n">head</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{RE}</span><span class="s1">({tail.strip()})</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+            <span class="k">return</span> <span class="p">[</span><span class="n">line</span><span class="p">]</span>
+
+        <span class="n">ip</span><span class="o">.</span><span class="n">input_transformers_post</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">IPython.core.inputtransformer</span> <span class="k">import</span> <span class="n">StatelessInputTransformer</span>
+
+        <span class="nd">@StatelessInputTransformer</span><span class="o">.</span><span class="n">wrap</span>
+        <span class="k">def</span> <span class="nf">tr_re</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">prefix</span><span class="p">):</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">):]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">(</span><span class="si">{}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">RE</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">line</span>
+
+        <span class="n">ip</span><span class="o">.</span><span class="n">input_splitter</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
+        <span class="n">ip</span><span class="o">.</span><span class="n">input_transformer_manager</span><span class="o">.</span><span class="n">logical_line_transforms</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">())</span>
 
 
 <span class="k">class</span> <span class="nc">AsyncInput</span><span class="p">:</span>
