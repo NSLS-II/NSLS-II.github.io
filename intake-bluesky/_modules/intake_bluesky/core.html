@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a10.post6+gb9f332a documentation</title>
+  <title>intake_bluesky.core &mdash; Intake Bluesky 0.1.0a10.post17+gcc68759 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a10.post6+gb9f332a
+                0.1.0a10.post17+gcc68759
               </div>
             
           
@@ -164,6 +164,7 @@
 <span class="kn">import</span> <span class="nn">importlib</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.base</span>
+<span class="kn">import</span> <span class="nn">errno</span>
 <span class="kn">import</span> <span class="nn">intake.container.base</span>
 <span class="kn">import</span> <span class="nn">intake_xarray.base</span>
 <span class="kn">from</span> <span class="nn">intake.compat</span> <span class="k">import</span> <span class="n">unpack_kwargs</span>
@@ -171,8 +172,70 @@
 <span class="kn">import</span> <span class="nn">requests</span>
 <span class="kn">from</span> <span class="nn">requests.compat</span> <span class="k">import</span> <span class="n">urljoin</span>
 <span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">xarray</span>
+
+
+<span class="k">def</span> <span class="nf">tail</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a generator with the last n lines of a file.</span>
+
+<span class="sd">    Thanks to Martijn Pieters for this solution:</span>
+<span class="sd">    https://stackoverflow.com/a/12295054/6513183</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename : string</span>
+<span class="sd">    n: int</span>
+<span class="sd">        number of lines</span>
+<span class="sd">    bsize: int</span>
+<span class="sd">        seek step size</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    line : generator</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># get newlines type, open in universal mode to find it</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">hfile</span><span class="o">.</span><span class="n">readline</span><span class="p">():</span>
+            <span class="k">return</span>  <span class="c1"># empty, no point</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">newlines</span>  <span class="c1"># After reading a line, python gives us this</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sep</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s1">&#39;multiple newline types found, aborting&#39;</span>
+
+    <span class="c1"># find a suitable seek position in binary mode</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
+        <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_END</span><span class="p">)</span>
+        <span class="n">linecount</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">while</span> <span class="n">linecount</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># read at least n lines + 1 more; we need to skip a partial line later on</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="o">-</span><span class="n">bsize</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_CUR</span><span class="p">)</span>           <span class="c1"># go backwards</span>
+                <span class="n">linecount</span> <span class="o">+=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">bsize</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">sep</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>  <span class="c1"># count newlines</span>
+                <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="o">-</span><span class="n">bsize</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_CUR</span><span class="p">)</span>           <span class="c1"># go back again</span>
+            <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">EINVAL</span><span class="p">:</span>
+                    <span class="c1"># Attempted to seek past the start, can&#39;t go further</span>
+                    <span class="n">bsize</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+                    <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_SET</span><span class="p">)</span>
+                    <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">linecount</span> <span class="o">+=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">bsize</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">sep</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+                    <span class="k">break</span>
+                <span class="k">raise</span>  <span class="c1"># Some other I/O exception, re-raise</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
+
+    <span class="c1"># Re-open in text mode</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
+        <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_SET</span><span class="p">)</span>  <span class="c1"># our file position from above</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hfile</span><span class="p">:</span>
+            <span class="c1"># We&#39;ve located n lines *or more*, so skip if needed</span>
+            <span class="k">if</span> <span class="n">linecount</span> <span class="o">&gt;</span> <span class="n">n</span><span class="p">:</span>
+                <span class="n">linecount</span> <span class="o">-=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            <span class="c1"># The rest we yield</span>
+            <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
 
 
 <span class="k">def</span> <span class="nf">to_event_pages</span><span class="p">(</span><span class="n">get_event_cursor</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>

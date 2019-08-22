@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a10.post6+gb9f332a documentation</title>
+  <title>intake_bluesky.jsonl &mdash; Intake Bluesky 0.1.0a10.post17+gcc68759 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.1.0a10.post6+gb9f332a
+                0.1.0a10.post17+gcc68759
               </div>
             
           
@@ -158,13 +158,51 @@
 <span class="kn">import</span> <span class="nn">pathlib</span>
 
 <span class="kn">from</span> <span class="nn">.in_memory</span> <span class="k">import</span> <span class="n">BlueskyInMemoryCatalog</span>
+<span class="kn">from</span> <span class="nn">.core</span> <span class="k">import</span> <span class="n">tail</span>
 
 
 <span class="k">def</span> <span class="nf">gen</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A JSONL file generator.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename: str</span>
+<span class="sd">        JSONL file to load.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">file</span><span class="p">:</span>
             <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
             <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_stop</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the stop_doc of a Bluesky JSONL file.</span>
+
+<span class="sd">    The stop_doc is always the last line of the file.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filename: str</span>
+<span class="sd">        JSONL file to load.</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    stop_doc: dict or None</span>
+<span class="sd">        A Bluesky run_stop document or None if one is not present.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stop_doc</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">lastline</span><span class="p">,</span> <span class="o">=</span> <span class="n">tail</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lastline</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">lastline</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+            <span class="o">...</span>
+            <span class="c1"># stop_doc will stay None if it can&#39;t be decoded correctly.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">):</span>
+                <span class="n">stop_doc</span> <span class="o">=</span> <span class="n">doc</span>
+    <span class="k">return</span> <span class="n">stop_doc</span>
 
 
 <div class="viewcode-block" id="BlueskyJSONLCatalog"><a class="viewcode-back" href="../../api.html#intake_bluesky.jsonl.BlueskyJSONLCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyJSONLCatalog</span><span class="p">(</span><span class="n">BlueskyInMemoryCatalog</span><span class="p">):</span>
@@ -212,12 +250,14 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_filename_to_mtime</span><span class="p">[</span><span class="n">filename</span><span class="p">]</span> <span class="o">=</span> <span class="n">mtime</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">name</span><span class="p">,</span> <span class="n">run_start_doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
-                    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                        <span class="n">name</span><span class="p">,</span> <span class="n">start_doc</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">())</span>
+                    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                         <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">readline</span><span class="p">():</span>
                             <span class="c1"># Empty file, maybe being written to currently</span>
                             <span class="k">continue</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="p">(</span><span class="n">filename</span><span class="p">,),</span> <span class="p">{})</span>
+                        <span class="k">raise</span> <span class="n">e</span>
+                <span class="n">stop_doc</span> <span class="o">=</span> <span class="n">get_stop</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">upsert</span><span class="p">(</span><span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">gen</span><span class="p">,</span> <span class="p">(</span><span class="n">filename</span><span class="p">,),</span> <span class="p">{})</span>
 
 <div class="viewcode-block" id="BlueskyJSONLCatalog.search"><a class="viewcode-back" href="../../api.html#intake_bluesky.jsonl.BlueskyJSONLCatalog.search">[docs]</a>    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
