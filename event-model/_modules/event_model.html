@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.11.1 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.11.1.post6+gf7ce4c0 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.11.1
+                1.11.1.post6+gf7ce4c0
               </div>
             
           
@@ -689,17 +689,17 @@
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">datum_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span><span class="p">[</span><span class="n">datum_id</span><span class="p">]</span>
                 <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-                    <span class="n">err_with_key</span> <span class="o">=</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                    <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">datum_id</span><span class="p">,</span>
                         <span class="n">f</span><span class="s2">&quot;Event with uid </span><span class="si">{doc[&#39;uid&#39;]}</span><span class="s2"> refers to unknown Datum &quot;</span>
-                        <span class="n">f</span><span class="s2">&quot;datum_id </span><span class="si">{datum_id}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    <span class="n">err_with_key</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">datum_id</span>
-                    <span class="k">raise</span> <span class="n">err_with_key</span> <span class="kn">from</span> <span class="nn">err</span>
+                        <span class="n">f</span><span class="s2">&quot;datum_id </span><span class="si">{datum_id}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
                 <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">datum_doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
                 <span class="c1"># Look up the cached Resource.</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span><span class="p">[</span><span class="n">resource_uid</span><span class="p">]</span>
                 <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">resource_uid</span><span class="p">,</span>
                         <span class="n">f</span><span class="s2">&quot;Datum with id </span><span class="si">{datum_id}</span><span class="s2"> refers to unknown Resource &quot;</span>
                         <span class="n">f</span><span class="s2">&quot;uid </span><span class="si">{resource_uid}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
                 <span class="c1"># Look up the cached handler instance, or instantiate one.</span>
@@ -825,7 +825,9 @@
 
 <span class="k">class</span> <span class="nc">UnresolvableForeignKeyError</span><span class="p">(</span><span class="n">EventModelValueError</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;when we see a foreign before we see the thing to which it refers&quot;&quot;&quot;</span>
-    <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">key</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
 
 
 <span class="n">SCHEMA_PATH</span> <span class="o">=</span> <span class="s1">&#39;schemas&#39;</span>
@@ -1386,7 +1388,7 @@
     <span class="c1"># This is for a deprecated document type, so we are not being fussy</span>
     <span class="c1"># about efficiency/laziness here.</span>
     <span class="n">event_pages</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># descriptor uid mapped to page</span>
-    <span class="k">for</span> <span class="n">stream_name</span><span class="p">,</span> <span class="n">events</span> <span class="ow">in</span> <span class="n">bulk_events</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">events</span> <span class="ow">in</span> <span class="n">bulk_events</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
             <span class="n">descriptor</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
             <span class="k">try</span><span class="p">:</span>
