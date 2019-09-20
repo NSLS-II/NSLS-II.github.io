@@ -1,0 +1,588 @@
+
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>databroker.utils &mdash; databroker 1.0.0a4.post96+geffedde documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> databroker
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0a4.post96+geffedde
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../v2/index.html">Version 2 Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../v1/index.html">Version 1 Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../whats_new.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../DBEP/index.html">Databroker Enhancement Proposals</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Bluesky Project</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://blueskyproject.io">Homepage</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/bluesky">GitHub</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Getting Help</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://gitter.im/NSLS-II/DAMA">Gitter</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">databroker</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>databroker.utils</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for databroker.utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">doct</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pytz</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+
+<span class="k">class</span> <span class="nc">ALL</span><span class="p">:</span>
+    <span class="s2">&quot;Sentinel used as the default value for stream_name&quot;</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_path_exists</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="n">exist_ok</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">sanitize_np</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="s2">&quot;Convert any numpy objects into built-in Python types.&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">generic</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">val</span>
+
+
+<span class="k">def</span> <span class="nf">apply_to_dict_recursively</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s1">&#39;items&#39;</span><span class="p">):</span>
+            <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply_to_dict_recursively</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">format_time</span><span class="p">(</span><span class="n">search_dict</span><span class="p">,</span> <span class="n">tz</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Helper function to format the time arguments in a search dict</span>
+
+<span class="sd">    Expects &#39;since&#39; and &#39;until&#39;</span>
+
+<span class="sd">    ..warning: Does in-place mutation of the search_dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The old names of &#39;since&#39; and &#39;until&#39; are &#39;start_time&#39; and &#39;stop_time&#39;.</span>
+    <span class="k">if</span> <span class="s1">&#39;since&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span> <span class="ow">and</span> <span class="s1">&#39;start_time&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;cannot use both &#39;since&#39; and its deprecated name &quot;</span>
+                        <span class="s2">&quot;&#39;start_time&#39;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;until&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span> <span class="ow">and</span> <span class="s1">&#39;stop_time&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;cannot use both &#39;until&#39; and its deprecated name &quot;</span>
+                        <span class="s2">&quot;&#39;stop_time&#39;&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;start_time&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span> <span class="ow">or</span> <span class="s1">&#39;stop_time&#39;</span> <span class="ow">in</span> <span class="n">search_dict</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The keyword &#39;start_time&#39; and &#39;stop_time&#39; have been &quot;</span>
+                      <span class="s2">&quot;renamed to &#39;since&#39; and &#39;until&#39;. The old names are &quot;</span>
+                      <span class="s2">&quot;deprecated.&quot;</span><span class="p">)</span>
+    <span class="n">time_dict</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">since</span> <span class="o">=</span> <span class="n">search_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;since&#39;</span><span class="p">,</span> <span class="n">search_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;start_time&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="n">until</span> <span class="o">=</span> <span class="n">search_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;until&#39;</span><span class="p">,</span> <span class="n">search_dict</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;stop_time&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">since</span><span class="p">:</span>
+        <span class="n">time_dict</span><span class="p">[</span><span class="s1">&#39;$gte&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalize_human_friendly_time</span><span class="p">(</span><span class="n">since</span><span class="p">,</span> <span class="n">tz</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">until</span><span class="p">:</span>
+        <span class="n">time_dict</span><span class="p">[</span><span class="s1">&#39;$lte&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalize_human_friendly_time</span><span class="p">(</span><span class="n">until</span><span class="p">,</span> <span class="n">tz</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">time_dict</span><span class="p">:</span>
+        <span class="n">search_dict</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">time_dict</span>
+
+
+<span class="c1"># human friendly timestamp formats we&#39;ll parse</span>
+<span class="n">_TS_FORMATS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M&#39;</span><span class="p">,</span>  <span class="c1"># these 2 are not as originally doc&#39;d,</span>
+    <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H&#39;</span><span class="p">,</span>     <span class="c1"># but match previous pandas behavior</span>
+    <span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;%Y-%m&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;%Y&#39;</span><span class="p">]</span>
+
+<span class="c1"># build a tab indented, &#39;-&#39; bulleted list of supported formats</span>
+<span class="c1"># to append to the parsing function docstring below</span>
+<span class="n">_doc_ts_formats</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">- </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">_TS_FORMATS</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">normalize_human_friendly_time</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">tz</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Given one of :</span>
+<span class="sd">    - string (in one of the formats below)</span>
+<span class="sd">    - datetime (eg. datetime.now()), with or without tzinfo)</span>
+<span class="sd">    - timestamp (eg. time.time())</span>
+<span class="sd">    return a timestamp (seconds since jan 1 1970 UTC).</span>
+
+<span class="sd">    Non string/datetime values are returned unaltered.</span>
+<span class="sd">    Leading/trailing whitespace is stripped.</span>
+<span class="sd">    Supported formats:</span>
+<span class="sd">    {}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># {} is placeholder for formats; filled in after def...</span>
+
+    <span class="n">zone</span> <span class="o">=</span> <span class="n">pytz</span><span class="o">.</span><span class="n">timezone</span><span class="p">(</span><span class="n">tz</span><span class="p">)</span>  <span class="c1"># tz as datetime.tzinfo object</span>
+    <span class="n">epoch</span> <span class="o">=</span> <span class="n">pytz</span><span class="o">.</span><span class="n">UTC</span><span class="o">.</span><span class="n">localize</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">1970</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">check</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="c1"># unix &#39;date&#39; cmd format &#39;%a %b %d %H:%M:%S %Z %Y&#39; works but</span>
+        <span class="c1"># doesn&#39;t get TZ?</span>
+
+        <span class="c1"># Could cleanup input a bit? remove leading/trailing [ :,-]?</span>
+        <span class="c1"># Yes, leading/trailing whitespace to match pandas behavior...</span>
+        <span class="c1"># Actually, pandas doesn&#39;t ignore trailing space, it assumes</span>
+        <span class="c1"># the *current* month/day if they&#39;re missing and there&#39;s</span>
+        <span class="c1"># trailing space, or the month is a single, non zero-padded digit.?!</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="n">_TS_FORMATS</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">datetime</span><span class="p">):</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">ts</span>
+                <span class="n">check</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># what else could the type be here?</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;expected datetime,&#39;</span>
+                                <span class="s1">&#39; got {:r}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ts</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">NameError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;failed to parse time: &#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">check</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">datetime</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">val</span>
+
+    <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># is_dst=None raises NonExistent and Ambiguous TimeErrors</span>
+        <span class="c1"># when appropriate, same as pandas</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">zone</span><span class="o">.</span><span class="n">localize</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">is_dst</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">epoch</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
+
+<span class="c1"># fill in the placeholder we left in the previous docstring</span>
+<span class="n">normalize_human_friendly_time</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">normalize_human_friendly_time</span><span class="o">.</span><span class="vm">__doc__</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">_doc_ts_formats</span><span class="p">)</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_fields</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the set of all field names (a.k.a &quot;data keys&quot;) in a header.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header : Header</span>
+<span class="sd">    name : string, optional</span>
+<span class="sd">        Get field from only one &quot;event stream&quot; with this name. If None</span>
+<span class="sd">        (default) get fields from all event streams.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    fields : set</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">header</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;primary&#39;</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">fields</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">field</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fields</span>
+
+
+<span class="n">DOCT_NAMES</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;resource&#39;</span><span class="p">:</span> <span class="s1">&#39;Resource&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;datum&#39;</span><span class="p">:</span> <span class="s1">&#39;Datum&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="s1">&#39;Event Descriptor&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;event&#39;</span><span class="p">:</span> <span class="s1">&#39;Event&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="s1">&#39;Run Start&#39;</span><span class="p">,</span>
+              <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="s1">&#39;Run Stop&#39;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="wrap_in_doct"><a class="viewcode-back" href="../../generated/databroker.wrap_in_doct.html#databroker.wrap_in_doct">[docs]</a><span class="k">def</span> <span class="nf">wrap_in_doct</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Put document contents into a doct.Document object.</span>
+
+<span class="sd">    A ``doct.Document`` is a subclass of dict that:</span>
+
+<span class="sd">    * is immutable</span>
+<span class="sd">    * provides human-readable :meth:`__repr__` and :meth:`__str__`</span>
+<span class="sd">    * supports dot access (:meth:`__getattr__`) as a synonym for item access</span>
+<span class="sd">      (:meth:`__getitem__`) whenever possible</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">doct</span><span class="o">.</span><span class="n">Document</span><span class="p">(</span><span class="n">DOCT_NAMES</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">doc</span><span class="p">)</span></div>
+
+
+<span class="n">_STANDARD_DICT_ATTRS</span> <span class="o">=</span> <span class="nb">dir</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">DeprecatedDoct</span><span class="p">(</span><span class="n">doct</span><span class="o">.</span><span class="n">Document</span><span class="p">):</span>
+    <span class="s2">&quot;Subclass of doct.Document that warns that dot access may be removed.&quot;</span>
+    <span class="c1"># We must use __getattribute__ here, not the gentle __getattr__, in order</span>
+    <span class="c1"># to successfully override doct.Document. doct.Document aggressively edits</span>
+    <span class="c1"># its own __dict__, a subclass&#39;s __getattr__ would never be called.</span>
+    <span class="k">def</span> <span class="nf">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="c1"># Get the result first and let any errors be raised.</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">DeprecatedDoct</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="c1"># Now warn before returning it.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">_STANDARD_DICT_ATTRS</span> <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)):</span>
+            <span class="c1"># This is not a standard dict attribute.</span>
+            <span class="c1"># Warn that dot access is deprecated.</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Dot access may be removed in a future version. &quot;</span>
+                          <span class="s2">&quot;Use [&#39;</span><span class="si">{0}</span><span class="s2">&#39;] instead of .</span><span class="si">{0}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;_name&#39;</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;In a future version of databroker, plain dicts &quot;</span>
+                          <span class="s2">&quot;without a &#39;_name&#39; attribute may be returned. &quot;</span>
+                          <span class="s2">&quot;Do not rely on &#39;_name&#39;.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<div class="viewcode-block" id="wrap_in_deprecated_doct"><a class="viewcode-back" href="../../generated/databroker.wrap_in_deprecated_doct.html#databroker.wrap_in_deprecated_doct">[docs]</a><span class="k">def</span> <span class="nf">wrap_in_deprecated_doct</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Put document contents into a DeprecatedDoct object.</span>
+
+<span class="sd">    See :func:`wrap_in_doct`. The difference between :class:`DeprecatedDoct`</span>
+<span class="sd">    and :class:`doct.Document` is a warning that dot access</span>
+<span class="sd">    (:meth:`__getattr__` as a synonym for :meth:`__getitem__`) may be removed</span>
+<span class="sd">    in the future.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">DeprecatedDoct</span><span class="p">(</span><span class="n">DOCT_NAMES</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">doc</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">DuplicateHandler</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="c1"># Search order is (for unix):</span>
+<span class="c1">#   ~/.config/databroker</span>
+<span class="c1">#   &lt;sys.executable directory&gt;/../etc/databroker</span>
+<span class="c1">#   /etc/databroker</span>
+<span class="c1"># And for Windows we only look in:</span>
+<span class="c1">#   %APPDATA%/databroker</span>
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;nt&#39;</span><span class="p">:</span>
+    <span class="n">_user_conf</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;APPDATA&#39;</span><span class="p">],</span> <span class="s1">&#39;databroker&#39;</span><span class="p">)</span>
+    <span class="n">CONFIG_SEARCH_PATH</span> <span class="o">=</span> <span class="p">(</span><span class="n">_user_conf</span><span class="p">,)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">_user_conf</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.config&#39;</span><span class="p">,</span> <span class="s1">&#39;databroker&#39;</span><span class="p">)</span>
+    <span class="n">_local_etc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">)),</span>
+                              <span class="s1">&#39;etc&#39;</span><span class="p">,</span> <span class="s1">&#39;databroker&#39;</span><span class="p">)</span>
+    <span class="n">_system_etc</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="s1">&#39;etc&#39;</span><span class="p">,</span> <span class="s1">&#39;databroker&#39;</span><span class="p">)</span>
+    <span class="n">CONFIG_SEARCH_PATH</span> <span class="o">=</span> <span class="p">(</span><span class="n">_user_conf</span><span class="p">,</span> <span class="n">_local_etc</span><span class="p">,</span> <span class="n">_system_etc</span><span class="p">)</span>
+
+<span class="n">SPECIAL_NAME</span> <span class="o">=</span> <span class="s1">&#39;_legacy_config&#39;</span>
+<span class="k">if</span> <span class="s1">&#39;DATABROKER_TEST_MODE&#39;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+    <span class="n">SPECIAL_NAME</span> <span class="o">=</span> <span class="s1">&#39;_test_legacy_config&#39;</span>
+
+
+<div class="viewcode-block" id="list_configs"><a class="viewcode-back" href="../../generated/databroker.list_configs.html#databroker.list_configs">[docs]</a><span class="k">def</span> <span class="nf">list_configs</span><span class="p">(</span><span class="n">paths</span><span class="o">=</span><span class="n">CONFIG_SEARCH_PATH</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    List the names of the available configuration files.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    names : list</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :func:`describe_configs`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;*.yml&#39;</span><span class="p">))</span>
+        <span class="n">name_list</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">f</span><span class="p">)[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">])</span>
+
+    <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">name_list</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_list</span><span class="p">):</span>
+        <span class="n">duplicates</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span> <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">count</span>
+                      <span class="ow">in</span> <span class="n">collections</span><span class="o">.</span><span class="n">Counter</span><span class="p">(</span><span class="n">name_list</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">count</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Duplicate configs found: </span><span class="si">{duplicates}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="ne">UserWarning</span><span class="p">)</span>
+
+    <span class="c1"># Do not include _legacy_config.</span>
+    <span class="n">names</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">SPECIAL_NAME</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">names</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">describe_configs</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the names and descriptions of available configuration files.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    configs : dict</span>
+<span class="sd">        map names to descriptions (if available)</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :func:`list_configs`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">lookup_config</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;description&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">list_configs</span><span class="p">()}</span>
+
+
+<div class="viewcode-block" id="lookup_config"><a class="viewcode-back" href="../../generated/databroker.lookup_config.html#databroker.lookup_config">[docs]</a><span class="k">def</span> <span class="nf">lookup_config</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Search for a databroker configuration file with a given name.</span>
+
+<span class="sd">    For exmaple, the name &#39;example&#39; will cause the function to search for:</span>
+
+<span class="sd">    * ``~/.config/databroker/example.yml``</span>
+<span class="sd">    * ``{python}/../etc/databroker/example.yml``</span>
+<span class="sd">    * ``/etc/databroker/example.yml``</span>
+
+<span class="sd">    where ``{python}`` is the location of the current Python binary, as</span>
+<span class="sd">    reported by ``sys.executable``. It will use the first match it finds.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : string</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    config : dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.yml&#39;</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">+=</span> <span class="s1">&#39;.yml&#39;</span>
+    <span class="n">tried</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">CONFIG_SEARCH_PATH</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="n">tried</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">,</span>
+                                 <span class="n">Loader</span><span class="o">=</span><span class="nb">getattr</span><span class="p">(</span><span class="n">yaml</span><span class="p">,</span> <span class="s1">&#39;FullLoader&#39;</span><span class="p">,</span>
+                                                <span class="n">yaml</span><span class="o">.</span><span class="n">Loader</span><span class="p">)</span>
+                                 <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s2">&quot;No config file named </span><span class="si">{!r}</span><span class="s2"> could be found in &quot;</span>
+                                <span class="s2">&quot;the following locations:</span><span class="se">\n</span><span class="si">{}</span><span class="s2">&quot;</span>
+                                <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tried</span><span class="p">)))</span></div>
+
+
+<span class="k">def</span> <span class="nf">transpose</span><span class="p">(</span><span class="n">in_data</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Turn a list of dicts into dict of lists</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    in_data : list</span>
+<span class="sd">        A list of dicts which contain at least one dict.</span>
+<span class="sd">        All of the inner dicts must have at least the keys</span>
+<span class="sd">        in `keys`</span>
+
+<span class="sd">    keys : list</span>
+<span class="sd">        The list of keys to extract</span>
+
+<span class="sd">    field : str</span>
+<span class="sd">        The field in the outer dict to use</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    transpose : dict</span>
+<span class="sd">        The transpose of the data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">in_data</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">ev</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">in_data</span><span class="p">):</span>
+        <span class="n">dd</span> <span class="o">=</span> <span class="n">ev</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">dd</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">out</span>
+
+
+<div class="viewcode-block" id="catalog_search_path"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.catalog_search_path">[docs]</a><span class="k">def</span> <span class="nf">catalog_search_path</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    List directories that will be searched for catalog YAML files.</span>
+
+<span class="sd">    This is a convenience wrapper around functions used by intake to determine</span>
+<span class="sd">    its search path.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    directories: tuple</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">intake.catalog.default</span> <span class="k">import</span> <span class="n">user_data_dir</span><span class="p">,</span> <span class="n">global_data_dir</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">user_data_dir</span><span class="p">(),</span> <span class="n">global_data_dir</span><span class="p">())</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2015 Brookhaven National Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
