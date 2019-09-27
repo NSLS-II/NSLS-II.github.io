@@ -17,6 +17,7 @@ NSLS-II GitHub organizations
 * `NSLS-II-ISR <https://github.com/NSLS-II-ISR>`_
 * `NSLS-II-ISS <https://github.com/NSLS-II-ISS>`_
 * `NSLS-II-IXS <https://github.com/NSLS-II-IXS>`_
+* `NSLS-II-JPLS <https://github.com/NSLS-II-JPLS>`_
 * `NSLS-II-LIX <https://github.com/NSLS-II-LIX>`_
 * `NSLS-II-MET <https://github.com/NSLS-II-MET>`_
 * `NSLS-II-NYX <https://github.com/NSLS-II-NYX>`_
