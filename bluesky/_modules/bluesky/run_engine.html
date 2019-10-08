@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc2.post4+g27533f0 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc2.post29+g018d4bd documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc2.post4+g27533f0',
+              VERSION:'1.6.0rc2.post29+g018d4bd',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post4+g27533f0
+                1.6.0rc2.post29+g018d4bd
               </div>
             
           
@@ -212,6 +212,7 @@
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">ExitStack</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
+<span class="kn">from</span> <span class="nn">.bundlers</span> <span class="k">import</span> <span class="n">RunBundler</span>
 
 <span class="kn">import</span> <span class="nn">concurrent</span>
 
@@ -228,12 +229,13 @@
     <span class="n">current_task</span> <span class="o">=</span> <span class="n">Task</span><span class="o">.</span><span class="n">current_task</span>
     <span class="k">del</span> <span class="n">Task</span>
 
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span> <span class="n">normalize_subs_input</span><span class="p">,</span>
-                    <span class="n">AsyncInput</span><span class="p">,</span> <span class="n">new_uid</span><span class="p">,</span> <span class="n">NoReplayAllowed</span><span class="p">,</span>
-                    <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">,</span> <span class="n">RunEngineInterrupted</span><span class="p">,</span>
-                    <span class="n">IllegalMessageSequence</span><span class="p">,</span> <span class="n">FailedPause</span><span class="p">,</span> <span class="n">FailedStatus</span><span class="p">,</span>
-                    <span class="n">InvalidCommand</span><span class="p">,</span> <span class="n">PlanHalt</span><span class="p">,</span> <span class="n">Msg</span><span class="p">,</span> <span class="n">ensure_generator</span><span class="p">,</span>
-                    <span class="n">single_gen</span><span class="p">,</span> <span class="n">short_uid</span><span class="p">,</span> <span class="n">default_during_task</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span>
+                    <span class="n">normalize_subs_input</span><span class="p">,</span> <span class="n">AsyncInput</span><span class="p">,</span>
+                    <span class="n">NoReplayAllowed</span><span class="p">,</span> <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">,</span>
+                    <span class="n">RunEngineInterrupted</span><span class="p">,</span> <span class="n">IllegalMessageSequence</span><span class="p">,</span>
+                    <span class="n">FailedPause</span><span class="p">,</span> <span class="n">FailedStatus</span><span class="p">,</span> <span class="n">InvalidCommand</span><span class="p">,</span>
+                    <span class="n">PlanHalt</span><span class="p">,</span> <span class="n">Msg</span><span class="p">,</span> <span class="n">ensure_generator</span><span class="p">,</span> <span class="n">single_gen</span><span class="p">,</span>
+                    <span class="n">default_during_task</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">_RunEnginePanic</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -342,6 +344,11 @@
             <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">inner</span>
+
+
+<span class="k">def</span> <span class="nf">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">msg</span><span class="o">.</span><span class="n">run</span> <span class="ow">or</span> <span class="n">_extract_run_key</span><span class="o">.</span><span class="n">__default_run</span>
+<span class="n">_extract_run_key</span><span class="o">.</span><span class="n">__default_run</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="RunEngine"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine">[docs]</a><span class="k">class</span> <span class="nc">RunEngine</span><span class="p">:</span>
@@ -540,31 +547,16 @@
 
         <span class="c1"># The RunEngine keeps track of a *lot* of state.</span>
         <span class="c1"># All flags and caches are defined here with a comment. Good luck.</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># a mapping of open run -&gt; bundlers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_metadata_per_call</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># for all runs generated by one __call__</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># if we are in the middle of bundling readings</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># name given to event descriptor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># pause at next &#39;checkpoint&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># stored and then raised in the _run loop</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True if paused, aborted, or failed</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># objects read in one Event</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># cache of obj.read() in one Event</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># cache of obj.collect_asset_docs()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># objects staged, not yet unstaged</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># all objects seen</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_movable_objs_touched</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># objects we moved at any point</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># objects after kickoff(), before collect()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># uid of currently-open run</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>  <span class="c1"># run start uids generated by __call__</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># uid for a special Event Desc.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_counter</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># seq_num, special Event stream</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># cache of all obj.describe() output</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_desc_cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># &quot; obj.describe_configuration()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_values_cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># &quot; obj.read_configuration() values</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_ts_cache</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># &quot; obj.read_configuration() timestamps</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># cache of {name: (objs_frozen_set, doc)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># cache of {obj: (cb, kwargs)}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># a seq_num counter per stream</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>  <span class="c1"># for if we redo data-points</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_suspenders</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># set holding suspenders</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>  <span class="c1"># sets of Events to wait for</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">set</span><span class="p">)</span>  <span class="c1"># status objects to wait for</span>
@@ -756,25 +748,8 @@
     <span class="k">def</span> <span class="nf">verbose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">value</span>
 
-    <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">_run_is_open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-
     <span class="k">def</span> <span class="nf">_clear_run_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s2">&quot;Clean up for a new run.&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_desc_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_values_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_ts_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span> <span class="o">=</span> <span class="kc">None</span>
@@ -902,27 +877,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_deferred_pause_requested</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;pausing&#39;</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">current_run</span><span class="o">.</span><span class="n">record_interruption</span><span class="p">(</span><span class="s1">&#39;pause&#39;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-
-    <span class="k">def</span> <span class="nf">_record_interruption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Emit an event in the &#39;interruptions&#39; event stream.</span>
-
-<span class="sd">        If we are not inside a run or if self.record_interruptions is False,</span>
-<span class="sd">        nothing is done.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># We are inside a run and self.record_interruptions is True.</span>
-            <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">descriptor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span><span class="p">,</span>
-                       <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">uid</span><span class="o">=</span><span class="n">new_uid</span><span class="p">(),</span>
-                       <span class="n">seq_num</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_counter</span><span class="p">),</span>
-                       <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;interruption&#39;</span><span class="p">:</span> <span class="n">content</span><span class="p">},</span>
-                       <span class="n">timestamps</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;interruption&#39;</span><span class="p">:</span> <span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">()})</span>
-            <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.__call__"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata_kw</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Execute a plan.</span>
@@ -1060,13 +1018,11 @@
                                   <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_state</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;resume&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">current_run</span><span class="o">.</span><span class="n">record_interruption</span><span class="p">(</span><span class="s1">&#39;resume&#39;</span><span class="p">)</span>
         <span class="n">new_plan</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rewind</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_plan</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_response_stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
-        <span class="c1"># Re-instate monitoring callbacks.</span>
-        <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># Notify Devices of the resume in case they want to clean up.</span>
         <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;resume&#39;</span><span class="p">):</span>
@@ -1089,12 +1045,9 @@
         <span class="n">new_plan</span> <span class="o">=</span> <span class="n">ensure_generator</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_msg_cache</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_msg_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">len_msg_cache</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="p">)</span>
-            <span class="c1"># This is needed to &#39;cancel&#39; an open bundling (e.g. create) if</span>
-            <span class="c1"># the pause happens after a &#39;checkpoint&#39;, after a &#39;create&#39;, but</span>
-            <span class="c1"># before the paired &#39;save&#39;.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">current_run</span><span class="o">.</span><span class="n">rewind</span><span class="p">()</span>
+
         <span class="k">return</span> <span class="n">new_plan</span>
 
     <span class="k">def</span> <span class="nf">_resume_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">init_func</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -1273,10 +1226,8 @@
 
             <span class="k">if</span> <span class="n">justification</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Justification for this suspension:</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">justification</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_record_interruption</span><span class="p">(</span><span class="s1">&#39;suspend&#39;</span><span class="p">)</span>
-            <span class="c1"># Stash a copy in a local var to re-instating the monitors.</span>
-            <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">current_run</span><span class="o">.</span><span class="n">record_interruption</span><span class="p">(</span><span class="s1">&#39;resume&#39;</span><span class="p">)</span>
             <span class="c1"># During suspend, all motors should be stopped. Call stop() on</span>
             <span class="c1"># every object we ever set().</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stop_movable_objects</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1479,6 +1430,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="c1"># sentinel to decide if need to add to the response stack or not</span>
         <span class="n">sentinel</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
+        <span class="n">exit_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
             <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -1501,8 +1453,8 @@
                     <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;pausing&#39;</span>
                     <span class="c1"># Remove any monitoring callbacks, but keep refs in</span>
                     <span class="c1"># self._monitor_params to re-instate them later.</span>
-                    <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                        <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">suspend_monitors</span><span class="p">()</span>
                     <span class="c1"># During pause, all motors should be stopped. Call stop()</span>
                     <span class="c1"># on every object we ever set().</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_stop_movable_objects</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1519,6 +1471,9 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
                     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_permit</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                    <span class="c1"># Restore any monitors</span>
+                    <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">restore_monitors</span><span class="p">()</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span><span class="p">:</span>
                         <span class="c1"># may be called by &#39;resume&#39;, &#39;stop&#39;, &#39;abort&#39;, &#39;halt&#39;</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;running&#39;</span>
@@ -1713,26 +1668,28 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">GeneratorExit</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;fail&#39;</span>  <span class="c1"># Exception raises during &#39;running&#39;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">exit_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
             <span class="k">raise</span> <span class="ne">ValueError</span> <span class="kn">from</span> <span class="nn">err</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;fail&#39;</span>  <span class="c1"># Exception raises during &#39;running&#39;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">exit_reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Run aborted&quot;</span><span class="p">)</span>
             <span class="k">raise</span> <span class="n">err</span>
         <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">exit_reason</span><span class="p">:</span>
+                <span class="n">exit_reason</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span>
             <span class="c1"># Some done_callbacks may still be alive in other threads.</span>
             <span class="c1"># Block them from creating new &#39;failed status&#39; tasks on the loop.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
             <span class="c1"># call stop() on every movable object we ever set()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stop_movable_objects</span><span class="p">(</span><span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="c1"># Try to collect any flyers that were kicked off but not finished.</span>
-            <span class="c1"># Some might not support partial collection. We swallow errors.</span>
-            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="p">):</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;collect&#39;</span><span class="p">,</span> <span class="n">obj</span><span class="p">))</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to collect </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="c1"># Clear any uncleared monitoring callbacks.</span>
+                <span class="n">current_run</span><span class="o">.</span><span class="n">clear_monitors</span><span class="p">()</span>
+                <span class="c1"># Try to collect any flyers that were kicked off but</span>
+                <span class="c1"># not finished.  Some might not support partial</span>
+                <span class="c1"># collection. We swallow errors.</span>
+                <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">backstop_collect</span><span class="p">()</span>
             <span class="c1"># in case we were interrupted between &#39;stage&#39; and &#39;unstage&#39;</span>
             <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -1740,22 +1697,21 @@
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to unstage </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_staged</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-            <span class="c1"># Clear any uncleared monitoring callbacks.</span>
-            <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">&quot;Failed to stop monitoring </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
+
             <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
             <span class="c1"># Emit RunStop if necessary.</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_run</span><span class="p">(</span><span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">))</span>
-                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                        <span class="s2">&quot;Failed to close run </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">current_run</span><span class="o">.</span><span class="n">run_is_open</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">close_run</span><span class="p">(</span>
+                            <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;close_run&#39;</span><span class="p">,</span>
+                                <span class="n">exit_status</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span><span class="p">,</span>
+                                <span class="n">reason</span><span class="o">=</span><span class="n">exit_reason</span><span class="p">,</span>
+                                <span class="n">run_id</span><span class="o">=</span><span class="n">key</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                            <span class="s2">&quot;Failed to close run </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">current_run</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
             <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plan_stack</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -1799,13 +1755,12 @@
 <span class="sd">        where **kwargs are any additional metadata that should go into</span>
 <span class="sd">        the RunStart document</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
+        <span class="c1"># TODO extract this from the Msg</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;close_run&#39; message was not &quot;</span>
                                          <span class="s2">&quot;received before the &#39;open_run&#39; &quot;</span>
                                          <span class="s2">&quot;message&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_run_cache</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
 
         <span class="c1"># Run scan_id calculation method</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_id_source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">)</span>
@@ -1825,23 +1780,13 @@
         <span class="c1"># against users mutating the md with their validator.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md_validator</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
 
-        <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="o">**</span><span class="n">md</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted RunStart (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
+        <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">RunBundler</span><span class="p">(</span>
+            <span class="n">md</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_interruptions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit_sync</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+            <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
 
-        <span class="c1"># Emit an Event Descriptor for recording any interruptions as Events.</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">record_interruptions</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-            <span class="n">dk</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;RunEngine&#39;</span><span class="p">}</span>
-            <span class="n">interruptions_desc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-                                      <span class="n">uid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_interruptions_desc_uid</span><span class="p">,</span>
-                                      <span class="n">name</span><span class="o">=</span><span class="s1">&#39;interruptions&#39;</span><span class="p">,</span>
-                                      <span class="n">data_keys</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;interruption&#39;</span><span class="p">:</span> <span class="n">dk</span><span class="p">},</span>
-                                      <span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">interruptions_desc</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
+        <span class="n">new_uid</span> <span class="o">=</span> <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">open_run</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">new_uid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_uid</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_close_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Instruct the RunEngine to write the RunStop document</span>
@@ -1853,40 +1798,17 @@
 <span class="sd">        if *exit_stats* and *reason* are not provided, use the values</span>
 <span class="sd">        stashed on the RE.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;close_run&#39; message was received &quot;</span>
-                                         <span class="s2">&quot;but there is no run open. If this &quot;</span>
-                                         <span class="s2">&quot;occurred after a pause/resume, add &quot;</span>
-                                         <span class="s2">&quot;a &#39;checkpoint&#39; message after the &quot;</span>
-                                         <span class="s2">&quot;&#39;close_run&#39; message.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Stopping run </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">)</span>
-        <span class="c1"># Clear any uncleared monitoring callbacks.</span>
-        <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-        <span class="c1"># Count the number of Events in each stream.</span>
-        <span class="n">num_events</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">bundle_name</span><span class="p">,</span> <span class="n">counter</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">bundle_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="c1"># rare but possible via Msg(&#39;create&#39;, name=&#39;primary&#39;)</span>
-                <span class="k">continue</span>
-            <span class="n">num_events</span><span class="p">[</span><span class="n">bundle_name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">counter</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
-        <span class="n">reason</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">reason</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span>
-        <span class="n">exit_status</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;exit_status&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">exit_status</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">exit_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span>
-        <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span>
-                   <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">uid</span><span class="o">=</span><span class="n">new_uid</span><span class="p">(),</span>
-                   <span class="n">exit_status</span><span class="o">=</span><span class="n">exit_status</span><span class="p">,</span>
-                   <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
-                   <span class="n">num_events</span><span class="o">=</span><span class="n">num_events</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_clear_run_cache</span><span class="p">()</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted RunStop (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+        <span class="c1"># TODO extract this from the Msg</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;close_run&#39; message was not &quot;</span>
+                                         <span class="s2">&quot;received before the &#39;open_run&#39; &quot;</span>
+                                         <span class="s2">&quot;message&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">close_run</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">ret</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_create</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Trigger the run engine to start bundling future obj.read() calls for</span>
@@ -1903,30 +1825,14 @@
 <span class="sd">        Also note that changing the &#39;name&#39; of the Event will create a new</span>
 <span class="sd">        Descriptor document.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;Cannot bundle readings without &quot;</span>
                                          <span class="s2">&quot;an open run. That is, &#39;create&#39; must &quot;</span>
-                                         <span class="s2">&quot;be preceded by &#39;open_run&#39;.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A second &#39;create&#39; message is not &quot;</span>
-                                         <span class="s2">&quot;allowed until the current event &quot;</span>
-                                         <span class="s2">&quot;bundle is closed with a &#39;save&#39; or &quot;</span>
-                                         <span class="s1">&#39;drop&#39;</span> <span class="s2">&quot;message.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span><span class="p">,</span> <span class="o">=</span> <span class="n">args</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="s2">&quot;Msg(&#39;create&#39;) now requires a stream name, given as &quot;</span>
-                    <span class="s2">&quot;Msg(&#39;create&#39;, name) or Msg(&#39;create&#39;, name=name)&quot;</span>
-                <span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
+                                         <span class="s2">&quot;be preceded by &#39;open_run&#39;.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1942,54 +1848,18 @@
 
         <span class="k">if</span> <span class="n">ret</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="s2">&quot;The read of </span><span class="si">{nm}</span><span class="s2"> returned None. &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nm</span><span class="o">=</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="o">+</span>
+                <span class="n">f</span><span class="s2">&quot;The read of </span><span class="si">{obj.name}</span><span class="s2"> returned None. &quot;</span>
                 <span class="s2">&quot;This is a bug in your object implementation, &quot;</span>
-                <span class="s2">&quot;`read` must return a dictionary &quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="c1"># if the object is not in the _describe_cache, cache it</span>
-            <span class="k">if</span> <span class="n">obj</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="p">:</span>
-                <span class="c1"># Validate that there is no data key name collision.</span>
-                <span class="n">data_keys</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">data_keys</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_config_desc_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe_configuration</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_cache_config</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-
-            <span class="c1"># check that current read collides with nothing else in</span>
-            <span class="c1"># current event</span>
-            <span class="n">cur_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
-            <span class="k">for</span> <span class="n">read_obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="p">:</span>
-                <span class="c1"># that is, field names</span>
-                <span class="n">known_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="p">[</span><span class="n">read_obj</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-                <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">known_keys</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">cur_keys</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Data keys (field names) from </span><span class="si">{0!r}</span><span class="s2"> &quot;</span>
-                                     <span class="s2">&quot;collide with those from </span><span class="si">{1!r}</span><span class="s2">&quot;</span>
-                                     <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">read_obj</span><span class="p">))</span>
-
-            <span class="c1"># add this object to the cache of things we have read</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
-
-            <span class="c1"># Stash the results, which will be emitted the next time _save is</span>
-            <span class="c1"># called --- or never emitted if _drop is called instead.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
-            <span class="c1"># Ask the object for any resource or datum documents is has cached</span>
-            <span class="c1"># and cache them as well. Likewise, these will be emitted if and</span>
-            <span class="c1"># when _save is called.</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;collect_asset_docs&#39;</span><span class="p">):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
-                    <span class="n">obj</span><span class="o">.</span><span class="n">collect_asset_docs</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">))</span>
+                <span class="s2">&quot;`read` must return a dictionary.&quot;</span><span class="p">)</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="o">...</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">ret</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">ret</span>
-
-    <span class="k">def</span> <span class="nf">_cache_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
-        <span class="s2">&quot;Read the object&#39;s configuration and cache it.&quot;</span>
-        <span class="n">config_values</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">config_ts</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">read_configuration</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">config_values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-            <span class="n">config_ts</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_values_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_values</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_config_ts_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_ts</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -2007,53 +1877,14 @@
 
 <span class="sd">        where kwargs are passed through to ``obj.subscribe()``</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span>
-        <span class="k">if</span> <span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The &#39;monitor&#39; Msg does not accept positional &quot;</span>
-                             <span class="s2">&quot;arguments.&quot;</span><span class="p">)</span>
-        <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">name</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">short_uid</span><span class="p">(</span><span class="s1">&#39;monitor&#39;</span><span class="p">))</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;monitor&#39; message was sent but no &quot;</span>
-                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;monitor&#39; message was sent for </span><span class="si">{}</span><span class="s2">&quot;</span>
-                                         <span class="s2">&quot;which is already monitored&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
-                                             <span class="n">obj</span><span class="p">))</span>
-        <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-        <span class="n">data_keys</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span>
-        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{},</span> <span class="s1">&#39;timestamps&#39;</span><span class="p">:</span> <span class="p">{}}}</span>
-        <span class="n">config</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe_configuration</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">read_configuration</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">config</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-            <span class="n">config</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;timestamps&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
-        <span class="n">object_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)}</span>
-        <span class="n">hints</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;hints&#39;</span><span class="p">):</span>
-            <span class="n">hints</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">hints</span><span class="p">})</span>
-        <span class="n">desc_doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-                        <span class="n">data_keys</span><span class="o">=</span><span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
-                        <span class="n">configuration</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">hints</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
-                        <span class="n">object_keys</span><span class="o">=</span><span class="n">object_keys</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event Descriptor with name </span><span class="si">%r</span><span class="s2"> containing &quot;</span>
-                       <span class="s2">&quot;data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">data_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
-                       <span class="n">descriptor_uid</span><span class="p">)</span>
-        <span class="n">seq_num_counter</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">emit_event</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-            <span class="c1"># Ignore the inputs. Use this call as a signal to call read on the</span>
-            <span class="c1"># object, a crude way to be sure we get all the info we need.</span>
-            <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span> <span class="o">=</span> <span class="n">_rearrange_into_parallel_dicts</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
-            <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">descriptor</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
-                       <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="o">=</span><span class="n">timestamps</span><span class="p">,</span>
-                       <span class="n">seq_num</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">seq_num_counter</span><span class="p">),</span> <span class="n">uid</span><span class="o">=</span><span class="n">new_uid</span><span class="p">())</span>
-            <span class="n">schema_validators</span><span class="p">[</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span> <span class="o">=</span> <span class="n">emit_event</span><span class="p">,</span> <span class="n">kwargs</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">desc_doc</span><span class="p">)</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">emit_event</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">monitor</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_unmonitor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -2064,13 +1895,14 @@
 
 <span class="sd">            Msg(&#39;unmonitor&#39;, obj)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span>
-        <span class="k">if</span> <span class="n">obj</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;Cannot &#39;unmonitor&#39; </span><span class="si">%r</span><span class="s2">; it is not &quot;</span>
-                                         <span class="s2">&quot;being monitored.&quot;</span> <span class="o">%</span> <span class="n">obj</span><span class="p">)</span>
-        <span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">clear_sub</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
-        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span>
+                <span class="s2">&quot;A &#39;unmonitor&#39; message was sent but no &quot;</span>
+                <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">unmonitor</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -2080,102 +1912,17 @@
 
 <span class="sd">            Msg(&#39;save&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;create&#39; message must be sent, to &quot;</span>
-                                         <span class="s2">&quot;open an event bundle, before that &quot;</span>
-                                         <span class="s2">&quot;bundle can be saved with &#39;save&#39;.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
             <span class="c1"># sanity check -- this should be caught by &#39;create&#39; which makes</span>
             <span class="c1"># this code path impossible</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;save&#39; message was sent but no &quot;</span>
-                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span>
-        <span class="c1"># Short-circuit if nothing has been read. (Do not create empty Events.)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">return</span>
-        <span class="c1"># The Event Descriptor is uniquely defined by the set of objects</span>
-        <span class="c1"># read in this Event grouping.</span>
-        <span class="n">objs_read</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_objs_read</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span>
+                <span class="s2">&quot;A &#39;save&#39; message was sent but no &quot;</span> <span class="s2">&quot;run is open.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
 
-        <span class="c1"># Event Descriptor documents</span>
-        <span class="n">desc_key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span>
-
-        <span class="c1"># This is a separate check because it can be reset on resume.</span>
-        <span class="n">seq_num_key</span> <span class="o">=</span> <span class="n">desc_key</span>
-        <span class="k">if</span> <span class="n">seq_num_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">:</span>
-            <span class="n">counter</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-            <span class="n">counter_copy1</span><span class="p">,</span> <span class="n">counter_copy2</span> <span class="o">=</span> <span class="n">tee</span><span class="p">(</span><span class="n">counter</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">seq_num_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter_copy1</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="p">[</span><span class="n">seq_num_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter_copy2</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>
-
-        <span class="n">d_objs</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">desc_key</span><span class="p">,</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">d_objs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">d_objs</span> <span class="o">!=</span> <span class="n">objs_read</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Mismatched objects read, expected </span><span class="si">{!s}</span><span class="s2">, &quot;</span>
-                               <span class="s2">&quot;got </span><span class="si">{!s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d_objs</span><span class="p">,</span> <span class="n">objs_read</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># We don&#39;t not have an Event Descriptor for this set.</span>
-            <span class="n">data_keys</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">object_keys</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="n">hints</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">objs_read</span><span class="p">:</span>
-                <span class="n">dks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_describe_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-                <span class="n">name</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span>
-                <span class="c1"># dks is an OrderedDict. Record that order as a list.</span>
-                <span class="n">object_keys</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dks</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">field</span><span class="p">,</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">dks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="n">dk</span><span class="p">[</span><span class="s1">&#39;object_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
-                <span class="n">data_keys</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">dks</span><span class="p">)</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_values_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;timestamps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_ts_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_config_desc_cache</span><span class="p">[</span><span class="n">obj</span><span class="p">]</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;hints&#39;</span><span class="p">):</span>
-                    <span class="n">hints</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">hints</span>
-            <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-            <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-                       <span class="n">data_keys</span><span class="o">=</span><span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
-                       <span class="n">configuration</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">desc_key</span><span class="p">,</span>
-                       <span class="n">hints</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span> <span class="n">object_keys</span><span class="o">=</span><span class="n">object_keys</span><span class="p">)</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event Descriptor with name </span><span class="si">%r</span><span class="s2"> containing &quot;</span>
-                           <span class="s2">&quot;data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">desc_key</span><span class="p">,</span>
-                           <span class="n">data_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor_uid</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">desc_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">objs_read</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-
-        <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-
-        <span class="c1"># Resource and Datum documents</span>
-        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_asset_docs_cache</span><span class="p">:</span>
-            <span class="c1"># Add a &#39;run_start&#39; field to the resource document on its way out.</span>
-            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
-                <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
-
-        <span class="c1"># Event documents</span>
-        <span class="n">seq_num</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">seq_num_key</span><span class="p">])</span>
-        <span class="n">event_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-        <span class="c1"># Merge list of readings into single dict.</span>
-        <span class="n">readings</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_cache</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">readings</span><span class="p">:</span>
-            <span class="n">readings</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">readings</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-        <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span> <span class="o">=</span> <span class="n">_rearrange_into_parallel_dicts</span><span class="p">(</span><span class="n">readings</span><span class="p">)</span>
-        <span class="c1"># Mark all externally-stored data as not filled so that consumers</span>
-        <span class="c1"># know that the corresponding data are identifies, not dereferenced</span>
-        <span class="c1"># data.</span>
-        <span class="n">filled</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="kc">False</span>
-                  <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span>
-                  <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">desc_key</span><span class="p">][</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                  <span class="k">if</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">v</span><span class="p">}</span>
-        <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">descriptor</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
-                   <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span><span class="o">=</span><span class="n">timestamps</span><span class="p">,</span>
-                   <span class="n">seq_num</span><span class="o">=</span><span class="n">seq_num</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">event_uid</span><span class="p">,</span> <span class="n">filled</span><span class="o">=</span><span class="n">filled</span><span class="p">)</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event with data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
-                       <span class="n">event_uid</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_drop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Drop the event that is currently being bundled</span>
@@ -2184,18 +1931,14 @@
 
 <span class="sd">            Msg(&#39;drop&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;create&#39; message must be sent, to &quot;</span>
-                                         <span class="s2">&quot;open an event bundle, before that &quot;</span>
-                                         <span class="s2">&quot;bundle can be dropped with &#39;drop&#39;.&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
-            <span class="c1"># sanity check -- this should be caught by &#39;create&#39; which makes</span>
-            <span class="c1"># this code path impossible</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;drop&#39; message was sent but no &quot;</span>
-                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_bundle_name</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Dropped open event bundle&quot;</span><span class="p">)</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span>
+                <span class="s2">&quot;A &#39;drop&#39; message was sent but no &quot;</span> <span class="s2">&quot;run is open.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_kickoff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Start a flyscan object</span>
@@ -2221,24 +1964,32 @@
 <span class="sd">            Msg(&#39;kickoff&#39;, flyer_object, start, stop, step)</span>
 <span class="sd">            Msg(&#39;kickoff&#39;, flyer_object, start, stop, step, group=&lt;name&gt;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;kickoff&#39; message was sent but no &quot;</span>
-                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="n">ret</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">kickoff</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
         <span class="n">p_event</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="n">pardon_failures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span>
 
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">kickoff</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">done_callback</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;The object </span><span class="si">%r</span><span class="s2"> reports &#39;kickoff&#39; is done &quot;</span>
-                           <span class="s2">&quot;with status </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="n">ret</span><span class="o">.</span><span class="n">success</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;The object </span><span class="si">%r</span><span class="s2"> reports &#39;kickoff&#39; is done &quot;</span> <span class="s2">&quot;with status </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span>
+                <span class="n">ret</span><span class="o">.</span><span class="n">success</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_status_object_completed</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">p_event</span><span class="p">,</span> <span class="n">pardon_failures</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_status_object_completed</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">p_event</span><span class="p">,</span> <span class="n">pardon_failures</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -2248,6 +1999,7 @@
             <span class="n">ret</span><span class="o">.</span><span class="n">finished_cb</span> <span class="o">=</span> <span class="n">done_callback</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_groups</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_event</span><span class="o">.</span><span class="n">wait</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_status_objs</span><span class="p">[</span><span class="n">group</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">ret</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -2266,18 +2018,30 @@
 
 <span class="sd">        where &lt;GROUP&gt; is a hashable identifier.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;complete&#39; message was sent but no &quot;</span>
+                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
+
+        <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">group</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;group&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">group</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;group&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="n">ret</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="o">*</span><span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="n">p_event</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="n">pardon_failures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pardon_failures</span>
 
         <span class="k">def</span> <span class="nf">done_callback</span><span class="p">():</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;The object </span><span class="si">%r</span><span class="s2"> reports &#39;complete&#39; is done &quot;</span>
-                           <span class="s2">&quot;with status </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="n">ret</span><span class="o">.</span><span class="n">success</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;The object </span><span class="si">%r</span><span class="s2"> reports &#39;complete&#39; is done &quot;</span> <span class="s2">&quot;with status </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span>
+                <span class="n">ret</span><span class="o">.</span><span class="n">success</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span><span class="o">.</span><span class="n">call_soon_threadsafe</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_status_object_completed</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">p_event</span><span class="p">,</span> <span class="n">pardon_failures</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_status_object_completed</span><span class="p">,</span> <span class="n">ret</span><span class="p">,</span> <span class="n">p_event</span><span class="p">,</span> <span class="n">pardon_failures</span>
+            <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_status_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
@@ -2290,99 +2054,37 @@
         <span class="k">return</span> <span class="n">ret</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Collect data cached by a flyer and emit descriptor and event documents.</span>
+        <span class="sd">&quot;&quot;&quot;Start a flyscan object</span>
 
-<span class="sd">        Expect message object is</span>
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        msg : Msg</span>
 
-<span class="sd">            Msg(&#39;collect&#39;, obj)</span>
-<span class="sd">            Msg(&#39;collect&#39;, obj, stream=True)</span>
+<span class="sd">        Special kwargs for the &#39;Msg&#39; object in this function:</span>
+<span class="sd">        group : str</span>
+<span class="sd">            The blocking group to this flyer to</span>
+
+<span class="sd">        Expected message object is:</span>
+
+<span class="sd">        If `flyer_object` has a `kickoff` function that takes no arguments:</span>
+
+<span class="sd">            Msg(&#39;kickoff&#39;, flyer_object)</span>
+<span class="sd">            Msg(&#39;kickoff&#39;, flyer_object, group=&lt;name&gt;)</span>
+
+<span class="sd">        If `flyer_object` has a `kickoff` function that takes</span>
+<span class="sd">        `(start, stop, steps)` as its function arguments:</span>
+
+<span class="sd">            Msg(&#39;kickoff&#39;, flyer_object, start, stop, step)</span>
+<span class="sd">            Msg(&#39;kickoff&#39;, flyer_object, start, stop, step, group=&lt;name&gt;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">obj</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_is_open</span><span class="p">:</span>
-            <span class="c1"># sanity check -- &#39;kickoff&#39; should catch this and make this</span>
-            <span class="c1"># code path impossible</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">ke</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;A &#39;collect&#39; message was sent but no &quot;</span>
-                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_uncollected</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+                                         <span class="s2">&quot;run is open.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ke</span>
 
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;collect_asset_docs&#39;</span><span class="p">):</span>
-            <span class="c1"># Resource and Datum documents</span>
-            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">collect_asset_docs</span><span class="p">():</span>
-                <span class="c1"># Add a &#39;run_start&#39; field to the resource document</span>
-                <span class="c1"># on its way out.</span>
-                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
-                    <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">doc</span><span class="p">)</span>
-
-        <span class="n">named_data_keys</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">describe_collect</span><span class="p">()</span>
-        <span class="c1"># e.g., {name_for_desc1: data_keys_for_desc1,</span>
-        <span class="c1">#        name for_desc2: data_keys_for_desc2, ...}</span>
-        <span class="n">bulk_data</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="n">local_descriptors</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># hashed on obj_read, not (name, objs_read)</span>
-        <span class="k">for</span> <span class="n">stream_name</span><span class="p">,</span> <span class="n">data_keys</span> <span class="ow">in</span> <span class="n">named_data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">desc_key</span> <span class="o">=</span> <span class="n">stream_name</span>
-            <span class="n">d_objs</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">desc_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
-                <span class="n">objs_read</span> <span class="o">=</span> <span class="n">d_objs</span>
-                <span class="c1"># We don&#39;t not have an Event Descriptor for this set.</span>
-                <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-                <span class="n">object_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)}</span>
-                <span class="n">hints</span> <span class="o">=</span> <span class="p">{}</span>
-                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;hints&#39;</span><span class="p">):</span>
-                    <span class="n">hints</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">hints</span><span class="p">})</span>
-                <span class="n">doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">run_start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uid</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="n">ttime</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-                           <span class="n">data_keys</span><span class="o">=</span><span class="n">data_keys</span><span class="p">,</span> <span class="n">uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">,</span>
-                           <span class="n">name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span> <span class="n">hints</span><span class="o">=</span><span class="n">hints</span><span class="p">,</span>
-                           <span class="n">object_keys</span><span class="o">=</span><span class="n">object_keys</span><span class="p">)</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event Descriptor with name </span><span class="si">%r</span><span class="s2"> &quot;</span>
-                               <span class="s2">&quot;containing data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="n">stream_name</span><span class="p">,</span>
-                               <span class="n">data_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">descriptor_uid</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">desc_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">objs_read</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">desc_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">objs_read</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">desc_key</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">d_objs</span> <span class="o">!=</span> <span class="n">objs_read</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Mismatched objects read, &quot;</span>
-                                   <span class="s2">&quot;expected </span><span class="si">{!s}</span><span class="s2">, &quot;</span>
-                                   <span class="s2">&quot;got </span><span class="si">{!s}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d_objs</span><span class="p">,</span> <span class="n">objs_read</span><span class="p">))</span>
-
-            <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-            <span class="n">local_descriptors</span><span class="p">[</span><span class="n">objs_read</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">stream_name</span><span class="p">,</span> <span class="n">descriptor_uid</span><span class="p">)</span>
-
-            <span class="n">bulk_data</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-
-        <span class="c1"># If stream is True, run &#39;event&#39; subscription per document.</span>
-        <span class="c1"># If stream is False, run &#39;bulk_events&#39; subscription once.</span>
-        <span class="n">stream</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stream&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">obj</span><span class="o">.</span><span class="n">collect</span><span class="p">():</span>
-            <span class="n">objs_read</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">])</span>
-            <span class="n">stream_name</span><span class="p">,</span> <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">local_descriptors</span><span class="p">[</span><span class="n">objs_read</span><span class="p">]</span>
-            <span class="n">seq_num</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">stream_name</span><span class="p">])</span>
-
-            <span class="n">event_uid</span> <span class="o">=</span> <span class="n">new_uid</span><span class="p">()</span>
-
-            <span class="n">reading</span> <span class="o">=</span> <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]:</span>
-                <span class="n">reading</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">reading</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reading</span>
-            <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">descriptor_uid</span>
-            <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">seq_num</span>
-            <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">event_uid</span>
-
-            <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted Event with data keys </span><span class="si">%r</span><span class="s2"> (uid=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span>
-                               <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">ev</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">event</span><span class="p">,</span> <span class="n">ev</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">bulk_data</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ev</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">stream</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">DocumentNames</span><span class="o">.</span><span class="n">bulk_events</span><span class="p">,</span> <span class="n">bulk_data</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Emitted bulk events for descriptors with uids &quot;</span>
-                           <span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">bulk_data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">collect</span><span class="p">(</span><span class="n">msg</span><span class="p">))</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_null</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -2544,8 +2246,8 @@
 <span class="sd">        keyword arguments in the `Msg` signature</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Re-instate monitoring callbacks.</span>
-        <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_monitor_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">obj</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">restore_monitors</span><span class="p">()</span>
         <span class="c1"># Notify Devices of the resume in case they want to clean up.</span>
         <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;resume&#39;</span><span class="p">):</span>
@@ -2559,9 +2261,10 @@
 
 <span class="sd">            Msg(&#39;checkpoint&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;Cannot &#39;checkpoint&#39; after &#39;create&#39; &quot;</span>
-                                         <span class="s2">&quot;and before &#39;save&#39;. Aborting!&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">current_run</span><span class="o">.</span><span class="n">bundling</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span><span class="s2">&quot;Cannot &#39;checkpoint&#39; after &#39;create&#39; &quot;</span>
+                                             <span class="s2">&quot;and before &#39;save&#39;. Aborting!&quot;</span><span class="p">)</span>
 
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
 
@@ -2580,13 +2283,8 @@
             <span class="k">return</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_msg_cache</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
-
-        <span class="c1"># Keep a safe separate copy of the sequence counters to use if we</span>
-        <span class="c1"># rewind and retake some data points.</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">counter</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
-            <span class="n">counter_copy1</span><span class="p">,</span> <span class="n">counter_copy2</span> <span class="o">=</span> <span class="n">tee</span><span class="p">(</span><span class="n">counter</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sequence_counters</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter_copy1</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter_copy2</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">current_run</span><span class="o">.</span><span class="n">reset_checkpoint_state</span><span class="p">()</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_reset_checkpoint_state_coro</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state</span><span class="p">()</span>
@@ -2601,7 +2299,8 @@
         <span class="c1"># clear message cache</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_msg_cache</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="c1"># clear stashed</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_teed_sequence_counters</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">current_run</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">clear_checkpoint</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_rewindable</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Set rewindable state of RunEngine</span>
@@ -2628,23 +2327,21 @@
 
 <span class="sd">            object.configure(*args, **kwargs)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bundling</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span>
-                <span class="s2">&quot;Cannot configure after &#39;create&#39; but before &#39;save&#39;&quot;</span>
-                <span class="s2">&quot;Aborting!&quot;</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
-
-        <span class="c1"># Invalidate any event descriptors that include this object.</span>
-        <span class="c1"># New event descriptors, with this new configuration, will</span>
-        <span class="c1"># be created for any future event documents.</span>
-        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">):</span>
-            <span class="n">obj_set</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">obj_set</span><span class="p">:</span>
-                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_bundlers</span><span class="p">[</span><span class="n">run_key</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">current_run</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">current_run</span><span class="o">.</span><span class="n">bundling</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">IllegalMessageSequence</span><span class="p">(</span>
+                    <span class="s2">&quot;Cannot configure after &#39;create&#39; but before &#39;save&#39;&quot;</span>
+                    <span class="s2">&quot;Aborting!&quot;</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
 
         <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_config</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current_run</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">current_run</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_stage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
@@ -2654,7 +2351,7 @@
 
 <span class="sd">            Msg(&#39;stage&#39;, object)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="c1"># If an object has no &#39;stage&#39; method, assume there is nothing to do.</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;stage&#39;</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">[]</span>
@@ -2670,7 +2367,7 @@
 
 <span class="sd">            Msg(&#39;unstage&#39;, object)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="c1"># If an object has no &#39;unstage&#39; method, assume there is nothing to do.</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;unstage&#39;</span><span class="p">):</span>
             <span class="k">return</span> <span class="p">[]</span>
@@ -2716,7 +2413,7 @@
 <span class="sd">        information.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Adding subscription </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_temp_callback_ids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reset_checkpoint_state_coro</span><span class="p">()</span>
@@ -2735,7 +2432,7 @@
 <span class="sd">        where ``TOKEN`` is the return value from ``RunEngine._subscribe()``</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Removing subscription </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
-        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span> <span class="o">=</span> <span class="n">msg</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">msg</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">token</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;token&#39;</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
@@ -2756,10 +2453,13 @@
         <span class="n">async_input</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">async_input</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="n">async_input</span><span class="p">(</span><span class="n">prompt</span><span class="p">))</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">emit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">emit_sync</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
         <span class="s2">&quot;Process blocking callbacks and schedule non-blocking callbacks.&quot;</span>
         <span class="n">schema_validators</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dispatcher</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">emit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">emit_sync</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Dispatcher"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.Dispatcher">[docs]</a><span class="k">class</span> <span class="nc">Dispatcher</span><span class="p">:</span>
@@ -2875,15 +2575,6 @@
     <span class="nd">@ignore_exceptions</span><span class="o">.</span><span class="n">setter</span>
     <span class="k">def</span> <span class="nf">ignore_exceptions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cb_registry</span><span class="o">.</span><span class="n">ignore_exceptions</span> <span class="o">=</span> <span class="n">val</span></div>
-
-
-<span class="k">def</span> <span class="nf">_rearrange_into_parallel_dicts</span><span class="p">(</span><span class="n">readings</span><span class="p">):</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">timestamps</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">readings</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
-        <span class="n">timestamps</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">payload</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">timestamps</span>
 
 
 <span class="n">PAUSE_MSG</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
