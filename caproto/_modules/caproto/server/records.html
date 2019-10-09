@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.server.records &mdash; caproto 0.4.1+4.g5f210a7.dirty documentation</title>
+  <title>caproto.server.records &mdash; caproto 0.4.1+8.g2348c2a.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.4.1+4.g5f210a7.dirty
+                0.4.1+8.g2348c2a.dirty
               </div>
             
           
@@ -204,6 +204,27 @@
             <span class="k">async</span> <span class="k">def</span> <span class="nf">putter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
                 <span class="n">kw</span> <span class="o">=</span> <span class="p">{</span><span class="n">parent_attr_name</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">write_metadata</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pvprop</span>
+
+
+<span class="k">def</span> <span class="nf">_link_enum_strings</span><span class="p">(</span><span class="n">pvprop</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="s1">&#39;Take a pvproperty and link its parent enum_strings[index]&#39;</span>
+
+    <span class="nd">@pvprop</span><span class="o">.</span><span class="n">getter</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">getter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">enum_strings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+    <span class="nd">@pvprop</span><span class="o">.</span><span class="n">putter</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">putter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">enum_strings</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">enum_strings</span><span class="p">)</span>
+
+        <span class="n">old_enum</span> <span class="o">=</span> <span class="n">enum_strings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="n">enum_strings</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)[:</span><span class="n">instance</span><span class="o">.</span><span class="n">max_length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">write_metadata</span><span class="p">(</span><span class="n">enum_strings</span><span class="o">=</span><span class="n">enum_strings</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">old_enum</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">pvprop</span>
 
@@ -1440,7 +1461,10 @@
         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;SIMS&#39;</span><span class="p">,</span>
         <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">ENUM</span><span class="p">,</span>
         <span class="n">enum_strings</span><span class="o">=</span><span class="n">menus</span><span class="o">.</span><span class="n">menuAlarmSevr</span><span class="o">.</span><span class="n">get_string_tuple</span><span class="p">(),</span>
-        <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Sim mode Alarm Svrty&#39;</span><span class="p">)</span></div>
+        <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Sim mode Alarm Svrty&#39;</span><span class="p">)</span>
+
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">zero_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">one_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="BoFields"><a class="viewcode-back" href="../../../mock-records.html#caproto.server.records.BoFields">[docs]</a><span class="nd">@register_record</span>
@@ -1535,7 +1559,10 @@
     <span class="n">output_specification</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;OUT&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">STRING</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Output Specification&#39;</span><span class="p">)</span>
     <span class="n">seconds_to_hold_high</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
-        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Seconds to Hold High&#39;</span><span class="p">)</span></div>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Seconds to Hold High&#39;</span><span class="p">)</span>
+
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">zero_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">one_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="BusyFields"><a class="viewcode-back" href="../../../mock-records.html#caproto.server.records.BusyFields">[docs]</a><span class="nd">@register_record</span>
@@ -1632,7 +1659,10 @@
     <span class="n">output_specification</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;OUT&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">STRING</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Output Specification&#39;</span><span class="p">)</span>
     <span class="n">seconds_to_hold_high</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
-        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Seconds to Hold High&#39;</span><span class="p">)</span></div>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">DOUBLE</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Seconds to Hold High&#39;</span><span class="p">)</span>
+
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">zero_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">_link_enum_strings</span><span class="p">(</span><span class="n">one_name</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="CalcFields"><a class="viewcode-back" href="../../../mock-records.html#caproto.server.records.CalcFields">[docs]</a><span class="nd">@register_record</span>
