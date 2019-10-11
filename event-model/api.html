@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Documentation &mdash; Bluesky Event Model 1.11.2.post9+g228df83 documentation</title>
+  <title>API Documentation &mdash; Bluesky Event Model 1.11.2.post17+g22ea3dd documentation</title>
   
 
   
@@ -63,7 +63,7 @@
             
             
               <div class="version">
-                1.11.2.post9+g228df83
+                1.11.2.post17+g22ea3dd
               </div>
             
           
@@ -223,7 +223,7 @@ and transforming documents in the model.</p>
 a schema and an associated <a class="reference external" href="https://python-jsonschema.readthedocs.io/en/stable/validate/#jsonschema.IValidator" title="(in jsonschema v3.1.1)"><code class="xref py py-class docutils literal notranslate"><span class="pre">jsonschema.IValidator</span></code></a>.</p>
 <dl class="class">
 <dt id="event_model.RunRouter">
-<em class="property">class </em><code class="sig-prename descclassname">event_model.</code><code class="sig-name descname">RunRouter</code><span class="sig-paren">(</span><em class="sig-param">factories</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/event_model.html#RunRouter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#event_model.RunRouter" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">event_model.</code><code class="sig-name descname">RunRouter</code><span class="sig-paren">(</span><em class="sig-param">factories</em>, <em class="sig-param">handler_registry=None</em>, <em class="sig-param">*</em>, <em class="sig-param">root_map=None</em>, <em class="sig-param">filler_class=&lt;class 'event_model.Filler'&gt;</em>, <em class="sig-param">fill_or_fail=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/event_model.html#RunRouter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#event_model.RunRouter" title="Permalink to this definition">¶</a></dt>
 <dd><p>Routes documents, by run, to callbacks it creates from factory functions.</p>
 <p>A RunRouter is callable, and it has the signature <code class="docutils literal notranslate"><span class="pre">router(name,</span> <span class="pre">doc)</span></code>,
 suitable for subscribing to the RunEngine.</p>
@@ -256,6 +256,39 @@ with the signature:</p>
 as they arrive. They must return one list, which may be empty,
 containing callbacks that will receive all Events that reference that
 EventDescriptor and finally the RunStop document for the run.</p>
+</dd>
+<dt><strong>handler_registry</strong><span class="classifier">dict, optional</span></dt><dd><p>This is passed to the Filler or whatever class is given in the
+filler_class parametr below.</p>
+<p>Maps each ‘spec’ (a string identifying a given type or external
+resource) to a handler class.</p>
+<p>A ‘handler class’ may be any callable with the signature:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">handler_class</span><span class="p">(</span><span class="n">resource_path</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="o">**</span><span class="n">resource_kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It is expected to return an object, a ‘handler instance’, which is also
+callable and has the following signature:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">handler_instance</span><span class="p">(</span><span class="o">**</span><span class="n">datum_kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>As the names ‘handler class’ and ‘handler instance’ suggest, this is
+typically implemented using a class that implements <code class="docutils literal notranslate"><span class="pre">__init__</span></code> and
+<code class="docutils literal notranslate"><span class="pre">__call__</span></code>, with the respective signatures. But in general it may be
+any callable-that-returns-a-callable.</p>
+</dd>
+<dt><strong>root_map: dict, optional</strong></dt><dd><p>This is passed to Filler or whatever class is given in the filler_class
+parameter below.</p>
+<p>str -&gt; str mapping to account for temporarily moved/copied/remounted
+files.  Any resources which have a <code class="docutils literal notranslate"><span class="pre">root</span></code> in <code class="docutils literal notranslate"><span class="pre">root_map</span></code> will be
+loaded using the mapped <code class="docutils literal notranslate"><span class="pre">root</span></code>.</p>
+</dd>
+<dt><strong>filler_class: type</strong></dt><dd><p>This is Filler by default. It can be a Filler subclass,
+<code class="docutils literal notranslate"><span class="pre">functools.partial(Filler,</span> <span class="pre">...)</span></code>, or any class that provides the same
+methods as <code class="docutils literal notranslate"><span class="pre">DocumentRouter</span></code>.</p>
+</dd>
+<dt><strong>fill_or_fail: boolean, optional</strong></dt><dd><p>By default (False), if a document with a spec not in
+<code class="docutils literal notranslate"><span class="pre">handler_registery</span></code> is encountered, let it pass through unfilled. But
+if set to True, fill everything and <cite>raise
+``UndefinedAssetSpecification`</cite> if some unknown spec is encountered.</p>
 </dd>
 </dl>
 </dd>

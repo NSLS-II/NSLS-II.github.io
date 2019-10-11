@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.11.2.post9+g228df83 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.11.2.post17+g22ea3dd documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.11.2.post9+g228df83
+                1.11.2.post17+g22ea3dd
               </div>
             
           
@@ -284,175 +284,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">bulk_datum_to_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span></div></div>
 
 
-<div class="viewcode-block" id="RunRouter"><a class="viewcode-back" href="../api.html#event_model.RunRouter">[docs]</a><span class="k">class</span> <span class="nc">RunRouter</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Routes documents, by run, to callbacks it creates from factory functions.</span>
-
-<span class="sd">    A RunRouter is callable, and it has the signature ``router(name, doc)``,</span>
-<span class="sd">    suitable for subscribing to the RunEngine.</span>
-
-<span class="sd">    It is configured with a list of factory functions that produce callbacks in</span>
-<span class="sd">    a two-layered scheme, described below.</span>
-
-<span class="sd">    .. warning::</span>
-
-<span class="sd">       This is experimental. In a future release, it may be changed in a</span>
-<span class="sd">       backward-incompatible way or fully removed.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    factories : list</span>
-<span class="sd">        A list of callables with the signature::</span>
-
-<span class="sd">            factory(&#39;start&#39;, start_doc) -&gt; List[Callbacks], List[SubFactories]</span>
-
-<span class="sd">        which should return two lists, which may be empty. All items in the</span>
-<span class="sd">        first list should be callbacks --- callables with the signature::</span>
-
-<span class="sd">            callback(name, doc)</span>
-
-<span class="sd">        that will receive all subsequent documents from the run including the</span>
-<span class="sd">        RunStop document. All items in the second list should be &quot;subfactories&quot;</span>
-<span class="sd">        with the signature::</span>
-
-<span class="sd">            subfactory(&#39;descriptor&#39;, descriptor_doc) -&gt; List[Callbacks]</span>
-
-<span class="sd">        These will receive each of the EventDescriptor documents for the run,</span>
-<span class="sd">        as they arrive. They must return one list, which may be empty,</span>
-<span class="sd">        containing callbacks that will receive all Events that reference that</span>
-<span class="sd">        EventDescriptor and finally the RunStop document for the run.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factories</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">factories</span> <span class="o">=</span> <span class="n">factories</span>
-
-        <span class="c1"># Map RunStart UID to &quot;subfactory&quot; functions that want all</span>
-        <span class="c1"># EventDescriptors from that run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Callbacks that want all the documents from a given run, keyed on</span>
-        <span class="c1"># RunStart UID.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Callbacks that want all the documents from a given run, keyed on</span>
-        <span class="c1"># each EventDescriptor UID in the run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Callbacks that want documents related to a given EventDescriptor,</span>
-        <span class="c1"># keyed on EventDescriptor UID.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Callbacks that want documents related to a given EventDescriptor,</span>
-        <span class="c1"># keyed on the RunStart UID referenced by that EventDescriptor.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Map RunStart UID to the list EventDescriptor. This is used to</span>
-        <span class="c1"># facilitate efficient cleanup of the caches above.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-
-        <span class="c1"># Map Resource UID to RunStart UID.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="c1"># Old-style Resources that do not have a RunStart UID</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;RunRouter([</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span>
-                <span class="n">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;    </span><span class="si">{factory}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">)</span> <span class="o">+</span>
-                <span class="n">f</span><span class="s2">&quot;])&quot;</span><span class="p">)</span>
-
-<div class="viewcode-block" id="RunRouter.start"><a class="viewcode-back" href="../api.html#event_model.RunRouter.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">:</span>
-            <span class="n">callbacks</span><span class="p">,</span> <span class="n">subfactories</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subfactories</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="RunRouter.descriptor"><a class="viewcode-back" href="../api.html#event_model.RunRouter.descriptor">[docs]</a>    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
-        <span class="c1"># Apply all factory cbs for this run to this descriptor, and run them.</span>
-        <span class="n">factory_cbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">factory_cbs</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">factory_cbs</span><span class="p">:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="c1"># Let all the subfactories add any relavant callbacks.</span>
-        <span class="k">for</span> <span class="n">subfactory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-            <span class="n">callbacks</span> <span class="o">=</span> <span class="n">subfactory</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
-        <span class="c1"># Keep track of the RunStart UID -&gt; [EventDescriptor UIDs] mapping for</span>
-        <span class="c1"># purposes of cleanup in stop().</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="RunRouter.event_page"><a class="viewcode-back" href="../api.html#event_model.RunRouter.event_page">[docs]</a>    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="RunRouter.datum_page"><a class="viewcode-back" href="../api.html#event_model.RunRouter.datum_page">[docs]</a>    <span class="k">def</span> <span class="nf">datum_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">start_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">[</span><span class="n">resource_uid</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">resource_uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span><span class="p">:</span>
-                <span class="c1"># Old Resources do not have a reference to a RunStart document,</span>
-                <span class="c1"># so in turn we cannot immediately tell which run these datum</span>
-                <span class="c1"># documents belong to.</span>
-                <span class="c1"># Fan them out to every run currently flowing through RunRouter. If</span>
-                <span class="c1"># they are not applicable they will do no harm, and this is</span>
-                <span class="c1"># expected to be an increasingly rare case.</span>
-                <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                    <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
-                        <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                    <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
-                        <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="RunRouter.resource"><a class="viewcode-back" href="../api.html#event_model.RunRouter.resource">[docs]</a>    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
-        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-            <span class="c1"># Old Resources do not have a reference to a RunStart document.</span>
-            <span class="c1"># Fan them out to every run currently flowing through RunRouter. If</span>
-            <span class="c1"># they are not applicable they will do no harm, and this is</span>
-            <span class="c1"># expected to be an increasingly rare case.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
-            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
-                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
-                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="RunRouter.stop"><a class="viewcode-back" href="../api.html#event_model.RunRouter.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
-        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="c1"># Clean up references.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">descriptor_uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="p">()):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div></div>
-
-
 <div class="viewcode-block" id="Filler"><a class="viewcode-back" href="../api.html#event_model.Filler">[docs]</a><span class="k">class</span> <span class="nc">Filler</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Pass documents through, loading any externally-referenced data.</span>
 
@@ -608,9 +439,6 @@
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">inplace</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inplace</span>
-
-    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span>
 
     <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
         <span class="c1"># Defer creating the handler instance until we actually need it, when</span>
@@ -782,9 +610,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
         <span class="k">return</span> <span class="n">doc</span>
 
-    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span>
-
     <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span>
 
@@ -806,6 +631,250 @@
             <span class="k">raise</span> <span class="n">EventModelRuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;This Filler has been closed and is no longer usable.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RunRouter"><a class="viewcode-back" href="../api.html#event_model.RunRouter">[docs]</a><span class="k">class</span> <span class="nc">RunRouter</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Routes documents, by run, to callbacks it creates from factory functions.</span>
+
+<span class="sd">    A RunRouter is callable, and it has the signature ``router(name, doc)``,</span>
+<span class="sd">    suitable for subscribing to the RunEngine.</span>
+
+<span class="sd">    It is configured with a list of factory functions that produce callbacks in</span>
+<span class="sd">    a two-layered scheme, described below.</span>
+
+<span class="sd">    .. warning::</span>
+
+<span class="sd">       This is experimental. In a future release, it may be changed in a</span>
+<span class="sd">       backward-incompatible way or fully removed.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    factories : list</span>
+<span class="sd">        A list of callables with the signature::</span>
+
+<span class="sd">            factory(&#39;start&#39;, start_doc) -&gt; List[Callbacks], List[SubFactories]</span>
+
+<span class="sd">        which should return two lists, which may be empty. All items in the</span>
+<span class="sd">        first list should be callbacks --- callables with the signature::</span>
+
+<span class="sd">            callback(name, doc)</span>
+
+<span class="sd">        that will receive all subsequent documents from the run including the</span>
+<span class="sd">        RunStop document. All items in the second list should be &quot;subfactories&quot;</span>
+<span class="sd">        with the signature::</span>
+
+<span class="sd">            subfactory(&#39;descriptor&#39;, descriptor_doc) -&gt; List[Callbacks]</span>
+
+<span class="sd">        These will receive each of the EventDescriptor documents for the run,</span>
+<span class="sd">        as they arrive. They must return one list, which may be empty,</span>
+<span class="sd">        containing callbacks that will receive all Events that reference that</span>
+<span class="sd">        EventDescriptor and finally the RunStop document for the run.</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        This is passed to the Filler or whatever class is given in the</span>
+<span class="sd">        filler_class parametr below.</span>
+
+<span class="sd">        Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">        resource) to a handler class.</span>
+
+<span class="sd">        A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">            handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">        It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">        callable and has the following signature::</span>
+
+<span class="sd">            handler_instance(**datum_kwargs)</span>
+
+<span class="sd">        As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">        typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">        ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">        any callable-that-returns-a-callable.</span>
+<span class="sd">    root_map: dict, optional</span>
+<span class="sd">        This is passed to Filler or whatever class is given in the filler_class</span>
+<span class="sd">        parameter below.</span>
+
+<span class="sd">        str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
+<span class="sd">        files.  Any resources which have a ``root`` in ``root_map`` will be</span>
+<span class="sd">        loaded using the mapped ``root``.</span>
+<span class="sd">    filler_class: type</span>
+<span class="sd">        This is Filler by default. It can be a Filler subclass,</span>
+<span class="sd">        ``functools.partial(Filler, ...)``, or any class that provides the same</span>
+<span class="sd">        methods as ``DocumentRouter``.</span>
+<span class="sd">    fill_or_fail: boolean, optional</span>
+<span class="sd">        By default (False), if a document with a spec not in</span>
+<span class="sd">        ``handler_registery`` is encountered, let it pass through unfilled. But</span>
+<span class="sd">        if set to True, fill everything and `raise</span>
+<span class="sd">        ``UndefinedAssetSpecification`` if some unknown spec is encountered.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">factories</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+                 <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filler_class</span><span class="o">=</span><span class="n">Filler</span><span class="p">,</span> <span class="n">fill_or_fail</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">factories</span> <span class="o">=</span> <span class="n">factories</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span> <span class="o">=</span> <span class="n">handler_registry</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filler_class</span> <span class="o">=</span> <span class="n">filler_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fill_or_fail</span> <span class="o">=</span> <span class="n">fill_or_fail</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span> <span class="o">=</span> <span class="n">root_map</span>
+
+        <span class="c1"># Map RunStart UID to &quot;subfactory&quot; functions that want all</span>
+        <span class="c1"># EventDescriptors from that run.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Callbacks that want all the documents from a given run, keyed on</span>
+        <span class="c1"># RunStart UID.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Callbacks that want all the documents from a given run, keyed on</span>
+        <span class="c1"># each EventDescriptor UID in the run.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Callbacks that want documents related to a given EventDescriptor,</span>
+        <span class="c1"># keyed on EventDescriptor UID.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Callbacks that want documents related to a given EventDescriptor,</span>
+        <span class="c1"># keyed on the RunStart UID referenced by that EventDescriptor.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Map RunStart UID to the list EventDescriptor. This is used to</span>
+        <span class="c1"># facilitate efficient cleanup of the caches above.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Map EventDescriptor UID to RunStart UID. This is used for looking up</span>
+        <span class="c1"># Fillers.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Map Resource UID to RunStart UID.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Old-style Resources that do not have a RunStart UID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+
+        <span class="c1"># Map Runstart UID to instances of self.filler_class.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;RunRouter([</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span>
+                <span class="n">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;    </span><span class="si">{factory}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">)</span> <span class="o">+</span>
+                <span class="n">f</span><span class="s2">&quot;])&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RunRouter.start"><a class="viewcode-back" href="../api.html#event_model.RunRouter.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="n">filler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filler_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span>
+                                   <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_map</span><span class="p">,</span>
+                                   <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">filler</span>
+        <span class="c1"># No need to pass the document to filler</span>
+        <span class="c1"># because Fillers do nothing with &#39;start&#39;.</span>
+        <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">:</span>
+            <span class="n">callbacks</span><span class="p">,</span> <span class="n">subfactories</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subfactories</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RunRouter.descriptor"><a class="viewcode-back" href="../api.html#event_model.RunRouter.descriptor">[docs]</a>    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">descriptor</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="c1"># Apply all factory cbs for this run to this descriptor, and run them.</span>
+        <span class="n">factory_cbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">factory_cbs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">factory_cbs</span><span class="p">:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="c1"># Let all the subfactories add any relavant callbacks.</span>
+        <span class="k">for</span> <span class="n">subfactory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+            <span class="n">callbacks</span> <span class="o">=</span> <span class="n">subfactory</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
+        <span class="c1"># Keep track of the RunStart UID -&gt; [EventDescriptor UIDs] mapping for</span>
+        <span class="c1"># purposes of cleanup in stop().</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
+        <span class="c1"># Keep track of the EventDescriptor UID -&gt; RunStartUID for filling</span>
+        <span class="c1"># purposes.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_uid</span></div>
+
+<div class="viewcode-block" id="RunRouter.event_page"><a class="viewcode-back" href="../api.html#event_model.RunRouter.event_page">[docs]</a>    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">descriptor_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span>
+        <span class="n">start_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">UndefinedAssetSpecification</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fill_or_fail</span><span class="p">:</span>
+                <span class="k">raise</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">descriptor_uid</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RunRouter.datum_page"><a class="viewcode-back" href="../api.html#event_model.RunRouter.datum_page">[docs]</a>    <span class="k">def</span> <span class="nf">datum_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">[</span><span class="n">resource_uid</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">resource_uid</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                    <span class="n">resource_uid</span><span class="p">,</span>
+                    <span class="n">f</span><span class="s2">&quot;DatumPage refers to unknown Resource uid </span><span class="si">{resource_uid}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Old Resources do not have a reference to a RunStart document,</span>
+            <span class="c1"># so in turn we cannot immediately tell which run these datum</span>
+            <span class="c1"># documents belong to.</span>
+            <span class="c1"># Fan them out to every run currently flowing through RunRouter. If</span>
+            <span class="c1"># they are not applicable they will do no harm, and this is</span>
+            <span class="c1"># expected to be an increasingly rare case.</span>
+            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">filler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">filler</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RunRouter.resource"><a class="viewcode-back" href="../api.html#event_model.RunRouter.resource">[docs]</a>    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># Old Resources do not have a reference to a RunStart document.</span>
+            <span class="c1"># Fan them out to every run currently flowing through RunRouter. If</span>
+            <span class="c1"># they are not applicable they will do no harm, and this is</span>
+            <span class="c1"># expected to be an increasingly rare case.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_unlabeled_resources</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callbacks</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">filler</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">filler</span><span class="o">.</span><span class="n">resource</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">resource</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RunRouter.stop"><a class="viewcode-back" href="../api.html#event_model.RunRouter.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+        <span class="c1"># Clean up references.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">descriptor_uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="p">()):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div></div>
 
 
 <span class="k">class</span> <span class="nc">EventModelError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
