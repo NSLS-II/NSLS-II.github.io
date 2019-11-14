@@ -586,6 +586,8 @@
             <span class="n">root_map</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span>
         <span class="k">if</span> <span class="n">coerce</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">coerce</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span>
+        <span class="k">if</span> <span class="n">inplace</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">inplace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inplace</span>
         <span class="k">if</span> <span class="n">retry_intervals</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">retry_intervals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retry_intervals</span>
         <span class="k">return</span> <span class="n">Filler</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span>
@@ -821,6 +823,69 @@
             <span class="k">raise</span> <span class="n">EventModelRuntimeError</span><span class="p">(</span>
                 <span class="s2">&quot;This Filler has been closed and is no longer usable.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">NoFiller</span><span class="p">(</span><span class="n">Filler</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This does not fill the documents; it merely validates them.</span>
+
+<span class="sd">    It checks that all the references between the documents are resolvable and</span>
+<span class="sd">    *could* be filled. This is useful when the filling will be done later, as</span>
+<span class="sd">    a delayed computation, but we want to make sure in advance that we have all</span>
+<span class="sd">    the information that we will need when that computation occurs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Do not make Filler make copies because we are not going to alter the</span>
+        <span class="c1"># documents anyway.</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;inplace&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fill_event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">filled_events</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">event_doc</span> <span class="ow">in</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+            <span class="n">filled_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fill_event</span><span class="p">(</span><span class="n">event_doc</span><span class="p">,</span>
+                                                 <span class="n">include</span><span class="o">=</span><span class="n">include</span><span class="p">,</span>
+                                                 <span class="n">exclude</span><span class="o">=</span><span class="n">exclude</span><span class="p">,</span>
+                                                 <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="n">filled_doc</span> <span class="o">=</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="o">*</span><span class="n">filled_events</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">filled_doc</span>
+
+    <span class="k">def</span> <span class="nf">fill_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">filled</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># This document is not telling us which, if any, keys are filled.</span>
+            <span class="c1"># Infer that none of the external data is filled.</span>
+            <span class="n">descriptor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_cache</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span>
+            <span class="n">filled</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="s1">&#39;external&#39;</span> <span class="ow">in</span> <span class="n">val</span>
+                      <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">is_filled</span> <span class="ow">in</span> <span class="n">filled</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">exclude</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">include</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_filled</span><span class="p">:</span>
+                <span class="n">datum_id</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+                <span class="c1"># Look up the cached Datum doc.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">datum_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datum_cache</span><span class="p">[</span><span class="n">datum_id</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">err_with_key</span> <span class="o">=</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">datum_id</span><span class="p">,</span>
+                        <span class="n">f</span><span class="s2">&quot;Event with uid </span><span class="si">{doc[&#39;uid&#39;]}</span><span class="s2"> refers to unknown Datum &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;datum_id </span><span class="si">{datum_id}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">err_with_key</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">datum_id</span>
+                    <span class="k">raise</span> <span class="n">err_with_key</span> <span class="kn">from</span> <span class="nn">err</span>
+                <span class="n">resource_uid</span> <span class="o">=</span> <span class="n">datum_doc</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">]</span>
+                <span class="c1"># Look up the cached Resource.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_resource_cache</span><span class="p">[</span><span class="n">resource_uid</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">UnresolvableForeignKeyError</span><span class="p">(</span>
+                        <span class="n">datum_id</span><span class="p">,</span>
+                        <span class="n">f</span><span class="s2">&quot;Datum with id </span><span class="si">{datum_id}</span><span class="s2"> refers to unknown Resource &quot;</span>
+                        <span class="n">f</span><span class="s2">&quot;uid </span><span class="si">{resource_uid}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+        <span class="k">return</span> <span class="n">doc</span>
 
 
 <span class="k">class</span> <span class="nc">RunRouter</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
@@ -1802,6 +1867,12 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Credit: https://stackoverflow.com/a/47626762/1221924</span>
     <span class="k">def</span> <span class="nf">default</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">dask.array</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">Array</span><span class="p">):</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">pass</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">generic</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
             <span class="k">if</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
