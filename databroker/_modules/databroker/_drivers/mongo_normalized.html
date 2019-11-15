@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b2.post3+gc738171 documentation</title>
+  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b2.post51+g0366a89 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b2.post3+gc738171
+                1.0.0b2.post51+g0366a89
               </div>
             
           
@@ -205,7 +205,7 @@
             <span class="c1"># 2500 was selected as the page_size because it worked well durring</span>
             <span class="c1"># benchmarks.</span>
             <span class="n">get_datum_pages</span><span class="o">=</span><span class="n">to_datum_pages</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span> <span class="mi">2500</span><span class="p">),</span>
-            <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">filler</span><span class="p">)</span>
+            <span class="n">get_filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_filler</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">Entry</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
             <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
@@ -300,7 +300,8 @@
 
 <div class="viewcode-block" id="BlueskyMongoCatalog"><a class="viewcode-back" href="../../../v2/developer/reference.html#databroker._drivers.mongo_normalized.BlueskyMongoCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyMongoCatalog</span><span class="p">(</span><span class="n">Broker</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadatastore_db</span><span class="p">,</span> <span class="n">asset_registry_db</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                 <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">filler_class</span><span class="o">=</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This Catalog is backed by a pair of MongoDBs with &quot;layout 1&quot;.</span>
 
@@ -314,12 +315,33 @@
 <span class="sd">        asset_registry_db : pymongo.database.Database or string</span>
 <span class="sd">            Must be a Database or a URI string that includes a database name.</span>
 <span class="sd">        handler_registry : dict, optional</span>
-<span class="sd">            Maps each asset spec to a handler class or a string specifying the</span>
-<span class="sd">            module name and class name, as in (for example)</span>
-<span class="sd">            ``{&#39;SOME_SPEC&#39;: &#39;module.submodule.class_name&#39;}``. If None, the</span>
-<span class="sd">            result of ``databroker.core.discover_handlers()`` is used.</span>
-<span class="sd">        root_map : dict, optional</span>
-<span class="sd">            Maps resource root paths to different paths.</span>
+<span class="sd">            This is passed to the Filler or whatever class is given in the</span>
+<span class="sd">            ``filler_class`` parameter below.</span>
+<span class="sd">            Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">            resource) to a handler class.</span>
+<span class="sd">            A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">                handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">            It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">            callable and has the following signature::</span>
+
+<span class="sd">                handler_instance(**datum_kwargs)</span>
+
+<span class="sd">            As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">            typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">            ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">            any callable-that-returns-a-callable.</span>
+<span class="sd">        root_map: dict, optional</span>
+<span class="sd">            This is passed to Filler or whatever class is given in the</span>
+<span class="sd">            ``filler_class`` parameter below.</span>
+<span class="sd">            str -&gt; str mapping to account for temporarily</span>
+<span class="sd">            moved/copied/remounted files.  Any resources which have a ``root``</span>
+<span class="sd">            in ``root_map`` will be loaded using the mapped ``root``.</span>
+<span class="sd">        filler_class: type, optional</span>
+<span class="sd">            This is Filler by default. It can be a Filler subclass,</span>
+<span class="sd">            ``functools.partial(Filler, ...)``, or any class that provides the</span>
+<span class="sd">            same methods as ``DocumentRouter``.</span>
 <span class="sd">        query : dict, optional</span>
 <span class="sd">            MongoDB query. Used internally by the ``search()`` method.</span>
 <span class="sd">        **kwargs :</span>
@@ -341,20 +363,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;run_stop&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_event_descriptor_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;event_descriptor&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_event_collection</span> <span class="o">=</span> <span class="n">mds_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_resource_collection</span> <span class="o">=</span> <span class="n">assets_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_datum_collection</span> <span class="o">=</span> <span class="n">assets_db</span><span class="o">.</span><span class="n">get_collection</span><span class="p">(</span><span class="s1">&#39;datum&#39;</span><span class="p">)</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_metadatastore_db</span> <span class="o">=</span> <span class="n">mds_db</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_asset_registry_db</span> <span class="o">=</span> <span class="n">assets_db</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_query</span> <span class="o">=</span> <span class="n">query</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">handler_registry</span> <span class="o">=</span> <span class="n">discover_handlers</span><span class="p">()</span>
-        <span class="n">parsed_handler_registry</span> <span class="o">=</span> <span class="n">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">filler</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">(</span>
-                <span class="n">parsed_handler_registry</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">handler_registry</span><span class="o">=</span><span class="n">handler_registry</span><span class="p">,</span>
+                         <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span>
+                         <span class="n">filler_class</span><span class="o">=</span><span class="n">filler_class</span><span class="p">,</span>
+                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_run_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
         <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
@@ -442,8 +460,9 @@
             <span class="n">metadatastore_db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_metadatastore_db</span><span class="p">,</span>
             <span class="n">asset_registry_db</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_asset_registry_db</span><span class="p">,</span>
             <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
-            <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span>
-            <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="o">.</span><span class="n">root_map</span><span class="p">,</span>
+            <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">,</span>
+            <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="p">,</span>
+            <span class="n">filler_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;search results&#39;</span><span class="p">,</span>
             <span class="n">getenv</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getenv</span><span class="p">,</span>
             <span class="n">getshell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getshell</span><span class="p">,</span>

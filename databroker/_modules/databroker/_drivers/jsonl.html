@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker._drivers.jsonl &mdash; databroker 1.0.0b2.post3+gc738171 documentation</title>
+  <title>databroker._drivers.jsonl &mdash; databroker 1.0.0b2.post51+g0366a89 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b2.post3+gc738171
+                1.0.0b2.post51+g0366a89
               </div>
             
           
@@ -166,6 +166,7 @@
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">pathlib</span>
+<span class="kn">import</span> <span class="nn">event_model</span>
 
 <span class="kn">from</span> <span class="nn">..in_memory</span> <span class="k">import</span> <span class="n">BlueskyInMemoryCatalog</span>
 <span class="kn">from</span> <span class="nn">..core</span> <span class="k">import</span> <span class="n">tail</span>
@@ -218,8 +219,9 @@
 <div class="viewcode-block" id="BlueskyJSONLCatalog"><a class="viewcode-back" href="../../../v2/developer/reference.html#databroker._drivers.jsonl.BlueskyJSONLCatalog">[docs]</a><span class="k">class</span> <span class="nc">BlueskyJSONLCatalog</span><span class="p">(</span><span class="n">BlueskyInMemoryCatalog</span><span class="p">):</span>
     <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-jsonl-catalog&#39;</span>  <span class="c1"># noqa</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
-                 <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">filler_class</span><span class="o">=</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">,</span>
+                 <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This Catalog is backed by a newline-delimited JSON (jsonl) file.</span>
 
@@ -232,11 +234,36 @@
 <span class="sd">        paths : list</span>
 <span class="sd">            list of filepaths</span>
 <span class="sd">        handler_registry : dict, optional</span>
-<span class="sd">            Maps each asset spec to a handler class or a string specifying the</span>
-<span class="sd">            module name and class name, as in (for example)</span>
-<span class="sd">            ``{&#39;SOME_SPEC&#39;: &#39;module.submodule.class_name&#39;}``.</span>
-<span class="sd">        root_map : dict, optional</span>
-<span class="sd">            Maps resource root paths to different paths.</span>
+<span class="sd">            This is passed to the Filler or whatever class is given in the</span>
+<span class="sd">            ``filler_class`` parameter below.</span>
+
+<span class="sd">            Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">            resource) to a handler class.</span>
+
+<span class="sd">            A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">                handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">            It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">            callable and has the following signature::</span>
+
+<span class="sd">            handler_instance(**datum_kwargs)</span>
+
+<span class="sd">            As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">            typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">            ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">            any callable-that-returns-a-callable.</span>
+<span class="sd">        root_map: dict, optional</span>
+<span class="sd">            This is passed to Filler or whatever class is given in the</span>
+<span class="sd">            ``filler_class`` parameter below.</span>
+
+<span class="sd">            str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
+<span class="sd">            files.  Any resources which have a ``root`` in ``root_map`` will be</span>
+<span class="sd">            loaded using the mapped ``root``.</span>
+<span class="sd">        filler_class: type, optional</span>
+<span class="sd">            This is Filler by default. It can be a Filler subclass,</span>
+<span class="sd">            ``functools.partial(Filler, ...)``, or any class that provides the</span>
+<span class="sd">            same methods as ``DocumentRouter``.</span>
 <span class="sd">        query : dict, optional</span>
 <span class="sd">            Mongo query that filters entries&#39; RunStart documents</span>
 <span class="sd">        **kwargs :</span>
@@ -248,10 +275,11 @@
             <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">paths</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="n">paths</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_filename_to_mtime</span> <span class="o">=</span> <span class="p">{}</span>
+
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">handler_registry</span><span class="o">=</span><span class="n">handler_registry</span><span class="p">,</span>
                          <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span>
-                         <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
-                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                         <span class="n">filler_class</span><span class="o">=</span><span class="n">filler_class</span><span class="p">,</span>
+                         <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">:</span>
@@ -286,8 +314,8 @@
         <span class="n">cat</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span>
             <span class="n">paths</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="p">,</span>
             <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
-            <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span>
-            <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filler</span><span class="o">.</span><span class="n">root_map</span><span class="p">,</span>
+            <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">,</span>
+            <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;search results&#39;</span><span class="p">,</span>
             <span class="n">getenv</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getenv</span><span class="p">,</span>
             <span class="n">getshell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getshell</span><span class="p">,</span>
