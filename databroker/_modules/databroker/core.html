@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b3 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b3.post18+gd102493 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b3
+                1.0.0b3.post18+gd102493
               </div>
             
           
@@ -188,6 +188,12 @@
 <span class="kn">import</span> <span class="nn">xarray</span>
 
 <span class="kn">from</span> <span class="nn">.intake_xarray_core.base</span> <span class="k">import</span> <span class="n">DataSourceMixin</span>
+<span class="kn">from</span> <span class="nn">.intake_xarray_core.xarray_container</span> <span class="k">import</span> <span class="n">RemoteXarray</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span>
+
+
+<span class="k">class</span> <span class="nc">PartitionIndexError</span><span class="p">(</span><span class="ne">IndexError</span><span class="p">):</span>
+    <span class="o">...</span>
 
 
 <span class="k">class</span> <span class="nc">Entry</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">):</span>
@@ -203,7 +209,6 @@
         <span class="c1"># enables the driver instance to know which Entry created it.</span>
         <span class="n">open_args</span><span class="p">[</span><span class="s1">&#39;entry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">return</span> <span class="n">plugin</span><span class="p">,</span> <span class="n">open_args</span>
-
 
 <span class="k">def</span> <span class="nf">tail</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -280,6 +285,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    get_event_pages : function</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">get_event_cursor</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">get_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">event_cursor</span> <span class="o">=</span> <span class="n">get_event_cursor</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -289,6 +295,7 @@
                 <span class="k">yield</span> <span class="n">event_model</span><span class="o">.</span><span class="n">pack_event_page</span><span class="p">(</span><span class="o">*</span><span class="n">result</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">break</span>
+
     <span class="k">return</span> <span class="n">get_event_pages</span>
 
 
@@ -306,6 +313,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    get_datum_pages : function</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">get_datum_cursor</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">get_datum_pages</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">datum_cursor</span> <span class="o">=</span> <span class="n">get_datum_cursor</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -315,6 +323,7 @@
                 <span class="k">yield</span> <span class="n">event_model</span><span class="o">.</span><span class="n">pack_datum_page</span><span class="p">(</span><span class="o">*</span><span class="n">result</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">break</span>
+
     <span class="k">return</span> <span class="n">get_datum_pages</span>
 
 
@@ -349,7 +358,7 @@
 <span class="sd">        The next (name, dict) pair in time order</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">iters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">iter</span><span class="p">(</span><span class="n">flatten_event_page_gen</span><span class="p">(</span><span class="n">g</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">]</span>
+    <span class="n">iters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">iter</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">]</span>
     <span class="n">heap</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">def</span> <span class="nf">safe_next</span><span class="p">(</span><span class="n">indx</span><span class="p">):</span>
@@ -357,7 +366,7 @@
             <span class="n">val</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iters</span><span class="p">[</span><span class="n">indx</span><span class="p">])</span>
         <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
             <span class="k">return</span>
-        <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+        <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">val</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iters</span><span class="p">)):</span>
         <span class="n">safe_next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
     <span class="k">while</span> <span class="n">heap</span><span class="p">:</span>
@@ -398,6 +407,131 @@
     <span class="k">while</span> <span class="n">heap</span><span class="p">:</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">indx</span><span class="p">,</span> <span class="n">val</span> <span class="o">=</span> <span class="n">heapq</span><span class="o">.</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
         <span class="k">yield</span> <span class="n">val</span>
+
+
+<span class="k">def</span> <span class="nf">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Take event_page generators and interlace their results by timestamp.</span>
+
+<span class="sd">    This is a modification of https://github.com/bluesky/databroker/pull/378/</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    gens : generators</span>
+<span class="sd">        Generators of (name, dict) pairs where the dict contains a &#39;time&#39; key.</span>
+<span class="sd">    strict_order : bool, optional</span>
+<span class="sd">        documents are strictly yielded in ascending time order. Defaults to</span>
+<span class="sd">        True.</span>
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    val : tuple</span>
+<span class="sd">        The next (name, dict) pair in time order</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">iters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">iter</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">]</span>
+    <span class="n">heap</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">fifo</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+
+    <span class="c1"># Gets the next event/event_page from the iterator iters[index], while</span>
+    <span class="c1"># appending documents that are not events/event_pages to the other_docs</span>
+    <span class="c1"># deque.</span>
+    <span class="k">def</span> <span class="nf">get_next</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">iters</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span><span class="p">:</span>
+                <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)))</span>
+                <span class="k">return</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event_page&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">strict_order</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">event_model</span><span class="o">.</span><span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+                        <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)))</span>
+                    <span class="k">return</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">heapq</span><span class="o">.</span><span class="n">heappush</span><span class="p">(</span><span class="n">heap</span><span class="p">,</span> <span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">index</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)))</span>
+                    <span class="k">return</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">]:</span>
+                    <span class="n">fifo</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">))</span>
+
+    <span class="c1"># Put the next event/event_page from each generator in the heap.</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iters</span><span class="p">)):</span>
+        <span class="n">get_next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+
+    <span class="c1"># First yield docs that are not events or event pages from the fifo queue,</span>
+    <span class="c1"># and then yield from the heap.  We can improve this by keeping a count of</span>
+    <span class="c1"># the number of documents from each stream in the heap, and only calling</span>
+    <span class="c1"># get_next when the count is 0. As is the heap could potentially get very</span>
+    <span class="c1"># large.</span>
+    <span class="k">while</span> <span class="n">heap</span><span class="p">:</span>
+        <span class="k">while</span> <span class="n">fifo</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">fifo</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">doc</span> <span class="o">=</span> <span class="n">heapq</span><span class="o">.</span><span class="n">heappop</span><span class="p">(</span><span class="n">heap</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">doc</span>
+        <span class="n">get_next</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Yield any remaining items in the fifo queue.</span>
+    <span class="k">while</span> <span class="n">fifo</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">fifo</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">unfilled_partitions</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">resources</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">datum_gens</span><span class="p">,</span>
+                        <span class="n">event_gens</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a Bluesky run, in order, packed into partitions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    start : dict</span>
+<span class="sd">        Bluesky run_start document</span>
+<span class="sd">    descriptors: list</span>
+<span class="sd">        List of Bluesky descriptor documents</span>
+<span class="sd">    resources: list</span>
+<span class="sd">        List of Bluesky resource documents</span>
+<span class="sd">    stop: dict</span>
+<span class="sd">        Bluesky run_stop document</span>
+<span class="sd">    datum_gens : generators</span>
+<span class="sd">        Generators of datum_pages.</span>
+<span class="sd">    event_gens : generators</span>
+<span class="sd">        Generators of (name, dict) pairs where the dict contains a &#39;time&#39; key.</span>
+<span class="sd">    partition_size : integer</span>
+<span class="sd">        Size of partitions to yield</span>
+<span class="sd">    chunk_size : integer</span>
+<span class="sd">        Size of pages to yield</span>
+
+<span class="sd">    Yields</span>
+<span class="sd">    ------</span>
+<span class="sd">    partition : list</span>
+<span class="sd">        List of lists of (name, dict) pair in time order</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># The first partition is the &quot;header&quot;</span>
+    <span class="k">yield</span> <span class="p">([(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">)]</span>
+          <span class="o">+</span> <span class="p">[(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">descriptors</span><span class="p">]</span>
+          <span class="o">+</span> <span class="p">[(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">resources</span><span class="p">])</span>
+
+    <span class="c1"># Use rechunk datum pages to make them into pages of size &quot;partition_size&quot;</span>
+    <span class="c1"># and yield one page per partition.</span>
+    <span class="k">for</span> <span class="n">datum_gen</span> <span class="ow">in</span> <span class="n">datum_gens</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="p">[(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">)</span> <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span>
+               <span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_datum_pages</span><span class="p">(</span><span class="n">datum_gen</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">)]</span>
+
+    <span class="c1"># Rechunk the event pages and interlace them in timestamp order, then pack</span>
+    <span class="c1"># them into a partition.</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">partition</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">event_page</span> <span class="ow">in</span> <span class="n">interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">event_gens</span><span class="p">):</span>
+        <span class="n">partition</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">event_page</span><span class="p">))</span>
+        <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="n">partition_size</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">partition</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">partition</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Add the stop document onto the last partition.</span>
+    <span class="n">partition</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">stop</span><span class="p">))</span>
+    <span class="k">yield</span> <span class="n">partition</span>
 
 
 <div class="viewcode-block" id="documents_to_xarray"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.documents_to_xarray">[docs]</a><span class="k">def</span> <span class="nf">documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span>
@@ -444,7 +578,6 @@
     <span class="k">if</span> <span class="n">include</span> <span class="ow">and</span> <span class="n">exclude</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
             <span class="s2">&quot;The parameters `include` and `exclude` are mutually exclusive.&quot;</span><span class="p">)</span>
-
     <span class="c1"># Data keys must not change within one stream, so we can safely sample</span>
     <span class="c1"># just the first Event Descriptor.</span>
     <span class="k">if</span> <span class="n">descriptor_docs</span><span class="p">:</span>
@@ -625,8 +758,9 @@
 
     <span class="k">def</span> <span class="nf">_get_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">get_partition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_args</span><span class="p">,</span>
-                                             <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">,</span>
-                                             <span class="n">partition</span><span class="p">)</span>
+                                                   <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">,</span>
+                                                   <span class="n">partition</span><span class="p">)</span>
+
 <div class="viewcode-block" id="RemoteBlueskyRun.read"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.RemoteBlueskyRun.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="s2">&quot;Reading the BlueskyRun itself is not supported. Instead read one &quot;</span>
@@ -640,7 +774,7 @@
     <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="RemoteBlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.RemoteBlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">):</span>
+<div class="viewcode-block" id="RemoteBlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.RemoteBlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Yields documents from this Run in chronological order.</span>
 
@@ -653,7 +787,8 @@
 <span class="sd">            If fill is &#39;no&#39;, the Event documents will contain foreign keys as</span>
 <span class="sd">            placeholders for the data. This option is useful for exporting</span>
 <span class="sd">            copies of the documents.</span>
-
+<span class="sd">        strict_order : bool, optional</span>
+<span class="sd">            documents are strictly yielded in ascending time order.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Special case for &#39;delayed&#39; since it *is* supported in the local mode</span>
         <span class="c1"># of usage.</span>
@@ -664,9 +799,20 @@
         <span class="n">FILL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">fill</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILL_OPTIONS</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Invalid fill option: </span><span class="si">{fill}</span><span class="s2">, fill must be: </span><span class="si">{FILL_OPTIONS}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">}):</span>
-                <span class="k">yield</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span></div>
+
+        <span class="k">def</span> <span class="nf">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
+                <span class="n">partition</span> <span class="o">=</span> <span class="n">entry</span><span class="p">()</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">,</span>
+                                                  <span class="s1">&#39;partition_size&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">})</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">partition</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="k">yield from</span> <span class="n">partition</span>
+
+        <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">])</span>
+        <span class="k">yield from</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span></div>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -713,15 +859,47 @@
 <span class="sd">        Expected signature ``get_event_count(descriptor_uid) -&gt; int``</span>
 <span class="sd">    get_resource : callable</span>
 <span class="sd">        Expected signature ``get_resource(resource_uid) -&gt; Resource``</span>
+<span class="sd">    get_resources: callable</span>
+<span class="sd">        Expected signature ``get_resources() -&gt; Resources``</span>
 <span class="sd">    lookup_resource_for_datum : callable</span>
 <span class="sd">        Expected signature ``lookup_resource_for_datum(datum_id) -&gt; resource_uid``</span>
 <span class="sd">    get_datum_pages : callable</span>
 <span class="sd">        Expected signature ``get_datum_pages(resource_uid) -&gt; generator``</span>
 <span class="sd">        where ``generator`` yields Datum documents</span>
-<span class="sd">    filler : event_model.Filler</span>
 <span class="sd">    **kwargs :</span>
 <span class="sd">        Additional keyword arguments are passed through to the base class,</span>
 <span class="sd">        Catalog.</span>
+<span class="sd">    handler_registry : dict, optional</span>
+<span class="sd">        This is passed to the Filler or whatever class is given in the</span>
+<span class="sd">        filler_class parametr below.</span>
+
+<span class="sd">        Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">        resource) to a handler class.</span>
+
+<span class="sd">        A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">            handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">        It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">        callable and has the following signature::</span>
+
+<span class="sd">            handler_instance(**datum_kwargs)</span>
+
+<span class="sd">        As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">        typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">        ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">        any callable-that-returns-a-callable.</span>
+<span class="sd">    root_map: dict, optional</span>
+<span class="sd">        This is passed to Filler or whatever class is given in the filler_class</span>
+<span class="sd">        parameter below.</span>
+
+<span class="sd">        str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
+<span class="sd">        files.  Any resources which have a ``root`` in ``root_map`` will be</span>
+<span class="sd">        loaded using the mapped ``root``.</span>
+<span class="sd">    filler_class: type</span>
+<span class="sd">        This is Filler by default. It can be a Filler subclass,</span>
+<span class="sd">        ``functools.partial(Filler, ...)``, or any class that provides the same</span>
+<span class="sd">        methods as ``DocumentRouter``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;bluesky-run&#39;</span>
     <span class="n">version</span> <span class="o">=</span> <span class="s1">&#39;0.0.1&#39;</span>
@@ -735,6 +913,7 @@
                  <span class="n">get_event_pages</span><span class="p">,</span>
                  <span class="n">get_event_count</span><span class="p">,</span>
                  <span class="n">get_resource</span><span class="p">,</span>
+                 <span class="n">get_resources</span><span class="p">,</span>
                  <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
                  <span class="n">get_datum_pages</span><span class="p">,</span>
                  <span class="n">get_filler</span><span class="p">,</span>
@@ -750,6 +929,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span> <span class="o">=</span> <span class="n">get_event_pages</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span> <span class="o">=</span> <span class="n">get_event_count</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span> <span class="o">=</span> <span class="n">get_resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span> <span class="o">=</span> <span class="n">get_resources</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span> <span class="o">=</span> <span class="n">lookup_resource_for_datum</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span> <span class="o">=</span> <span class="n">get_datum_pages</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fillers</span> <span class="o">=</span> <span class="p">{}</span>
@@ -777,10 +957,10 @@
 
     <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Count the total number of documents in this run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_offset</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
 
@@ -790,7 +970,6 @@
         <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_count</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
         <span class="n">count</span> <span class="o">+=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_schema</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Schema</span><span class="p">(</span>
             <span class="n">datashape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -821,15 +1000,17 @@
                 <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
                 <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
                 <span class="n">fillers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">,</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">})</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
+                          <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">})</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
                 <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;databroker.core.BlueskyEventStream&#39;</span><span class="p">,</span>
                 <span class="n">direct_access</span><span class="o">=</span><span class="s1">&#39;forbid&#39;</span><span class="p">,</span>
                 <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
-                <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ???</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">},</span>
+                <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># What does this do?</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
+                          <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">},</span>
                 <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -865,7 +1046,7 @@
             <span class="c1"># before giving up.</span>
             <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entry</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">):</span>
+<div class="viewcode-block" id="BlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Yields documents from this Run in chronological order.</span>
 
@@ -881,14 +1062,27 @@
 <span class="sd">            If fill is &#39;no&#39;, the Event documents will contain foreign keys as</span>
 <span class="sd">            placeholders for the data. This option is useful for exporting</span>
 <span class="sd">            copies of the documents.</span>
-
+<span class="sd">        strict_order : bool, optional</span>
+<span class="sd">            Documents are strictly yielded in ascending time order. This</span>
+<span class="sd">            defaults to True.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">FILL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">,</span> <span class="s1">&#39;delayed&#39;</span><span class="p">}</span>
         <span class="k">if</span> <span class="n">fill</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILL_OPTIONS</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Invalid fill option: </span><span class="si">{fill}</span><span class="s2">, fill must be: </span><span class="si">{FILL_OPTIONS}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">}):</span>
-                <span class="k">yield</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span></div>
+
+        <span class="k">def</span> <span class="nf">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
+                <span class="n">partition</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">,</span>
+                                                  <span class="s1">&#39;partition_size&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">})</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">partition</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="k">yield from</span> <span class="n">partition</span>
+
+        <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">])</span>
+        <span class="k">yield from</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span></div>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -933,95 +1127,6 @@
         <span class="n">files</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">handler</span><span class="o">.</span><span class="n">get_file_list</span><span class="p">(</span><span class="n">datum_kwarg_gen</span><span class="p">()))</span>
         <span class="k">return</span> <span class="n">files</span></div>
 
-<div class="viewcode-block" id="BlueskyRun.read_partition"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.read_partition">[docs]</a>    <span class="k">def</span> <span class="nf">read_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Fetch one chunk of documents.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">i</span> <span class="o">=</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span>
-        <span class="n">fill</span> <span class="o">=</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;fill&#39;</span><span class="p">]</span>
-        <span class="n">filler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="n">fill</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()</span>
-        <span class="n">payload</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span>
-        <span class="n">stop</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span>
-        <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_offset</span><span class="p">:</span>
-            <span class="n">payload</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
-                <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span>
-                    <span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
-                        <span class="p">((</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()),),</span>
-                        <span class="p">((</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">)),</span>
-                    <span class="n">start</span><span class="p">,</span>
-                    <span class="n">stop</span><span class="p">))</span>
-        <span class="n">descriptor_uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">]</span>
-        <span class="n">skip</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">start</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">))</span>
-        <span class="n">limit</span> <span class="o">=</span> <span class="n">stop</span> <span class="o">-</span> <span class="n">start</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
-        <span class="c1"># print(&#39;start, stop, skip, limit&#39;, start, stop, skip, limit)</span>
-        <span class="n">datum_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">limit</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-
-            <span class="n">events</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">islice</span><span class="p">(</span><span class="n">interlace_event_pages</span><span class="p">(</span>
-                    <span class="o">*</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="o">=</span><span class="n">descriptor_uid</span><span class="p">)</span>
-                      <span class="k">for</span> <span class="n">descriptor_uid</span> <span class="ow">in</span> <span class="n">descriptor_uids</span><span class="p">)),</span> <span class="n">skip</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
-                <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">is_filled</span> <span class="ow">in</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="k">if</span> <span class="n">is_filled</span><span class="p">:</span>
-                        <span class="c1"># A filled Event has the datum_id rotated into &#39;filled&#39;.</span>
-                        <span class="n">datum_id</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;filled&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># A unfilled Event has the datum_id in &#39;data&#39;.</span>
-                        <span class="n">datum_id</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="n">datum_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">datum_ids</span><span class="p">:</span>
-                        <span class="k">if</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">datum_id</span><span class="p">:</span>
-                            <span class="n">resource_uid</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">datum_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-                        <span class="k">else</span><span class="p">:</span>
-                            <span class="n">resource_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="p">)</span>
-                        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">)</span>
-                        <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="p">))</span>
-                        <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">(</span><span class="n">resource_uid</span><span class="p">):</span>
-                            <span class="c1"># TODO Greedily cache but lazily emit.</span>
-                            <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">))</span>
-                            <span class="n">datum_ids</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">datum_page</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>
-                <span class="n">filled_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill</span><span class="p">(</span><span class="n">filler</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
-                <span class="n">event_page</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">pack_event_page</span><span class="p">(</span><span class="n">filled_event</span><span class="p">)</span>
-                <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">event_page</span><span class="p">))</span>
-            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">-</span> <span class="mi">1</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">payload</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">))</span>
-        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">payload</span><span class="p">:</span>
-            <span class="n">doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">payload</span></div>
-
-    <span class="k">def</span> <span class="nf">_fill</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filler</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">last_datum_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">_</span><span class="p">,</span> <span class="n">filled_event</span> <span class="o">=</span> <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">filled_event</span>
-        <span class="k">except</span> <span class="n">event_model</span><span class="o">.</span><span class="n">UnresolvableForeignKeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-            <span class="n">datum_id</span> <span class="o">=</span> <span class="n">err</span><span class="o">.</span><span class="n">key</span>
-            <span class="k">if</span> <span class="n">datum_id</span> <span class="o">==</span> <span class="n">last_datum_id</span><span class="p">:</span>
-                <span class="c1"># We tried to fetch this Datum on the last trip</span>
-                <span class="c1"># trip through this method, and apparently it did not</span>
-                <span class="c1"># work. We are in an infinite loop. Bail!</span>
-                <span class="k">raise</span>
-
-            <span class="k">if</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">datum_id</span><span class="p">:</span>
-                <span class="n">resource_uid</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">datum_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">resource_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="p">)</span>
-
-            <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">)</span>
-            <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="p">)</span>
-            <span class="c1"># Pre-fetch all datum for this resource.</span>
-            <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">(</span>
-                    <span class="n">resource_uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">):</span>
-                <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">)</span>
-            <span class="c1"># TODO -- When to clear the datum cache in filler?</span>
-
-            <span class="c1"># Re-enter and try again now that the Filler has consumed the</span>
-            <span class="c1"># missing Datum. There might be another missing Datum in this same</span>
-            <span class="c1"># Event document (hence this re-entrant structure) or might be good</span>
-            <span class="c1"># to go.</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fill</span><span class="p">(</span><span class="n">filler</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">last_datum_id</span><span class="o">=</span><span class="n">datum_id</span><span class="p">)</span>
-
 <div class="viewcode-block" id="BlueskyRun.read"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="s2">&quot;Reading the BlueskyRun itself is not supported. Instead read one &quot;</span>
@@ -1063,7 +1168,7 @@
 <span class="sd">    get_datum_pages : callable</span>
 <span class="sd">        Expected signature ``get_datum_pages(resource_uid) -&gt; generator``</span>
 <span class="sd">        where ``generator`` yields datum_page documents</span>
-<span class="sd">    filler : event_model.Filler</span>
+<span class="sd">    fillers : dict of Fillers</span>
 <span class="sd">    metadata : dict</span>
 <span class="sd">        passed through to base class</span>
 <span class="sd">    include : list, optional</span>
@@ -1075,8 +1180,7 @@
 <span class="sd">    **kwargs :</span>
 <span class="sd">        Additional keyword arguments are passed through to the base class.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;databroker-xarray&#39;</span>
-    <span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;bluesky-event-stream&#39;</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;bluesky-event-stream&#39;</span>
     <span class="n">version</span> <span class="o">=</span> <span class="s1">&#39;0.0.1&#39;</span>
     <span class="n">partition_access</span> <span class="o">=</span> <span class="kc">True</span>
 
@@ -1111,7 +1215,20 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _open_dataset below</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">include</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">exclude</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span>  <span class="p">[</span><span class="n">descriptor</span> <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span>
+                              <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="p">[])</span>
+                              <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
+        <span class="c1"># Should figure out a way so that self._resources doesn&#39;t have to be</span>
+        <span class="c1"># all of the Run&#39;s resources.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;resources&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
@@ -1122,16 +1239,10 @@
         <span class="k">return</span> <span class="n">out</span>
 
     <span class="k">def</span> <span class="nf">_open_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
-        <span class="n">descriptor_docs</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
-                           <span class="k">if</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray</span><span class="p">(</span>
             <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
             <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
-            <span class="n">descriptor_docs</span><span class="o">=</span><span class="n">descriptor_docs</span><span class="p">,</span>
+            <span class="n">descriptor_docs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
             <span class="n">get_event_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">,</span>
             <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;delayed&#39;</span><span class="p">],</span>
             <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
@@ -1155,7 +1266,101 @@
 <span class="sd">        Return data from this Event Stream as an xarray.Dataset backed by dask.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Implemented just so we can put in a docstring</span>
-        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_dask</span><span class="p">()</span></div></div>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_dask</span><span class="p">()</span></div>
+
+    <span class="k">def</span> <span class="nf">_load_partitions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">):</span>
+        <span class="n">datum_gens</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">(</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+                      <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">]</span>
+        <span class="n">event_gens</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]))</span>
+                      <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
+            <span class="n">unfilled_partitions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
+                                <span class="n">datum_gens</span><span class="p">,</span> <span class="n">event_gens</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BlueskyEventStream.read_partition"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyEventStream.read_partition">[docs]</a>    <span class="k">def</span> <span class="nf">read_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Fetch one chunk of documents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">partition</span><span class="p">,</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">read_partition</span><span class="p">(</span><span class="n">partition</span><span class="p">)</span>
+
+        <span class="c1"># Unpack partition</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;index&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">partition</span><span class="p">[</span><span class="s1">&#39;fill&#39;</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">filler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="n">partition</span><span class="p">[</span><span class="s1">&#39;fill&#39;</span><span class="p">]]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">filler</span> <span class="o">=</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;fill&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Partition size is the number of pages in the partition.</span>
+        <span class="k">if</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;partition_size&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;auto&#39;</span><span class="p">:</span>
+            <span class="n">partition_size</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">partition</span><span class="p">[</span><span class="s1">&#39;partition_size&#39;</span><span class="p">],</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">partition_size</span> <span class="o">=</span> <span class="n">partition</span><span class="p">[</span><span class="s1">&#39;partition_size&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Invalid partition_size </span><span class="si">{partition[&#39;partition_size&#39;]}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_partitions</span><span class="p">(</span><span class="n">partition_size</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">filler</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+            <span class="k">except</span> <span class="n">event_model</span><span class="o">.</span><span class="n">UnresolvableForeignKeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                <span class="c1"># Slow path: This error should only happen if there is an old style</span>
+                <span class="c1"># resource document that doesn&#39;t have a run_start key.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_missing_datum</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">filler</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+        <span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+    <span class="k">def</span> <span class="nf">_missing_datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datum_id</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">):</span>
+
+        <span class="c1"># Get the resource from the datum_id.</span>
+        <span class="k">if</span> <span class="s1">&#39;/&#39;</span> <span class="ow">in</span> <span class="n">datum_id</span><span class="p">:</span>
+            <span class="n">resource_uid</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">datum_id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">resource_uid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="p">)</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="n">resource_uid</span><span class="p">)</span>
+
+        <span class="c1"># Use rechunk datum pages to make them into pages of size &quot;partition_size&quot;</span>
+        <span class="c1"># and yield one page per partition.  Rechunk might be slow.</span>
+        <span class="n">datum_gen</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">(</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="p">[[(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">)]</span> <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span>
+                      <span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_datum_pages</span><span class="p">(</span><span class="n">datum_gen</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">)]</span>
+
+        <span class="c1"># Check that the datum_id from the exception has been added.</span>
+        <span class="k">def</span> <span class="nf">check</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">partition</span> <span class="ow">in</span> <span class="n">partitions</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">datum_page</span> <span class="ow">in</span> <span class="n">partition</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">datum_id</span> <span class="ow">in</span> <span class="n">datum_page</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]:</span>
+                        <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">check</span><span class="p">():</span>
+            <span class="k">raise</span>
+
+        <span class="c1"># Add the resource to the begining of the first partition.</span>
+        <span class="n">partitions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="p">)]</span> <span class="o">+</span> <span class="n">partitions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">partitions</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">partitions</span>
+
+    <span class="k">def</span> <span class="nf">_get_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">get_partition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_args</span><span class="p">,</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">,</span>
+                                             <span class="n">partition</span><span class="p">)</span></div>
+
+<span class="k">class</span> <span class="nc">RemoteBlueskyEventStream</span><span class="p">(</span><span class="n">RemoteXarray</span><span class="p">):</span>
+    <span class="c1"># Because of the container_map, when working in remote mode, when accessing</span>
+    <span class="c1"># a BlueskyRun or BlueskyEventStream, you will get a RemoteBlueskyRun or a</span>
+    <span class="c1"># RemoteBlueskyEventStream on the client side. Canonical of the RemoteBlueskyRun,</span>
+    <span class="c1"># calls read_partition of the RemoteBlueskyEventStream, where there</span>
+    <span class="c1"># partition argument is a dict. The inherited read_partition method only</span>
+    <span class="c1"># accepts an integer for the partition argument, so read_partition needs to</span>
+    <span class="c1"># be overridden.</span>
+    <span class="k">def</span> <span class="nf">read_partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_metadata</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_partition</span><span class="p">(</span><span class="n">partition</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">DocumentCache</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">DocumentRouter</span><span class="p">):</span>
@@ -1221,6 +1426,9 @@
         <span class="k">def</span> <span class="nf">get_resource</span><span class="p">(</span><span class="n">uid</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">document_cache</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
 
+        <span class="k">def</span> <span class="nf">get_resources</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">document_cache</span><span class="o">.</span><span class="n">resources</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+
         <span class="k">def</span> <span class="nf">lookup_resource_for_datum</span><span class="p">(</span><span class="n">datum_id</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">document_cache</span><span class="o">.</span><span class="n">resource_uid_by_datum_id</span><span class="p">[</span><span class="n">datum_id</span><span class="p">]</span>
 
@@ -1236,6 +1444,7 @@
             <span class="n">get_event_pages</span><span class="o">=</span><span class="n">get_event_pages</span><span class="p">,</span>
             <span class="n">get_event_count</span><span class="o">=</span><span class="n">get_event_count</span><span class="p">,</span>
             <span class="n">get_resource</span><span class="o">=</span><span class="n">get_resource</span><span class="p">,</span>
+            <span class="n">get_resources</span><span class="o">=</span><span class="n">get_resources</span><span class="p">,</span>
             <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="n">lookup_resource_for_datum</span><span class="p">,</span>
             <span class="n">get_datum_pages</span><span class="o">=</span><span class="n">get_datum_pages</span><span class="p">,</span>
             <span class="n">get_filler</span><span class="o">=</span><span class="n">get_filler</span><span class="p">,</span>
@@ -1383,8 +1592,10 @@
     <span class="k">return</span> <span class="n">result</span></div>
 
 
-<span class="c1"># TODO Do we actually need this?</span>
+<span class="c1"># This determines the type of the class that you get on the</span>
+<span class="c1"># client side.</span>
 <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">container_map</span><span class="p">[</span><span class="s1">&#39;bluesky-run&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteBlueskyRun</span>
+<span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">container_map</span><span class="p">[</span><span class="s1">&#39;bluesky-event-stream&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteBlueskyEventStream</span>
 
 
 <span class="k">def</span> <span class="nf">concat_dataarray_pages</span><span class="p">(</span><span class="n">dataarray_pages</span><span class="p">):</span>
