@@ -198,38 +198,38 @@
             
   <h1>Source code for bluesky.run_engine</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">asyncio</span>
-<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
 <span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">ttime</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">warnings</span> <span class="k">import</span> <span class="n">warn</span>
-<span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">count</span><span class="p">,</span> <span class="n">tee</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">ChainMap</span>
-<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">warnings</span> <span class="kn">import</span> <span class="n">warn</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">count</span><span class="p">,</span> <span class="n">tee</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">ChainMap</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
-<span class="kn">from</span> <span class="nn">contextlib</span> <span class="k">import</span> <span class="n">ExitStack</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">ExitStack</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
-<span class="kn">from</span> <span class="nn">.bundlers</span> <span class="k">import</span> <span class="n">RunBundler</span>
+<span class="kn">from</span> <span class="nn">.bundlers</span> <span class="kn">import</span> <span class="n">RunBundler</span>
 
 <span class="kn">import</span> <span class="nn">concurrent</span>
 
-<span class="kn">from</span> <span class="nn">event_model</span> <span class="k">import</span> <span class="n">DocumentNames</span><span class="p">,</span> <span class="n">schema_validators</span>
-<span class="kn">from</span> <span class="nn">super_state_machine.machines</span> <span class="k">import</span> <span class="n">StateMachine</span>
-<span class="kn">from</span> <span class="nn">super_state_machine.extras</span> <span class="k">import</span> <span class="n">PropertyMachine</span>
-<span class="kn">from</span> <span class="nn">super_state_machine.errors</span> <span class="k">import</span> <span class="n">TransitionError</span>
+<span class="kn">from</span> <span class="nn">event_model</span> <span class="kn">import</span> <span class="n">DocumentNames</span><span class="p">,</span> <span class="n">schema_validators</span>
+<span class="kn">from</span> <span class="nn">super_state_machine.machines</span> <span class="kn">import</span> <span class="n">StateMachine</span>
+<span class="kn">from</span> <span class="nn">super_state_machine.extras</span> <span class="kn">import</span> <span class="n">PropertyMachine</span>
+<span class="kn">from</span> <span class="nn">super_state_machine.errors</span> <span class="kn">import</span> <span class="n">TransitionError</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">asyncio</span> <span class="k">import</span> <span class="n">current_task</span>
+    <span class="kn">from</span> <span class="nn">asyncio</span> <span class="kn">import</span> <span class="n">current_task</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="c1"># handle py &lt; 3,7</span>
-    <span class="kn">from</span> <span class="nn">asyncio.tasks</span> <span class="k">import</span> <span class="n">Task</span>
+    <span class="kn">from</span> <span class="nn">asyncio.tasks</span> <span class="kn">import</span> <span class="n">Task</span>
     <span class="n">current_task</span> <span class="o">=</span> <span class="n">Task</span><span class="o">.</span><span class="n">current_task</span>
     <span class="k">del</span> <span class="n">Task</span>
 
-<span class="kn">from</span> <span class="nn">.utils</span> <span class="k">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span>
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CallbackRegistry</span><span class="p">,</span> <span class="n">SigintHandler</span><span class="p">,</span>
                     <span class="n">normalize_subs_input</span><span class="p">,</span> <span class="n">AsyncInput</span><span class="p">,</span>
                     <span class="n">NoReplayAllowed</span><span class="p">,</span> <span class="n">RequestAbort</span><span class="p">,</span> <span class="n">RequestStop</span><span class="p">,</span>
                     <span class="n">RunEngineInterrupted</span><span class="p">,</span> <span class="n">IllegalMessageSequence</span><span class="p">,</span>
@@ -304,10 +304,10 @@
     <span class="sd">&quot;&quot;&quot;expects object to have a `log` attribute</span>
 <span class="sd">    and a `state_hook` attribute that is ``None`` or a callable with signature</span>
 <span class="sd">    ``f(value, old_value)``&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">machine_type</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">machine_type</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">machine_type</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="n">own</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
         <span class="n">old_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">own</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">obj</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
@@ -318,7 +318,7 @@
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">old_value</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">instance</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
@@ -489,7 +489,7 @@
     <span class="k">def</span> <span class="nf">state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">scan_id_source</span><span class="o">=</span><span class="n">default_scan_id_source</span><span class="p">,</span>
                  <span class="n">during_task</span><span class="o">=</span><span class="n">default_during_task</span><span class="p">):</span>
@@ -523,7 +523,7 @@
         <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Failed to import ophyd.&quot;</span><span class="p">)</span>
 
-        <span class="kn">from</span> <span class="nn">._version</span> <span class="k">import</span> <span class="n">get_versions</span>
+        <span class="kn">from</span> <span class="nn">._version</span> <span class="kn">import</span> <span class="n">get_versions</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">md</span><span class="p">[</span><span class="s1">&#39;versions&#39;</span><span class="p">][</span><span class="s1">&#39;bluesky&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_versions</span><span class="p">()[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
         <span class="k">del</span> <span class="n">get_versions</span>
 
@@ -882,7 +882,7 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
 
-<div class="viewcode-block" id="RunEngine.__call__"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.__call__">[docs]</a>    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata_kw</span><span class="p">):</span>
+<div class="viewcode-block" id="RunEngine.__call__"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">metadata_kw</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Execute a plan.</span>
 
 <span class="sd">        Any keyword arguments will be interpreted as metadata and recorded with</span>
@@ -992,7 +992,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_resume_task</span><span class="p">(</span><span class="n">init_func</span><span class="o">=</span><span class="n">_build_task</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
+            <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="bp">None</span>
 
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span></div>
 
@@ -1029,7 +1029,7 @@
                 <span class="n">obj</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resume_task</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">None</span>
+            <span class="k">raise</span> <span class="n">RunEngineInterrupted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span><span class="p">)</span> <span class="kn">from</span> <span class="bp">None</span>
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span></div>
 
     <span class="k">def</span> <span class="nf">_rewind</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1848,7 +1848,7 @@
 
         <span class="k">if</span> <span class="n">ret</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
-                <span class="n">f</span><span class="s2">&quot;The read of </span><span class="si">{obj.name}</span><span class="s2"> returned None. &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;The read of </span><span class="si">{obj.name}</span><span class="s2"> returned None. &quot;</span>
                 <span class="s2">&quot;This is a bug in your object implementation, &quot;</span>
                 <span class="s2">&quot;`read` must return a dictionary.&quot;</span><span class="p">)</span>
         <span class="n">run_key</span> <span class="o">=</span> <span class="n">_extract_run_key</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
@@ -2465,7 +2465,7 @@
 <div class="viewcode-block" id="Dispatcher"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.Dispatcher">[docs]</a><span class="k">class</span> <span class="nc">Dispatcher</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Dispatch documents to user-defined consumers on the main thread.&quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cb_registry</span> <span class="o">=</span> <span class="n">CallbackRegistry</span><span class="p">(</span><span class="n">allowed_sigs</span><span class="o">=</span><span class="n">DocumentNames</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_counter</span> <span class="o">=</span> <span class="n">count</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_token_mapping</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>

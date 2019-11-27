@@ -197,28 +197,28 @@
            <div itemprop="articleBody">
             
   <h1>Source code for bluesky.utils</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">namedtuple</span>
+<span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
 <span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">signal</span>
 <span class="kn">import</span> <span class="nn">operator</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
-<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">reduce</span>
-<span class="kn">from</span> <span class="nn">weakref</span> <span class="k">import</span> <span class="n">ref</span><span class="p">,</span> <span class="n">WeakKeyDictionary</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">reduce</span>
+<span class="kn">from</span> <span class="nn">weakref</span> <span class="kn">import</span> <span class="n">ref</span><span class="p">,</span> <span class="n">WeakKeyDictionary</span>
 <span class="kn">import</span> <span class="nn">types</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
-<span class="kn">from</span> <span class="nn">inspect</span> <span class="k">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
-<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="k">import</span> <span class="n">Iterable</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Iterable</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">cycler</span> <span class="k">import</span> <span class="n">cycler</span>
+<span class="kn">from</span> <span class="nn">cycler</span> <span class="kn">import</span> <span class="n">cycler</span>
 <span class="kn">import</span> <span class="nn">datetime</span>
-<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span><span class="p">,</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">wraps</span><span class="p">,</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
-<span class="kn">from</span> <span class="nn">tqdm._utils</span> <span class="k">import</span> <span class="n">_environ_cols_wrapper</span><span class="p">,</span> <span class="n">_term_move_up</span><span class="p">,</span> <span class="n">_unicode</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">tqdm._utils</span> <span class="kn">import</span> <span class="n">_environ_cols_wrapper</span><span class="p">,</span> <span class="n">_term_move_up</span><span class="p">,</span> <span class="n">_unicode</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
 <span class="kn">import</span> <span class="nn">msgpack</span>
@@ -227,19 +227,19 @@
 
 <span class="k">try</span><span class="p">:</span>
     <span class="c1"># cytools is a drop-in replacement for toolz, implemented in Cython</span>
-    <span class="kn">from</span> <span class="nn">cytools</span> <span class="k">import</span> <span class="n">groupby</span>
+    <span class="kn">from</span> <span class="nn">cytools</span> <span class="kn">import</span> <span class="n">groupby</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">toolz</span> <span class="k">import</span> <span class="n">groupby</span>
+    <span class="kn">from</span> <span class="nn">toolz</span> <span class="kn">import</span> <span class="n">groupby</span>
 
 
 <span class="k">class</span> <span class="nc">Msg</span><span class="p">(</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;Msg_base&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;command&quot;</span><span class="p">,</span> <span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="s2">&quot;args&quot;</span><span class="p">,</span> <span class="s2">&quot;kwargs&quot;</span><span class="p">,</span> <span class="s2">&quot;run&quot;</span><span class="p">])):</span>
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">Msg</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">run</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{self.command}</span><span class="s2">[</span><span class="si">{self.run}</span><span class="s2">]: (</span><span class="si">{self.obj}</span><span class="s2">), </span><span class="si">{self.args}</span><span class="s2">, </span><span class="si">{self.kwargs}</span><span class="s2">&quot;</span>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{self.command}</span><span class="s2">[</span><span class="si">{self.run}</span><span class="s2">]: (</span><span class="si">{self.obj}</span><span class="s2">), </span><span class="si">{self.args}</span><span class="s2">, </span><span class="si">{self.kwargs}</span><span class="s2">&quot;</span>
 
 
 <span class="k">class</span> <span class="nc">RunEngineControlException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -288,7 +288,7 @@
 
 <span class="n">PLAN_TYPES</span> <span class="o">=</span> <span class="p">(</span><span class="n">types</span><span class="o">.</span><span class="n">GeneratorType</span><span class="p">,)</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">types</span> <span class="k">import</span> <span class="n">CoroutineType</span>
+    <span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">CoroutineType</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="c1"># &lt; py35</span>
     <span class="k">pass</span>
@@ -352,13 +352,13 @@
 
 <span class="sd">    https://www.gnu.org/software/libc/manual/html_node/Checking-for-Pending-Signals.html</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sig</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sig</span> <span class="o">=</span> <span class="n">sig</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">log</span>
 
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interrupted</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">released</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
@@ -381,7 +381,7 @@
         <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sig</span><span class="p">,</span> <span class="n">handler</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">type</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">tb</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -396,13 +396,13 @@
 
 
 <span class="k">class</span> <span class="nc">SigintHandler</span><span class="p">(</span><span class="n">SignalHandler</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">RE</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">RE</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="n">RE</span><span class="o">.</span><span class="n">log</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">RE</span> <span class="o">=</span> <span class="n">RE</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_sigint_time</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># time most recent SIGINT was processed</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_sigints_processed</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># count SIGINTs processed</span>
 
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">handle_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -444,7 +444,7 @@
 <span class="sd">    See matplotlib.cbook.CallbackRegistry. This is a simplified since</span>
 <span class="sd">    ``bluesky`` is python3.4+ only!</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ignore_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allowed_sigs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ignore_exceptions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allowed_sigs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ignore_exceptions</span> <span class="o">=</span> <span class="n">ignore_exceptions</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">allowed_sigs</span> <span class="o">=</span> <span class="n">allowed_sigs</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
@@ -568,7 +568,7 @@
 <span class="sd">    @license: The BSD License</span>
 <span class="sd">    Minor bugfixes by Michael Droettboom</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cb</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_destroy_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">try</span><span class="p">:</span>
@@ -608,7 +608,7 @@
         <span class="k">if</span> <span class="n">inst</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="n">ref</span><span class="p">(</span><span class="n">inst</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Proxy for a call to the weak referenced object. Take</span>
 <span class="sd">        arbitrary params to pass to the callable.</span>
@@ -629,7 +629,7 @@
         <span class="c1"># invoke the callable and return the result</span>
         <span class="k">return</span> <span class="n">mtd</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Compare the held function and instance with that held by</span>
 <span class="sd">        another proxy.</span>
@@ -642,13 +642,13 @@
         <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span>
 
-    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">        Inverse of __eq__.</span>
 <span class="sd">        &#39;&#39;&#39;</span>
         <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span>
 
 
@@ -657,7 +657,7 @@
 
 
 <span class="k">class</span> <span class="nc">StructMeta</span><span class="p">(</span><span class="nb">type</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">clsdict</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">clsdict</span><span class="p">):</span>
         <span class="n">clsobj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">bases</span><span class="p">,</span> <span class="n">clsdict</span><span class="p">)</span>
         <span class="n">args_params</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parameter</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">)</span>
                        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">clsobj</span><span class="o">.</span><span class="n">_fields</span><span class="p">]</span>
@@ -672,7 +672,7 @@
     <span class="s2">&quot;The _fields of any subclass become its attritubes and __init__ args.&quot;</span>
     <span class="n">_fields</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="c1"># Now bind default values of optional arguments.</span>
         <span class="c1"># If it seems like there should be a cleaner way to do this, see</span>
         <span class="c1"># http://bugs.python.org/msg221104</span>
@@ -727,26 +727,26 @@
 
 <span class="k">class</span> <span class="nc">DefaultSubs</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;a class-level descriptor&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span>
 
-    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">Subs</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;a &#39;reusable&#39; property&quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">WeakKeyDictionary</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalize_subs_input</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
 
 
@@ -907,7 +907,7 @@
 
 
 <span class="k">class</span> <span class="nc">PersistentDict</span><span class="p">(</span><span class="n">zict</span><span class="o">.</span><span class="n">Func</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">directory</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_directory</span> <span class="o">=</span> <span class="n">directory</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_file</span> <span class="o">=</span> <span class="n">zict</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">directory</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_dump</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_file</span><span class="p">)</span>
@@ -916,8 +916,8 @@
     <span class="k">def</span> <span class="nf">directory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_directory</span>
 
-    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;&lt;</span><span class="si">{self.__class__.__name__}</span><span class="s2"> {dict(self)!r}&gt;&quot;</span>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;</span><span class="si">{self.__class__.__name__}</span><span class="s2"> {dict(self)!r}&gt;&quot;</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_dump</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
@@ -1118,14 +1118,14 @@
             <span class="n">line</span><span class="p">,</span> <span class="o">=</span> <span class="n">lines</span>
             <span class="n">head</span><span class="p">,</span> <span class="n">split</span><span class="p">,</span> <span class="n">tail</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">split</span> <span class="o">==</span> <span class="n">prefix</span> <span class="ow">and</span> <span class="n">head</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span><span class="p">:</span>
-                <span class="n">line</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{RE}</span><span class="s1">({tail.strip()})</span><span class="se">\n</span><span class="s1">&#39;</span>
+                <span class="n">line</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{RE}</span><span class="s1">({tail.strip()})</span><span class="se">\n</span><span class="s1">&#39;</span>
 
             <span class="k">return</span> <span class="p">[</span><span class="n">line</span><span class="p">]</span>
 
         <span class="n">ip</span><span class="o">.</span><span class="n">input_transformers_post</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tr_re</span><span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
-        <span class="kn">from</span> <span class="nn">IPython.core.inputtransformer</span> <span class="k">import</span> <span class="n">StatelessInputTransformer</span>
+        <span class="kn">from</span> <span class="nn">IPython.core.inputtransformer</span> <span class="kn">import</span> <span class="n">StatelessInputTransformer</span>
 
         <span class="nd">@StatelessInputTransformer</span><span class="o">.</span><span class="n">wrap</span>
         <span class="k">def</span> <span class="nf">tr_re</span><span class="p">(</span><span class="n">line</span><span class="p">):</span>
@@ -1143,7 +1143,7 @@
 
 <span class="sd">    adapted from http://stackoverflow.com/a/35514777/1221924</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loop</span> <span class="o">=</span> <span class="n">loop</span> <span class="ow">or</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">q</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span><span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="o">.</span><span class="n">add_reader</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">got_input</span><span class="p">)</span>
@@ -1151,7 +1151,7 @@
     <span class="k">def</span> <span class="nf">got_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">readline</span><span class="p">()),</span> <span class="n">loop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="n">flush</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">q</span><span class="o">.</span><span class="n">get</span><span class="p">())</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
 
@@ -1265,7 +1265,7 @@
 
 
 <span class="k">class</span> <span class="nc">ProgressBar</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Represent status objects with a progress bars.</span>
 
@@ -1373,11 +1373,11 @@
 
 
 <span class="k">class</span> <span class="nc">ProgressBarManager</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">delay_draw</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">delay_draw</span> <span class="o">=</span> <span class="n">delay_draw</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs_or_none</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_objs_or_none</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">status_objs_or_none</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Start a new ProgressBar.</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pbar</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -1557,7 +1557,7 @@
         <span class="n">backend</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="c1"># if with a Qt backend, do the scary thing</span>
         <span class="k">if</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="k">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span>
+            <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="kn">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span>
             <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">app</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">_qapp</span> <span class="o">=</span> <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="p">([</span><span class="sa">b</span><span class="s1">&#39;bluesky&#39;</span><span class="p">])</span>
