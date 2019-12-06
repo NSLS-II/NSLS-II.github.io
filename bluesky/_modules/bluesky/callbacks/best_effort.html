@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.best_effort &mdash; bluesky 1.6.0rc2.post42+g2541733 documentation</title>
+  <title>bluesky.callbacks.best_effort &mdash; bluesky 1.6.0rc2.post43+g839b86f documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../../',
-              VERSION:'1.6.0rc2.post42+g2541733',
+              VERSION:'1.6.0rc2.post43+g839b86f',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post42+g2541733
+                1.6.0rc2.post43+g839b86f
               </div>
             
           
@@ -639,6 +639,52 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">peaks</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_baseline_toggle</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">plot_prune_fifo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_lines</span><span class="p">,</span> <span class="n">x_signal</span><span class="p">,</span> <span class="n">y_signal</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Find the plot with axes x_signal and y_signal.  Replot with only the last *num_lines* lines.</span>
+
+<span class="sd">        Example to remove all scans but the last:</span>
+<span class="sd">        &gt;&gt;&gt; bec.plot_prune_fifo(1, m1, noisy)</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        num_lines: int</span>
+<span class="sd">            number of lines (plotted scans) to keep, must be &gt;= 0</span>
+<span class="sd">        x_signal: object</span>
+<span class="sd">            instance of ophyd.Signal (or subclass), </span>
+<span class="sd">            independent (x) axis</span>
+<span class="sd">        y_signal: object</span>
+<span class="sd">            instance of ophyd.Signal (or subclass), </span>
+<span class="sd">            dependent (y) axis</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">num_lines</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">emsg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Argument &#39;num_lines&#39; (given as </span><span class="si">{num_lines}</span><span class="s2">)&quot;</span>
+                    <span class="s2">&quot; must be &gt;= 0.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">emsg</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">liveplot</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_live_plots</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">lp</span> <span class="o">=</span> <span class="n">liveplot</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">y_signal</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">lp</span><span class="o">.</span><span class="n">x</span> <span class="o">!=</span> <span class="n">x_signal</span><span class="o">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">lp</span><span class="o">.</span><span class="n">y</span> <span class="o">!=</span> <span class="n">y_signal</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># pick out only the lines that contain plot data,</span>
+            <span class="c1"># skipping the lines that show peak centers</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">tr</span>
+                <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">lp</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">lines</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tr</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> 
+                    <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">tr</span><span class="o">.</span><span class="n">_y</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> 
+                    <span class="ow">or</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tr</span><span class="o">.</span><span class="n">_x</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> 
+                        <span class="ow">and</span> <span class="n">tr</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">tr</span><span class="o">.</span><span class="n">_x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">num_lines</span><span class="p">:</span>
+                <span class="n">keepers</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="n">num_lines</span><span class="p">:]</span>
+                <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">tr</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">keepers</span><span class="p">:</span>
+                        <span class="n">tr</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+                <span class="n">lp</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">num_lines</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">lp</span><span class="o">.</span><span class="n">update_plot</span><span class="p">()</span>
 
 
 <span class="k">class</span> <span class="nc">PeakResults</span><span class="p">:</span>
