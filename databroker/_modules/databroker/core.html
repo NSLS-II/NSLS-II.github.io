@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b4.post12+gaee9313 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b4.post14+g521f87c documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b4.post12+gaee9313
+                1.0.0b4.post14+g521f87c
               </div>
             
           
@@ -514,8 +514,10 @@
     <span class="c1"># Use rechunk datum pages to make them into pages of size &quot;partition_size&quot;</span>
     <span class="c1"># and yield one page per partition.</span>
     <span class="k">for</span> <span class="n">datum_gen</span> <span class="ow">in</span> <span class="n">datum_gens</span><span class="p">:</span>
-        <span class="k">yield</span> <span class="p">[(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">)</span> <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span>
-               <span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_datum_pages</span><span class="p">(</span><span class="n">datum_gen</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">)]</span>
+        <span class="n">partition</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="n">datum_page</span><span class="p">)</span> <span class="k">for</span> <span class="n">datum_page</span> <span class="ow">in</span>
+                     <span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_datum_pages</span><span class="p">(</span><span class="n">datum_gen</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">)]</span>
+        <span class="k">if</span> <span class="n">partition</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">partition</span>
 
     <span class="c1"># Rechunk the event pages and interlace them in timestamp order, then pack</span>
     <span class="c1"># them into a partition.</span>
@@ -1322,7 +1324,7 @@
             <span class="k">except</span> <span class="n">event_model</span><span class="o">.</span><span class="n">UnresolvableForeignKeyError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                 <span class="c1"># Slow path: This error should only happen if there is an old style</span>
                 <span class="c1"># resource document that doesn&#39;t have a run_start key.</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_missing_datum</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PARTITION_SIZE</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_missing_datum</span><span class="p">(</span><span class="n">err</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">)</span>
                 <span class="k">return</span> <span class="p">[</span><span class="n">filler</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
         <span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span></div>
