@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b4 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b4.post12+gaee9313 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b4
+                1.0.0b4.post12+gaee9313
               </div>
             
           
@@ -699,6 +699,76 @@
     <span class="k">return</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span></div>
 
 
+<span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Yields documents from this Run in chronological order.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    start_doc : dict</span>
+<span class="sd">        RunStart Document</span>
+<span class="sd">    stop_doc : dict</span>
+<span class="sd">        RunStop Document</span>
+<span class="sd">    entries : dict</span>
+<span class="sd">        A dict of the BlueskyRun&#39;s entries.</span>
+<span class="sd">    fill: {&#39;yes&#39;, &#39;no&#39;}</span>
+<span class="sd">        If fill is &#39;yes&#39;, any external data referenced by Event documents</span>
+<span class="sd">        will be filled in (e.g. images as numpy arrays). This is typically</span>
+<span class="sd">        the desired option for *using* the data.</span>
+<span class="sd">        If fill is &#39;no&#39;, the Event documents will contain foreign keys as</span>
+<span class="sd">        placeholders for the data. This option is useful for exporting</span>
+<span class="sd">        copies of the documents.</span>
+<span class="sd">    strict_order : bool, optional</span>
+<span class="sd">        documents are strictly yielded in ascending time order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">run_start_uid</span> <span class="o">=</span> <span class="n">start</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="n">FILL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">,</span> <span class="s1">&#39;delayed&#39;</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">fill</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILL_OPTIONS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid fill option: </span><span class="si">{fill}</span><span class="s2">, fill must be: </span><span class="si">{FILL_OPTIONS}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
+            <span class="n">partition</span> <span class="o">=</span> <span class="n">entry</span><span class="p">()</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">,</span>
+                                              <span class="s1">&#39;partition_size&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">})</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">partition</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="k">yield from</span> <span class="n">partition</span>
+
+    <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+
+    <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+
+    <span class="c1"># This following code filters out duplicate documents.</span>
+    <span class="c1"># This is needed because we dont know which EventStream, that resource</span>
+    <span class="c1"># or datum documents belong to, so each stream has these documents.</span>
+    <span class="c1"># Without this filter we would get multiple of the same resource and</span>
+    <span class="c1"># datum documents.</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">history</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="n">history</span> <span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum_page&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">history</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="n">history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]))</span>
+
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;resource&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">history</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;run_start&#39;</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">)</span> <span class="o">==</span> <span class="n">run_start_uid</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="n">history</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+
+    <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="n">stop</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="RemoteBlueskyRun"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.RemoteBlueskyRun">[docs]</a><span class="k">class</span> <span class="nc">RemoteBlueskyRun</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">RemoteCatalog</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Catalog representing one Run.</span>
@@ -774,45 +844,19 @@
     <span class="k">def</span> <span class="nf">_close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">bag</span> <span class="o">=</span> <span class="kc">None</span>
 
-<div class="viewcode-block" id="RemoteBlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.RemoteBlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Yields documents from this Run in chronological order.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        fill: {&#39;yes&#39;, &#39;no&#39;}</span>
-<span class="sd">            If fill is &#39;yes&#39;, any external data referenced by Event documents</span>
-<span class="sd">            will be filled in (e.g. images as numpy arrays). This is typically</span>
-<span class="sd">            the desired option for *using* the data.</span>
-<span class="sd">            If fill is &#39;no&#39;, the Event documents will contain foreign keys as</span>
-<span class="sd">            placeholders for the data. This option is useful for exporting</span>
-<span class="sd">            copies of the documents.</span>
-<span class="sd">        strict_order : bool, optional</span>
-<span class="sd">            documents are strictly yielded in ascending time order.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
         <span class="c1"># Special case for &#39;delayed&#39; since it *is* supported in the local mode</span>
         <span class="c1"># of usage.</span>
         <span class="k">if</span> <span class="n">fill</span> <span class="o">==</span> <span class="s1">&#39;delayed&#39;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
                 <span class="s2">&quot;Delayed access is not yet supported via the client--server &quot;</span>
                 <span class="s2">&quot;usage.&quot;</span><span class="p">)</span>
-        <span class="n">FILL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">}</span>
-        <span class="k">if</span> <span class="n">fill</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILL_OPTIONS</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid fill option: </span><span class="si">{fill}</span><span class="s2">, fill must be: </span><span class="si">{FILL_OPTIONS}</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">def</span> <span class="nf">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
-                <span class="n">partition</span> <span class="o">=</span> <span class="n">entry</span><span class="p">()</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">,</span>
-                                                  <span class="s1">&#39;partition_size&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">})</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">partition</span><span class="p">:</span>
-                    <span class="k">break</span>
-                <span class="k">yield from</span> <span class="n">partition</span>
-
-        <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-
-        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">])</span>
-        <span class="k">yield from</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
-        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span></div>
+        <span class="k">yield from</span> <span class="n">canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
+                             <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
+                             <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
+                             <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
+                             <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -1046,43 +1090,12 @@
             <span class="c1"># before giving up.</span>
             <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entry</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
 
-<div class="viewcode-block" id="BlueskyRun.canonical"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.canonical">[docs]</a>    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Yields documents from this Run in chronological order.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        fill: {&#39;yes&#39;, &#39;no&#39;}</span>
-<span class="sd">            If fill is &#39;yes&#39;, any external data referenced by Event documents</span>
-<span class="sd">            will be filled in (e.g. images as numpy arrays). This is typically</span>
-<span class="sd">            the desired option for accessing small data.</span>
-<span class="sd">            If fill is &#39;delayed&#39;, external data will be filled in as dask</span>
-<span class="sd">            arrays, meaning that the I/O can be deferred until the data is</span>
-<span class="sd">            actually needed.</span>
-<span class="sd">            If fill is &#39;no&#39;, the Event documents will contain foreign keys as</span>
-<span class="sd">            placeholders for the data. This option is useful for exporting</span>
-<span class="sd">            copies of the documents.</span>
-<span class="sd">        strict_order : bool, optional</span>
-<span class="sd">            Documents are strictly yielded in ascending time order. This</span>
-<span class="sd">            defaults to True.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">FILL_OPTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;yes&#39;</span><span class="p">,</span> <span class="s1">&#39;no&#39;</span><span class="p">,</span> <span class="s1">&#39;delayed&#39;</span><span class="p">}</span>
-        <span class="k">if</span> <span class="n">fill</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">FILL_OPTIONS</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid fill option: </span><span class="si">{fill}</span><span class="s2">, fill must be: </span><span class="si">{FILL_OPTIONS}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-        <span class="k">def</span> <span class="nf">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">():</span>
-                <span class="n">partition</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">read_partition</span><span class="p">({</span><span class="s1">&#39;index&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span> <span class="s1">&#39;fill&#39;</span><span class="p">:</span> <span class="n">fill</span><span class="p">,</span>
-                                                  <span class="s1">&#39;partition_size&#39;</span><span class="p">:</span> <span class="s1">&#39;auto&#39;</span><span class="p">})</span>
-                <span class="k">if</span> <span class="ow">not</span> <span class="n">partition</span><span class="p">:</span>
-                    <span class="k">break</span>
-                <span class="k">yield from</span> <span class="n">partition</span>
-
-        <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-
-        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">])</span>
-        <span class="k">yield from</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
-        <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">])</span></div>
+    <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="k">yield from</span> <span class="n">canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
+                             <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
+                             <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
+                             <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
+                             <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
