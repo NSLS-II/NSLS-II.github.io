@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc2.post45+g40b9e16 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc2.post47+g23e81a3 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc2.post45+g40b9e16',
+              VERSION:'1.6.0rc2.post47+g23e81a3',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post45+g40b9e16
+                1.6.0rc2.post47+g23e81a3
               </div>
             
           
@@ -1340,8 +1340,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;stopping&#39;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">was_paused</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">RequestStop</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span>
 
 <div class="viewcode-block" id="RunEngine.halt"><a class="viewcode-back" href="../../run_engine_api.html#bluesky.run_engine.RunEngine.halt">[docs]</a>    <span class="k">def</span> <span class="nf">halt</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1386,13 +1390,15 @@
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Halting: skipping cleanup and marking exit_status as &quot;</span>
               <span class="s2">&quot;&#39;abort&#39;...&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">PlanHalt</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
         <span class="n">was_paused</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">==</span> <span class="s1">&#39;paused&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_state</span> <span class="o">=</span> <span class="s1">&#39;halting&#39;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">was_paused</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">was_paused</span><span class="p">:</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_exception</span> <span class="o">=</span> <span class="n">PlanHalt</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_exit_status</span> <span class="o">=</span> <span class="s1">&#39;abort&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
         <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_uids</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_stop_movable_objects</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
