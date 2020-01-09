@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b4.post29+g4551fea documentation</title>
+  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b4.post47+g3b834bf documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b4.post29+g4551fea
+                1.0.0b4.post47+g3b834bf
               </div>
             
           
@@ -206,7 +206,8 @@
             <span class="c1"># 2500 was selected as the page_size because it worked well durring</span>
             <span class="c1"># benchmarks.</span>
             <span class="n">get_datum_pages</span><span class="o">=</span><span class="n">to_datum_pages</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_datum_cursor</span><span class="p">,</span> <span class="mi">2500</span><span class="p">),</span>
-            <span class="n">get_filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_filler</span><span class="p">)</span>
+            <span class="n">get_filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_get_filler</span><span class="p">,</span>
+            <span class="n">transforms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_transforms</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">Entry</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">],</span>
             <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
@@ -304,7 +305,7 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadatastore_db</span><span class="p">,</span> <span class="n">asset_registry_db</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">filler_class</span><span class="o">=</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">,</span> <span class="n">query</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">find_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+                 <span class="n">find_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        This Catalog is backed by a pair of MongoDBs with &quot;layout 1&quot;.</span>
 
@@ -349,6 +350,13 @@
 <span class="sd">            MongoDB query. Used internally by the ``search()`` method.</span>
 <span class="sd">        find_kwargs : dict, optional</span>
 <span class="sd">            Options passed to pymongo ``find``.</span>
+<span class="sd">        transforms : Dict[str, Callable]</span>
+<span class="sd">            A dict that maps any subset of the keys {start, stop, resource, descriptor}</span>
+<span class="sd">            to a function that accepts a document of the corresponding type and</span>
+<span class="sd">            returns it, potentially modified. This feature is for patching up</span>
+<span class="sd">            erroneous metadata. It is intended for quick, temporary fixes that</span>
+<span class="sd">            may later be applied permanently to the data at rest</span>
+<span class="sd">            (e.g via a database migration).</span>
 <span class="sd">        **kwargs :</span>
 <span class="sd">            Additional keyword arguments are passed through to the base class,</span>
 <span class="sd">            Catalog.</span>
@@ -376,9 +384,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_find_kwargs</span> <span class="o">=</span> <span class="n">find_kwargs</span> <span class="ow">or</span> <span class="p">{}</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">handler_registry</span><span class="o">=</span><span class="n">handler_registry</span><span class="p">,</span>
-                         <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span>
-                         <span class="n">filler_class</span><span class="o">=</span><span class="n">filler_class</span><span class="p">,</span>
-                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                         <span class="n">root_map</span><span class="o">=</span><span class="n">root_map</span><span class="p">,</span> <span class="n">filler_class</span><span class="o">=</span><span class="n">filler_class</span><span class="p">,</span>
+                         <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_run_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_uid</span><span class="p">):</span>
         <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span>
@@ -474,6 +481,7 @@
             <span class="n">query</span><span class="o">=</span><span class="n">query</span><span class="p">,</span>
             <span class="n">find_kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">,</span>
             <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">,</span>
+            <span class="n">transforms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">,</span>
             <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="p">,</span>
             <span class="n">filler_class</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="s1">&#39;search results&#39;</span><span class="p">,</span>

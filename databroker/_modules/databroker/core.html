@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b4.post29+g4551fea documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b4.post47+g3b834bf documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b4.post29+g4551fea
+                1.0.0b4.post47+g3b834bf
               </div>
             
           
@@ -958,40 +958,18 @@
 <span class="sd">    get_datum_pages : callable</span>
 <span class="sd">        Expected signature ``get_datum_pages(resource_uid) -&gt; generator``</span>
 <span class="sd">        where ``generator`` yields Datum documents</span>
+<span class="sd">    get_filler : callable</span>
+<span class="sd">        Expected signature ``get_filler() -&gt; event_model.Filler``</span>
+<span class="sd">    transforms : Dict[str, Callable]</span>
+<span class="sd">        A dict that maps any subset of the keys {start, stop, resource, descriptor}</span>
+<span class="sd">        to a function that accepts a document of the corresponding type and</span>
+<span class="sd">        returns it, potentially modified. This feature is for patching up</span>
+<span class="sd">        erroneous metadata. It is intended for quick, temporary fixes that</span>
+<span class="sd">        may later be applied permanently to the data at rest</span>
+<span class="sd">        (e.g., via a database migration).</span>
 <span class="sd">    **kwargs :</span>
 <span class="sd">        Additional keyword arguments are passed through to the base class,</span>
 <span class="sd">        Catalog.</span>
-<span class="sd">    handler_registry : dict, optional</span>
-<span class="sd">        This is passed to the Filler or whatever class is given in the</span>
-<span class="sd">        filler_class parametr below.</span>
-
-<span class="sd">        Maps each &#39;spec&#39; (a string identifying a given type or external</span>
-<span class="sd">        resource) to a handler class.</span>
-
-<span class="sd">        A &#39;handler class&#39; may be any callable with the signature::</span>
-
-<span class="sd">            handler_class(resource_path, root, **resource_kwargs)</span>
-
-<span class="sd">        It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
-<span class="sd">        callable and has the following signature::</span>
-
-<span class="sd">            handler_instance(**datum_kwargs)</span>
-
-<span class="sd">        As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
-<span class="sd">        typically implemented using a class that implements ``__init__`` and</span>
-<span class="sd">        ``__call__``, with the respective signatures. But in general it may be</span>
-<span class="sd">        any callable-that-returns-a-callable.</span>
-<span class="sd">    root_map: dict, optional</span>
-<span class="sd">        This is passed to Filler or whatever class is given in the filler_class</span>
-<span class="sd">        parameter below.</span>
-
-<span class="sd">        str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
-<span class="sd">        files.  Any resources which have a ``root`` in ``root_map`` will be</span>
-<span class="sd">        loaded using the mapped ``root``.</span>
-<span class="sd">    filler_class: type</span>
-<span class="sd">        This is Filler by default. It can be a Filler subclass,</span>
-<span class="sd">        ``functools.partial(Filler, ...)``, or any class that provides the same</span>
-<span class="sd">        methods as ``DocumentRouter``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">container</span> <span class="o">=</span> <span class="s1">&#39;bluesky-run&#39;</span>
     <span class="n">version</span> <span class="o">=</span> <span class="s1">&#39;0.0.1&#39;</span>
@@ -1010,11 +988,11 @@
                  <span class="n">get_datum_pages</span><span class="p">,</span>
                  <span class="n">get_filler</span><span class="p">,</span>
                  <span class="n">entry</span><span class="p">,</span>
+                 <span class="n">transforms</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="c1"># All **kwargs are passed up to base class. TODO: spell them out</span>
         <span class="c1"># explicitly.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">urlpath</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># TODO Not sure why I had to add this.</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span> <span class="o">=</span> <span class="n">get_run_start</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span> <span class="o">=</span> <span class="n">get_run_stop</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span> <span class="o">=</span> <span class="n">get_event_descriptors</span>
@@ -1030,6 +1008,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;yes&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;delayed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_filler</span><span class="p">(</span><span class="n">coerce</span><span class="o">=</span><span class="s1">&#39;delayed&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_entry</span> <span class="o">=</span> <span class="n">entry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span> <span class="o">=</span> <span class="n">transforms</span>
+
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1049,10 +1029,12 @@
 
     <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Count the total number of documents in this run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">descriptor</span><span class="p">)</span>
+                             <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">](</span><span class="n">resource</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[]]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
 
@@ -1092,6 +1074,7 @@
                 <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
                 <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
                 <span class="n">fillers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">,</span>
+                <span class="n">transforms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">,</span>
                 <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
                           <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">})</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
@@ -1193,6 +1176,7 @@
             <span class="s2">&quot;Reading the BlueskyRun itself is not supported. Instead read one &quot;</span>
             <span class="s2">&quot;its entries, representing individual Event Streams. You can see &quot;</span>
             <span class="s2">&quot;the entries using list(YOUR_VARIABLE_HERE). Tab completion may &quot;</span>
+
             <span class="s2">&quot;also help, if available.&quot;</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="BlueskyRun.to_dask"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.to_dask">[docs]</a>    <span class="k">def</span> <span class="nf">to_dask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1230,6 +1214,13 @@
 <span class="sd">        Expected signature ``get_datum_pages(resource_uid) -&gt; generator``</span>
 <span class="sd">        where ``generator`` yields datum_page documents</span>
 <span class="sd">    fillers : dict of Fillers</span>
+<span class="sd">    transforms : Dict[str, Callable]</span>
+<span class="sd">        A dict that maps any subset of the keys {start, stop, resource, descriptor}</span>
+<span class="sd">        to a function that accepts a document of the corresponding type and</span>
+<span class="sd">        returns it, potentially modified. This feature is for patching up</span>
+<span class="sd">        erroneous metadata. It is intended for quick, temporary fixes that</span>
+<span class="sd">        may later be applied permanently to the data at rest</span>
+<span class="sd">        (e.g., via a database migration).</span>
 <span class="sd">    metadata : dict</span>
 <span class="sd">        passed through to base class</span>
 <span class="sd">    include : list, optional</span>
@@ -1256,6 +1247,7 @@
                  <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
                  <span class="n">get_datum_pages</span><span class="p">,</span>
                  <span class="n">fillers</span><span class="p">,</span>
+                 <span class="n">transforms</span><span class="p">,</span>
                  <span class="n">metadata</span><span class="p">,</span>
                  <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -1279,14 +1271,15 @@
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span>  <span class="p">[</span><span class="n">descriptor</span> <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span>
-                              <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="n">transforms</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span>  <span class="p">[</span><span class="n">transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">descriptor</span><span class="p">)</span>
+                              <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;descriptors&#39;</span><span class="p">,</span> <span class="p">[])</span>
                               <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
         <span class="c1"># Should figure out a way so that self._resources doesn&#39;t have to be</span>
         <span class="c1"># all of the Run&#39;s resources.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;resources&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">[</span><span class="n">transforms</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">](</span><span class="n">resource</span><span class="p">)</span>
+                           <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;resources&#39;</span><span class="p">,</span> <span class="p">[])]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1457,7 +1450,8 @@
 
 <span class="k">class</span> <span class="nc">BlueskyRunFromGenerator</span><span class="p">(</span><span class="n">BlueskyRun</span><span class="p">):</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gen_func</span><span class="p">,</span> <span class="n">gen_args</span><span class="p">,</span> <span class="n">gen_kwargs</span><span class="p">,</span> <span class="n">get_filler</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gen_func</span><span class="p">,</span> <span class="n">gen_args</span><span class="p">,</span> <span class="n">gen_kwargs</span><span class="p">,</span> <span class="n">get_filler</span><span class="p">,</span>
+                 <span class="n">transforms</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
         <span class="n">document_cache</span> <span class="o">=</span> <span class="n">DocumentCache</span><span class="p">()</span>
 
@@ -1509,6 +1503,7 @@
             <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="n">lookup_resource_for_datum</span><span class="p">,</span>
             <span class="n">get_datum_pages</span><span class="o">=</span><span class="n">get_datum_pages</span><span class="p">,</span>
             <span class="n">get_filler</span><span class="o">=</span><span class="n">get_filler</span><span class="p">,</span>
+            <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
 
@@ -1655,6 +1650,55 @@
             <span class="n">class_</span> <span class="o">=</span> <span class="n">handler_str</span>
         <span class="n">result</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="n">class_</span>
     <span class="k">return</span> <span class="n">result</span></div>
+
+
+<span class="k">def</span> <span class="nf">parse_transforms</span><span class="p">(</span><span class="n">transforms</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse mapping of spec name to &#39;import path&#39; into mapping to class itself.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    transforms : collections.abc.Mapping or None</span>
+<span class="sd">        A collections.abc.Mapping or subclass, that maps any subset of the</span>
+<span class="sd">        keys {start, stop, resource, descriptor} to a function (or a string</span>
+<span class="sd">        import path) that accepts a document of the corresponding type and</span>
+<span class="sd">        returns it, potentially modified. This feature is for patching up</span>
+<span class="sd">        erroneous metadata. It is intended for quick, temporary fixes that</span>
+<span class="sd">        may later be applied permanently to the data at rest (e.g via a</span>
+<span class="sd">        database migration).</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Pass in name; get back actual class.</span>
+
+<span class="sd">    &gt;&gt;&gt; parse_transforms({&#39;descriptor&#39;: &#39;package.module.ClassName&#39;})</span>
+<span class="sd">    {&#39;descriptor&#39;: &lt;package.module.ClassName&gt;}</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">transformable</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="s1">&#39;descriptor&#39;</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">transforms</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">doc</span><span class="p">:</span> <span class="n">doc</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">transformable</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transforms</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">transforms</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">-</span> <span class="n">transformable</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transforms for {transforms.keys() - transformable} &quot;</span>
+                                      <span class="sa">f</span><span class="s2">&quot;are not supported.&quot;</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">transformable</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">transform</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">class_name</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+                <span class="n">function</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">class_name</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">doc</span><span class="p">:</span> <span class="n">doc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">function</span> <span class="o">=</span> <span class="n">transform</span>
+            <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">function</span>
+        <span class="k">return</span> <span class="n">result</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid transforms argument </span><span class="si">{transforms}</span><span class="s2">. &quot;</span>
+                         <span class="sa">f</span><span class="s2">&quot;transforms must be None or a dictionary.&quot;</span><span class="p">)</span>
 
 
 <span class="c1"># This determines the type of the class that you get on the</span>
