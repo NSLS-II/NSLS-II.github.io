@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b4.post56+g392928a documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b4.post69+g6be5db2 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b4.post56+g392928a
+                1.0.0b4.post69+g6be5db2
               </div>
             
           
@@ -163,7 +163,6 @@
             
   <h1>Source code for databroker.core</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">collections</span>
-<span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">entrypoints</span>
 <span class="kn">import</span> <span class="nn">event_model</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
@@ -189,7 +188,58 @@
 
 <span class="kn">from</span> <span class="nn">.intake_xarray_core.base</span> <span class="kn">import</span> <span class="n">DataSourceMixin</span>
 <span class="kn">from</span> <span class="nn">.intake_xarray_core.xarray_container</span> <span class="kn">import</span> <span class="n">RemoteXarray</span>
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">normalize_token</span>
+<span class="kn">from</span> <span class="nn">intake.utils</span> <span class="kn">import</span> <span class="n">DictSerialiseMixin</span>
+
+
+<span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@normalize_token</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Document</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">tokenize_dict</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">__dask_tokenize__</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">Start</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Stop</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;stop&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Resource</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;resource&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Descriptor</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Event</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;event&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">EventPage</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">Datum</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;datum&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">DatumPage</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;datum_page&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
 
 
 <span class="k">class</span> <span class="nc">PartitionIndexError</span><span class="p">(</span><span class="ne">IndexError</span><span class="p">):</span>
@@ -209,6 +259,21 @@
         <span class="c1"># enables the driver instance to know which Entry created it.</span>
         <span class="n">open_args</span><span class="p">[</span><span class="s1">&#39;entry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">return</span> <span class="n">plugin</span><span class="p">,</span> <span class="n">open_args</span>
+
+
+<span class="k">class</span> <span class="nc">StreamEntry</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is a temporary fix that is being proposed to include in intake.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">DictSerialiseMixin</span><span class="p">)</span>
+                <span class="k">else</span> <span class="n">arg</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_captured_init_args</span><span class="p">]</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">arg</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">()</span>
+                              <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">DictSerialiseMixin</span><span class="p">)</span> <span class="k">else</span> <span class="n">arg</span>
+                              <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_captured_init_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+        <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">classname</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+
 
 <span class="k">def</span> <span class="nf">tail</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -536,14 +601,12 @@
     <span class="k">yield</span> <span class="n">partition</span>
 
 
-<span class="k">def</span> <span class="nf">fill</span><span class="p">(</span>
-    <span class="n">filler</span><span class="p">,</span>
-    <span class="n">event</span><span class="p">,</span>
-    <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
-    <span class="n">get_resource</span><span class="p">,</span>
-    <span class="n">get_datum_pages</span><span class="p">,</span>
-    <span class="n">last_datum_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<span class="p">):</span>
+<span class="k">def</span> <span class="nf">fill</span><span class="p">(</span><span class="n">filler</span><span class="p">,</span>
+         <span class="n">event</span><span class="p">,</span>
+         <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
+         <span class="n">get_resource</span><span class="p">,</span>
+         <span class="n">get_datum_pages</span><span class="p">,</span>
+         <span class="n">last_datum_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">filled_event</span> <span class="o">=</span> <span class="n">filler</span><span class="p">(</span><span class="s2">&quot;event&quot;</span><span class="p">,</span> <span class="n">event</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">filled_event</span>
@@ -1029,11 +1092,11 @@
 
     <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># Count the total number of documents in this run.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">](</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">descriptor</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="n">Start</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_start</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">Stop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">[</span><span class="n">Descriptor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">descriptor</span><span class="p">))</span>
                              <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">](</span><span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">resource</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">](</span><span class="n">resource</span><span class="p">))</span>
                            <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span><span class="p">()</span> <span class="ow">or</span> <span class="p">[]]</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">})</span>
@@ -1063,8 +1126,17 @@
         <span class="n">descriptors_by_name</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
             <span class="n">descriptors_by_name</span><span class="p">[</span><span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="s1">&#39;primary&#39;</span><span class="p">)]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="c1"># We employ OrderedDict in several places in this loop. The motivation</span>
+        <span class="c1"># is to speed up dask tokenization. When dask tokenizes a plain dict,</span>
+        <span class="c1"># it sorts the keys, and it turns out that this sort operation</span>
+        <span class="c1"># dominates the call time, even for very small dicts. Using an</span>
+        <span class="c1"># OrderedDict steers dask toward a different and faster tokenization.</span>
         <span class="k">for</span> <span class="n">stream_name</span><span class="p">,</span> <span class="n">descriptors</span> <span class="ow">in</span> <span class="n">descriptors_by_name</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">({</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
+                                    <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
+                                    <span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
+                                    <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">})</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">(</span>
                 <span class="n">stream_name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
                 <span class="n">get_run_stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">,</span>
                 <span class="n">get_event_descriptors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">,</span>
@@ -1073,23 +1145,17 @@
                 <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
                 <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
                 <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
-                <span class="n">fillers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">,</span>
-                <span class="n">transforms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">,</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
-                          <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
-                          <span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
-                          <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">})</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">(</span>
+                <span class="n">fillers</span><span class="o">=</span><span class="n">OrderedDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">),</span>
+                <span class="n">transforms</span><span class="o">=</span><span class="n">OrderedDict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">),</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">[</span><span class="n">stream_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">StreamEntry</span><span class="p">(</span>
                 <span class="n">name</span><span class="o">=</span><span class="n">stream_name</span><span class="p">,</span>
                 <span class="n">description</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># TODO</span>
                 <span class="n">driver</span><span class="o">=</span><span class="s1">&#39;databroker.core.BlueskyEventStream&#39;</span><span class="p">,</span>
                 <span class="n">direct_access</span><span class="o">=</span><span class="s1">&#39;forbid&#39;</span><span class="p">,</span>
                 <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
                 <span class="n">cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># What does this do?</span>
-                <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;start&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
-                          <span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
-                          <span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">descriptors</span><span class="p">,</span>
-                          <span class="s1">&#39;resources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">},</span>
+                <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
                 <span class="n">catalog_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1272,8 +1338,8 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span>  <span class="p">[</span><span class="n">descriptor</span> <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]</span>
-                              <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">[</span><span class="n">descriptor</span> <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;descriptors&#39;</span><span class="p">]</span>
+                             <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
         <span class="c1"># Should figure out a way so that self._resources doesn&#39;t have to be</span>
         <span class="c1"># all of the Run&#39;s resources.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;resources&#39;</span><span class="p">]</span>
