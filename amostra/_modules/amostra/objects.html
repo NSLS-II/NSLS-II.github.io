@@ -1,0 +1,412 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>amostra.objects &mdash; Amostra 1.0.1.post17+g66b9c52 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+        <script type="text/javascript" src="../../_static/clipboard.min.js"></script>
+        <script type="text/javascript" src="../../_static/copybutton.js"></script>
+        <script type="text/javascript">var copybuttonSkipText = '>>> ';</script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/copybutton.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Amostra
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.1.post17+g66b9c52
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data-model.html">Data Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-history.html">Release History</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Amostra</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>amostra.objects</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for amostra.objects</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">uuid</span>
+
+<span class="kn">import</span> <span class="nn">jsonschema</span>
+<span class="kn">from</span> <span class="nn">traitlets</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">HasTraits</span><span class="p">,</span>
+    <span class="n">Instance</span><span class="p">,</span>
+    <span class="n">Integer</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Unicode</span><span class="p">,</span>
+    <span class="n">default</span><span class="p">,</span>
+    <span class="n">validate</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">load_schema</span>
+
+
+<span class="k">def</span> <span class="nf">_validate_with_jsonschema</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">proposal</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate that contents satisfy a jsonschema.</span>
+
+<span class="sd">    This is meant to be used with traitlets&#39; @validate decorator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">instance</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">instance</span><span class="o">.</span><span class="n">SCHEMA</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">proposal</span><span class="p">[</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">AmostraDocument</span><span class="p">(</span><span class="n">HasTraits</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A HasTraits object with a reference to an amostra client.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">uuid</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">(</span><span class="n">read_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">revision</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_amostra_client</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_amostra_client</span> <span class="o">=</span> <span class="n">_amostra_client</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Configure _validate_with_jsonschema to validate all traits.</span>
+        <span class="n">trait_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">class_traits</span><span class="p">())</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_validate</span> <span class="o">=</span> <span class="n">validate</span><span class="p">(</span><span class="o">*</span><span class="n">trait_names</span><span class="p">)(</span><span class="n">_validate_with_jsonschema</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@default</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_get_default_uuid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{self.__class__.__name__}</span><span class="s1">(&#39;</span> <span class="o">+</span>
+                <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{name}</span><span class="s1">={getattr(self, name)!r}&#39;</span>
+                          <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">trait</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                          <span class="k">if</span> <span class="ow">not</span> <span class="n">trait</span><span class="o">.</span><span class="n">read_only</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represent the object as a JSON-serializable dictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trait_names</span><span class="p">()}</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_document</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">amostra_client</span><span class="p">,</span> <span class="n">document</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a dict returned by the server to our traitlets-based object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Handle the read_only traits separately.</span>
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
+        <span class="n">revision</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">)</span>
+        <span class="n">instance</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">amostra_client</span><span class="p">,</span> <span class="o">**</span><span class="n">document</span><span class="p">)</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">set_trait</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="n">uuid</span><span class="p">)</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">set_trait</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">,</span> <span class="n">revision</span><span class="p">)</span>
+
+        <span class="c1"># Observe any updates to the instanceect and sync them to MongoDB.</span>
+        <span class="n">instance</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="n">amostra_client</span><span class="o">.</span><span class="n">_update</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">instance</span>
+
+    <span class="k">def</span> <span class="nf">revisions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Access all revisions of this document.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        This returns a *generator* instance which lazily access the data, to</span>
+<span class="sd">        enable partial or paginated access in case the number of revisions is</span>
+<span class="sd">        large.</span>
+
+<span class="sd">        To pull all revisions, use ``list``.</span>
+
+<span class="sd">        &gt;&gt;&gt; revisions = list(document.revisions())</span>
+
+<span class="sd">        To pull the most recent revision use ``next``.</span>
+
+<span class="sd">        &gt;&gt;&gt; most_recent = next(document.revisions())</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_amostra_client</span><span class="o">.</span><span class="n">_revisions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># This gets, e.g. client.samples</span>
+        <span class="n">accessor</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_amostra_client</span><span class="p">,</span>
+                           <span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)])</span>
+        <span class="n">d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">accessor</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">**</span><span class="n">d</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">purge</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_amostra_client</span><span class="o">.</span><span class="n">_purge</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">uuid</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">revert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+        <span class="c1"># Find the one you want to revert to</span>
+        <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">revisions</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">it</span><span class="o">.</span><span class="n">revision</span> <span class="o">==</span> <span class="n">num</span><span class="p">:</span>
+                <span class="k">break</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;revision </span><span class="si">{num}</span><span class="s1"> you were&#39;</span>
+                             <span class="sa">f</span><span class="s1">&#39;trying to revert to was not found&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Update current sample</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">hold_trait_notifications</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">trait</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traits</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">trait</span><span class="o">.</span><span class="n">read_only</span><span class="p">:</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="Institution"><a class="viewcode-back" href="../../reference.html#amostra.objects.Institution">[docs]</a><span class="k">class</span> <span class="nc">Institution</span><span class="p">(</span><span class="n">AmostraDocument</span><span class="p">):</span>
+    <span class="n">SCHEMA</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s1">&#39;institution.json&#39;</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="Owner"><a class="viewcode-back" href="../../reference.html#amostra.objects.Owner">[docs]</a><span class="k">class</span> <span class="nc">Owner</span><span class="p">(</span><span class="n">AmostraDocument</span><span class="p">):</span>
+    <span class="n">SCHEMA</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s1">&#39;owner.json&#39;</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">institutions</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Instance</span><span class="p">(</span><span class="n">Institution</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Project"><a class="viewcode-back" href="../../reference.html#amostra.objects.Project">[docs]</a><span class="k">class</span> <span class="nc">Project</span><span class="p">(</span><span class="n">AmostraDocument</span><span class="p">):</span>
+    <span class="n">SCHEMA</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s1">&#39;project.json&#39;</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">owners</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Instance</span><span class="p">(</span><span class="n">Owner</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Sample"><a class="viewcode-back" href="../../reference.html#amostra.objects.Sample">[docs]</a><span class="k">class</span> <span class="nc">Sample</span><span class="p">(</span><span class="n">AmostraDocument</span><span class="p">):</span>
+    <span class="n">SCHEMA</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s1">&#39;sample.json&#39;</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">projects</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Instance</span><span class="p">(</span><span class="n">Project</span><span class="p">))</span>
+    <span class="n">composition</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span><span class="n">Unicode</span><span class="p">())</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_amostra_client</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This object should not be directly instantiated by this user. Use a client.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        _amostra_client: Client</span>
+<span class="sd">            The name is intended to avoid name collisions with any future</span>
+<span class="sd">            sample traits.</span>
+<span class="sd">        name: string</span>
+<span class="sd">            A required Sample trait</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Other, optional sample traits</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">_amostra_client</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Container"><a class="viewcode-back" href="../../reference.html#amostra.objects.Container">[docs]</a><span class="k">class</span> <span class="nc">Container</span><span class="p">(</span><span class="n">AmostraDocument</span><span class="p">):</span>
+    <span class="n">SCHEMA</span> <span class="o">=</span> <span class="n">load_schema</span><span class="p">(</span><span class="s1">&#39;container.json&#39;</span><span class="p">)</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">kind</span> <span class="o">=</span> <span class="n">Unicode</span><span class="p">()</span>
+    <span class="n">contents</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_amostra_client</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">contents</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This object should not be directly instantiated by this user. Use a client.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        _amostra_client: Client</span>
+<span class="sd">            The name is intended to avoid name collisions with any future</span>
+<span class="sd">            sample traits.</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            Other, optional sample traits</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">_amostra_client</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span>
+                         <span class="n">contents</span><span class="o">=</span><span class="n">contents</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Container.to_dict"><a class="viewcode-back" href="../../reference.html#amostra.objects.Container.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Replace Sample objects in contents with their uuids.</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;contents&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="o">.</span><span class="n">uuid</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ret</span><span class="p">[</span><span class="s1">&#39;contents&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+<div class="viewcode-block" id="Container.from_document"><a class="viewcode-back" href="../../reference.html#amostra.objects.Container.from_document">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_document</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">amostra_client</span><span class="p">,</span> <span class="n">document</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a dict returned by the server to our traitlets-based object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">contents</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># Replace {sample_uuid: location} with {Sample: location}.</span>
+        <span class="k">for</span> <span class="n">sample_uuid</span><span class="p">,</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">document</span><span class="p">[</span><span class="s1">&#39;contents&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">amostra_client</span><span class="o">.</span><span class="n">samples</span><span class="o">.</span><span class="n">find_one</span><span class="p">({</span><span class="s1">&#39;uuid&#39;</span><span class="p">:</span> <span class="n">sample_uuid</span><span class="p">})</span>
+            <span class="n">contents</span><span class="p">[</span><span class="n">sample</span><span class="p">]</span> <span class="o">=</span> <span class="n">location</span>
+        <span class="n">document</span><span class="p">[</span><span class="s1">&#39;contents&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">contents</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">from_document</span><span class="p">(</span><span class="n">amostra_client</span><span class="p">,</span> <span class="n">document</span><span class="p">)</span></div></div>
+
+
+<span class="n">TYPES_TO_COLLECTION_NAMES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">Container</span><span class="p">:</span> <span class="s1">&#39;containers&#39;</span><span class="p">,</span>
+    <span class="n">Sample</span><span class="p">:</span> <span class="s1">&#39;samples&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Amostra Contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

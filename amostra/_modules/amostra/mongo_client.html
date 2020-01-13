@@ -1,0 +1,376 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>amostra.mongo_client &mdash; Amostra 1.0.1.post17+g66b9c52 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+        <script type="text/javascript" src="../../_static/clipboard.min.js"></script>
+        <script type="text/javascript" src="../../_static/copybutton.js"></script>
+        <script type="text/javascript">var copybuttonSkipText = '>>> ';</script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/copybutton.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Amostra
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.1.post17+g66b9c52
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data-model.html">Data Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../release-history.html">Release History</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Amostra</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>amostra.mongo_client</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for amostra.mongo_client</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pymongo</span>
+
+<span class="kn">from</span> <span class="nn">.objects</span> <span class="kn">import</span> <span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">,</span> <span class="n">Container</span><span class="p">,</span> <span class="n">Sample</span>
+
+
+<div class="viewcode-block" id="Client"><a class="viewcode-back" href="../../reference.html#amostra.mongo_client.Client">[docs]</a><span class="k">class</span> <span class="nc">Client</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This connects to several MongoDB collections for sample management.</span>
+
+<span class="sd">    For each collection, we have a traitlets-based object to represent</span>
+<span class="sd">    documents from that collection and automatically sync any changes back to</span>
+<span class="sd">    the database.</span>
+
+<span class="sd">    Each collection has a counterpart named {collection_name}_revisions that</span>
+<span class="sd">    stores previous version of the document. This approach was inspired by:</span>
+<span class="sd">    https://www.mongodb.com/blog/post/building-with-patterns-the-document-versioning-pattern</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">database</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connect to a MongoDB datbase.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        database: pymongo.Database or URI string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">database</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Database should be URI or pymongo-like object.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">database</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">database</span> <span class="o">=</span> <span class="n">_get_database</span><span class="p">(</span><span class="n">database</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_db</span> <span class="o">=</span> <span class="n">database</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span> <span class="o">=</span> <span class="n">CollectionAccessor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Sample</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_containers</span> <span class="o">=</span> <span class="n">CollectionAccessor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Container</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">samples</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Accessor for creating and searching Samples</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_samples</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">containers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Accessor for creating and searching Containers</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_containers</span>
+
+    <span class="k">def</span> <span class="nf">_new_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_type</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Insert a new document with a new uuid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Make a new object (e.g. Sample)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">obj_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Find the assocaited MongoDB collection.</span>
+        <span class="n">collection_name</span> <span class="o">=</span> <span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">[</span><span class="n">obj_type</span><span class="p">]</span>
+        <span class="n">collection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="n">collection_name</span><span class="p">]</span>
+
+        <span class="c1"># Insert the new object.</span>
+        <span class="n">collection</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
+
+        <span class="c1"># Observe any updates to the object and sync them to MongoDB.</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">change</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sync a change to an object, observed via traitlets, to MongoDB.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># The &#39;revision&#39; trait is a read-only trait, so if it is being changed</span>
+        <span class="c1"># it is being changed by us, and we don&#39;t need to process it.</span>
+        <span class="c1"># Short-circuit here to avoid an infinite recursion.</span>
+        <span class="k">if</span> <span class="n">change</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;revision&#39;</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="n">change</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span>
+        <span class="n">collection_name</span> <span class="o">=</span> <span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">owner</span><span class="p">)]</span>
+        <span class="n">collection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="n">collection_name</span><span class="p">]</span>
+        <span class="n">revisions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{collection_name}</span><span class="s1">_revisions&#39;</span><span class="p">]</span>
+        <span class="c1"># We need the JSON-safe value of the change, so do this instead of</span>
+        <span class="c1"># change[&#39;new&#39;].</span>
+        <span class="n">new</span> <span class="o">=</span> <span class="n">change</span><span class="p">[</span><span class="s1">&#39;owner&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()[</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]]</span>
+        <span class="nb">filter</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uuid&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="o">.</span><span class="n">uuid</span><span class="p">}</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;$set&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">change</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]:</span> <span class="n">new</span><span class="p">},</span>
+                  <span class="s1">&#39;$inc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;revision&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}}</span>
+        <span class="c1"># TODO Use transactions for this once we have MongoDB 4.0+.</span>
+        <span class="c1"># Increment the revision number.</span>
+        <span class="n">owner</span><span class="o">.</span><span class="n">set_trait</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">,</span> <span class="n">owner</span><span class="o">.</span><span class="n">revision</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Update the document in {collection_name}.</span>
+        <span class="n">original</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">find_one_and_update</span><span class="p">(</span><span class="nb">filter</span><span class="p">,</span> <span class="n">update</span><span class="p">)</span>
+        <span class="c1"># Remove the internal MongoDB id.</span>
+        <span class="n">original</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+        <span class="c1"># Insert the old version in {collection_name}_revisions</span>
+        <span class="n">revisions</span> <span class="o">=</span> <span class="n">revisions</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">original</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_purge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_type</span><span class="p">,</span> <span class="n">uuid</span><span class="p">):</span>
+        <span class="n">collection_name</span> <span class="o">=</span> <span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">[</span><span class="n">obj_type</span><span class="p">]</span>
+        <span class="n">collection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="n">collection_name</span><span class="p">]</span>
+        <span class="n">revisions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{collection_name}</span><span class="s1">_revisions&#39;</span><span class="p">]</span>
+        <span class="nb">filter</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;uuid&#39;</span><span class="p">:</span> <span class="n">uuid</span><span class="p">}</span>
+        <span class="n">original</span> <span class="o">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span>
+        <span class="c1"># Remove the internal MongoDB id.</span>
+        <span class="n">_id</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>
+        <span class="n">revisions</span> <span class="o">=</span> <span class="n">revisions</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">original</span><span class="p">)</span>
+        <span class="c1"># Restore the internal MongoDB id.</span>
+        <span class="n">original</span><span class="p">[</span><span class="s1">&#39;_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">_id</span>
+        <span class="n">collection</span><span class="o">.</span><span class="n">delete_one</span><span class="p">(</span><span class="n">original</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_document_to_obj</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_type</span><span class="p">,</span> <span class="n">document</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert a dict returned by pymongo to our traitlets-based object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Handle the read_only traits separately.</span>
+        <span class="n">uuid</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">)</span>
+        <span class="n">revision</span> <span class="o">=</span> <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">obj_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">document</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">set_trait</span><span class="p">(</span><span class="s1">&#39;uuid&#39;</span><span class="p">,</span> <span class="n">uuid</span><span class="p">)</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">set_trait</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">,</span> <span class="n">revision</span><span class="p">)</span>
+
+        <span class="c1"># Observe any updates to the object and sync them to MongoDB.</span>
+        <span class="n">obj</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_update</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">obj</span>
+
+    <span class="k">def</span> <span class="nf">_revisions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Access all revisions to an object with the most recent first.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">revisions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{TYPES_TO_COLLECTION_NAMES[type(obj)]}</span><span class="s1">_revisions&#39;</span><span class="p">]</span>
+        <span class="n">type_</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="p">(</span><span class="n">revisions</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s1">&#39;uuid&#39;</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">uuid</span><span class="p">})</span>
+                                  <span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s1">&#39;revision&#39;</span><span class="p">,</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">DESCENDING</span><span class="p">)):</span>
+            <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>  <span class="c1"># Remove the internal MongoDB id.</span>
+            <span class="k">yield</span> <span class="n">type_</span><span class="o">.</span><span class="n">from_document</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">document</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">CollectionAccessor</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Accessor used on Clients</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">obj_type</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_client</span> <span class="o">=</span> <span class="n">client</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_obj_type</span> <span class="o">=</span> <span class="n">obj_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_collection</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">_db</span><span class="p">[</span><span class="n">TYPES_TO_COLLECTION_NAMES</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_obj_type</span><span class="p">]]</span>
+
+    <span class="k">def</span> <span class="nf">new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="o">.</span><span class="n">_new_document</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_obj_type</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">find</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">filter</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">filter</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">filter</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">document</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collection</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">filter</span><span class="p">):</span>
+            <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>  <span class="c1"># Remove the internal MongoDB id.</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj_type</span><span class="o">.</span><span class="n">from_document</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="p">,</span> <span class="n">document</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">find_one</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">filter</span><span class="p">):</span>
+        <span class="n">document</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collection</span><span class="o">.</span><span class="n">find_one</span><span class="p">(</span><span class="nb">filter</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">document</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">document</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;_id&#39;</span><span class="p">)</span>  <span class="c1"># Remove the internal MongoDB id.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj_type</span><span class="o">.</span><span class="n">from_document</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_client</span><span class="p">,</span> <span class="n">document</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_get_database</span><span class="p">(</span><span class="n">uri</span><span class="p">):</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Called with no args, get_database() returns the database</span>
+        <span class="c1"># specified in the client&#39;s uri --- or raises if there was none.</span>
+        <span class="c1"># There is no public method for checking this in advance, so we</span>
+        <span class="c1"># just catch the error.</span>
+        <span class="k">return</span> <span class="n">client</span><span class="o">.</span><span class="n">get_database</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">errors</span><span class="o">.</span><span class="n">ConfigurationError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Invalid client: </span><span class="si">{client}</span><span class="s2"> &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Did you forget to include a database?&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Amostra Contributors
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
