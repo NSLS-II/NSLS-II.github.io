@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b6.post8+gc47348a documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b6.post18+g15ae361 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b6.post8+gc47348a
+                1.0.0b6.post18+g15ae361
               </div>
             
           
@@ -173,6 +173,9 @@
 <span class="kn">import</span> <span class="nn">heapq</span>
 <span class="kn">import</span> <span class="nn">importlib</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">cachetools</span>
+<span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">tokenize</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.base</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.local</span>
 <span class="kn">import</span> <span class="nn">errno</span>
@@ -191,6 +194,9 @@
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">OrderedDict</span>
 <span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">normalize_token</span>
 <span class="kn">from</span> <span class="nn">intake.utils</span> <span class="kn">import</span> <span class="n">DictSerialiseMixin</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
@@ -252,6 +258,10 @@
         <span class="k">if</span> <span class="s1">&#39;entry&#39;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;The args cannot contain &#39;entry&#39;. It is reserved.&quot;</span><span class="p">)</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># This cache holds datasources, the result of calling super().get(...)</span>
+        <span class="c1"># with potentially different arguments.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span> <span class="o">=</span> <span class="n">cachetools</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Created Entry named </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_create_open_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_parameters</span><span class="p">):</span>
         <span class="n">plugin</span><span class="p">,</span> <span class="n">open_args</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_open_args</span><span class="p">(</span><span class="n">user_parameters</span><span class="p">)</span>
@@ -259,6 +269,22 @@
         <span class="c1"># enables the driver instance to know which Entry created it.</span>
         <span class="n">open_args</span><span class="p">[</span><span class="s1">&#39;entry&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="k">return</span> <span class="n">plugin</span><span class="p">,</span> <span class="n">open_args</span>
+
+    <span class="k">def</span> <span class="nf">cache_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">tokenize</span><span class="p">(</span><span class="n">OrderedDict</span><span class="p">(</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">datasource</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="p">[</span><span class="n">token</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s2">&quot;Entry cache found </span><span class="si">%s</span><span class="s2"> named </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">datasource</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">datasource</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">datasource</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="p">[</span><span class="n">token</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasource</span>
+        <span class="k">return</span> <span class="n">datasource</span>
 
 
 <span class="k">class</span> <span class="nc">StreamEntry</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">):</span>
@@ -1053,6 +1079,8 @@
                  <span class="n">entry</span><span class="p">,</span>
                  <span class="n">transforms</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># Set the name here, earlier than the base class does, so that the log</span>
+        <span class="c1"># message in self._load has access to it.</span>
         <span class="c1"># All **kwargs are passed up to base class. TODO: spell them out</span>
         <span class="c1"># explicitly.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">urlpath</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>  <span class="c1"># TODO Not sure why I had to add this.</span>
@@ -1074,6 +1102,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span> <span class="o">=</span> <span class="n">transforms</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Created </span><span class="si">%s</span><span class="s2"> named </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
@@ -1168,6 +1200,10 @@
                 <span class="n">getenv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">getshell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">catalog</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Loaded </span><span class="si">%s</span><span class="s2"> named </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BlueskyRun.get"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyRun.get">[docs]</a>    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>

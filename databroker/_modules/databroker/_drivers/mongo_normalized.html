@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b6.post8+gc47348a documentation</title>
+  <title>databroker._drivers.mongo_normalized &mdash; databroker 1.0.0b6.post18+g15ae361 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b6.post8+gc47348a
+                1.0.0b6.post18+g15ae361
               </div>
             
           
@@ -163,8 +163,11 @@
             
   <h1>Source code for databroker._drivers.mongo_normalized</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">collections.abc</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">event_model</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">cachetools</span>
 <span class="kn">import</span> <span class="nn">intake</span>
 <span class="kn">import</span> <span class="nn">intake.catalog</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.local</span>
@@ -178,10 +181,17 @@
 <span class="kn">from</span> <span class="nn">..v2</span> <span class="kn">import</span> <span class="n">Broker</span>
 
 
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
 <span class="k">class</span> <span class="nc">_Entries</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
     <span class="s2">&quot;Mock the dict interface around a MongoDB query result.&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">catalog</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span> <span class="o">=</span> <span class="n">catalog</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span> <span class="o">=</span> <span class="n">cachetools</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cache_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">_doc_to_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_start_doc</span><span class="p">):</span>
         <span class="n">uid</span> <span class="o">=</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
@@ -231,6 +241,22 @@
             <span class="k">yield</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">run_start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_run_start_doc</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="n">run_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Mongo Entries cache found </span><span class="si">%r</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">uid</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+        <span class="c1"># The user has requested one specific Entry. In order to give them a</span>
+        <span class="c1"># more useful object, &#39;get&#39; the Entry for them. Note that if they are</span>
+        <span class="c1"># expecting an Entry and try to call ``()`` or ``.get()``, that will</span>
+        <span class="c1"># still work because BlueskyRun supports those methods and will just</span>
+        <span class="c1"># return itself.</span>
+        <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>  <span class="c1"># an instance of BlueskyRun</span>
+
+    <span class="k">def</span> <span class="nf">_find_run_start_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
         <span class="c1"># If this came from a client, we might be getting &#39;-1&#39;.</span>
         <span class="n">collection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">_run_start_collection</span>
         <span class="k">try</span><span class="p">:</span>
@@ -280,18 +306,16 @@
                     <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No run with scan_id=</span><span class="si">{N}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">run_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_doc_to_entry</span><span class="p">(</span><span class="n">run_start_doc</span><span class="p">)</span>
-        <span class="c1"># The user has requested one specific Entry. In order to give them a</span>
-        <span class="c1"># more useful object, &#39;get&#39; the Entry for them. Note that if they are</span>
-        <span class="c1"># expecting an Entry and try to call ``()`` or ``.get()``, that will</span>
-        <span class="c1"># still work because BlueskyRun supports those methods and will just</span>
-        <span class="c1"># return itself.</span>
-        <span class="k">return</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>  <span class="c1"># an instance of BlueskyRun</span>
+        <span class="k">return</span> <span class="n">run_start_doc</span>
 
     <span class="k">def</span> <span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
-        <span class="c1"># Avoid iterating through all entries.</span>
+        <span class="c1"># Try the fast path first.</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="c1"># Avoid paying for creating the Entry yet. Do just enough work decide</span>
+        <span class="c1"># if we *can* create such an Entry.</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_find_run_start_doc</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span>
         <span class="k">else</span><span class="p">:</span>
