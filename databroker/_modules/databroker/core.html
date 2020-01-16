@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b6.post18+g15ae361 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b6.post22+g2d5109e documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b6.post18+g15ae361
+                1.0.0b6.post22+g2d5109e
               </div>
             
           
@@ -163,6 +163,7 @@
             
   <h1>Source code for databroker.core</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">entrypoints</span>
 <span class="kn">import</span> <span class="nn">event_model</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
@@ -199,12 +200,66 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
-<span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">NotMutable</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
     <span class="o">...</span>
 
 
+<span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Document is an immutable dict subclass.</span>
+
+<span class="sd">    It is immutable to help consumer code avoid accidentally corrupting data</span>
+<span class="sd">    that another part of the cosumer code was expected to use unchanged.</span>
+
+<span class="sd">    Subclasses of Document must define __dask_tokenize__. The tokenization</span>
+<span class="sd">    schemes typically uniquely identify the document based on only a subset of</span>
+<span class="sd">    its contents, and mutating the contents can thereby create situations where</span>
+<span class="sd">    two unequal objects have colliding tokens. Immutability helps guard against</span>
+<span class="sd">    this too.</span>
+
+<span class="sd">    Note that Documents are not *recursively* immutable. Just as it is possible</span>
+<span class="sd">    create a tuple (immutable) of lists (mutable) and mutate the lists, it is</span>
+<span class="sd">    possible to mutate the internal contents of a Document, but this should not</span>
+<span class="sd">    be done. It is safer to use the to_dict() method to create a mutable deep</span>
+<span class="sd">    copy.</span>
+
+<span class="sd">    This is implemented as a dict subclass in order to satisfy certain</span>
+<span class="sd">    consumers that expect an object that satisfies isinstance(obj, dict).</span>
+<span class="sd">    This implementation detail may change in the future.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_NOT_MUTABLE_MSG</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Documents are not mutable. Call the method to_dict() to make a &quot;</span>
+        <span class="s2">&quot;fully independent and mutable copy.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a mutable deep copy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Convert to dict and then make a deep copy to ensure that if the user</span>
+        <span class="c1"># mutates any internally nested dicts there is no spooky action at a</span>
+        <span class="c1"># distance.</span>
+        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+<span class="c1"># We must use dask&#39;s registration mechanism to tell it to treat Document</span>
+<span class="c1"># specially. Dask&#39;s tokenization dispatch mechanism discovers that Docuemnt is</span>
+<span class="c1"># a dict subclass and treats it as a dict, ignoring its __dask_tokenize__</span>
+<span class="c1"># method. To force it to respect our cutsom tokenization, we must explicitly</span>
+<span class="c1"># register it.</span>
+
 <span class="nd">@normalize_token</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Document</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">tokenize_dict</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">tokenize_document</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">__dask_tokenize__</span><span class="p">()</span>
 
 
