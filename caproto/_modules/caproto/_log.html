@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._log &mdash; caproto 0.4.2+0.g334679b.dirty documentation</title>
+  <title>caproto._log &mdash; caproto 0.4.2+24.ge8c718d.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.4.2+0.g334679b.dirty
+                0.4.2+24.ge8c718d.dirty
               </div>
             
           
@@ -208,6 +208,17 @@
     <span class="k">return</span> <span class="kc">False</span>
 
 
+<span class="k">class</span> <span class="nc">ComposableLogAdapter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">LoggerAdapter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># The logging.LoggerAdapter siliently ignores `extra` in this usage:</span>
+        <span class="c1"># log_adapter.debug(msg, extra={...})</span>
+        <span class="c1"># and passes through log_adapater.extra instead. This subclass merges</span>
+        <span class="c1"># the extra passed via keyword argument with the extra in the</span>
+        <span class="c1"># attribute, giving precedence to the keyword argument.</span>
+        <span class="n">kwargs</span><span class="p">[</span><span class="s2">&quot;extra&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">extra</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;extra&#39;</span><span class="p">,</span> <span class="p">{})}</span>
+        <span class="k">return</span> <span class="n">msg</span><span class="p">,</span> <span class="n">kwargs</span>
+
+
 <div class="viewcode-block" id="LogFormatter"><a class="viewcode-back" href="../../loggers.html#caproto.LogFormatter">[docs]</a><span class="k">class</span> <span class="nc">LogFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Log formatter for caproto records.</span>
 
@@ -221,7 +232,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">DEFAULT_FORMAT</span> <span class="o">=</span> \
-        <span class="s1">&#39;</span><span class="si">%(color)s</span><span class="s1">[</span><span class="si">%(levelname)1.1s</span><span class="s1"> </span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(module)s</span><span class="s1">:</span><span class="si">%(lineno)d</span><span class="s1">]</span><span class="si">%(end_color)s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+        <span class="s1">&#39;</span><span class="si">%(color)s</span><span class="s1">[</span><span class="si">%(levelname)1.1s</span><span class="s1"> </span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(module)12s</span><span class="s1">:</span><span class="si">%(lineno)d</span><span class="s1">]</span><span class="si">%(end_color)s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
     <span class="n">DEFAULT_DATE_FORMAT</span> <span class="o">=</span> <span class="s1">&#39;%y%m</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span>
     <span class="n">DEFAULT_COLORS</span> <span class="o">=</span> <span class="p">{</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># Blue</span>
@@ -276,13 +287,17 @@
     <span class="k">def</span> <span class="nf">format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">):</span>
         <span class="n">message</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;our_address&#39;</span><span class="p">):</span>
-            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="s1">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">our_address</span><span class="p">)))</span>
+            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">:</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">our_address</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;direction&#39;</span><span class="p">):</span>
             <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">direction</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;their_address&#39;</span><span class="p">):</span>
-            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="s1">&#39;:&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">their_address</span><span class="p">)))</span>
+            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">:</span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">their_address</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;bytesize&#39;</span><span class="p">):</span>
+            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%d</span><span class="s1">B&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">bytesize</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;counter&#39;</span><span class="p">):</span>
+            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;(</span><span class="si">%d</span><span class="s1"> of </span><span class="si">%d</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">counter</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="s1">&#39;pv&#39;</span><span class="p">):</span>
-            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;[</span><span class="si">%s</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="n">record</span><span class="o">.</span><span class="n">pv</span><span class="p">)</span>
+            <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">pv</span><span class="p">)</span>
         <span class="n">message</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">getMessage</span><span class="p">())</span>
         <span class="n">record</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
         <span class="n">record</span><span class="o">.</span><span class="n">asctime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">formatTime</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">datefmt</span><span class="p">)</span>
@@ -303,9 +318,9 @@
         <span class="k">return</span> <span class="n">formatted</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">    &quot;</span><span class="p">)</span></div>
 
 
-<span class="n">plain_log_format</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">%(levelname)1.1s</span><span class="s2"> </span><span class="si">%(asctime)s</span><span class="s2">.</span><span class="si">%(msecs)03d</span><span class="s2"> </span><span class="si">%(module)15s</span><span class="s2">:</span><span class="si">%(lineno)5d</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+<span class="n">plain_log_format</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">%(levelname)1.1s</span><span class="s2"> </span><span class="si">%(asctime)s</span><span class="s2">.</span><span class="si">%(msecs)03d</span><span class="s2"> </span><span class="si">%(module)12s</span><span class="s2">:</span><span class="si">%(lineno)5d</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
 <span class="n">color_log_format</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%(color)s</span><span class="s2">[</span><span class="si">%(levelname)1.1s</span><span class="s2"> </span><span class="si">%(asctime)s</span><span class="s2">.</span><span class="si">%(msecs)03d</span><span class="s2"> &quot;</span>
-                    <span class="s2">&quot;</span><span class="si">%(module)15s</span><span class="s2">:</span><span class="si">%(lineno)5d</span><span class="s2">]</span><span class="si">%(end_color)s</span><span class="s2"> </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="s2">&quot;</span><span class="si">%(module)12s</span><span class="s2">:</span><span class="si">%(lineno)5d</span><span class="s2">]</span><span class="si">%(end_color)s</span><span class="s2"> </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">color_logs</span><span class="p">(</span><span class="n">color</span><span class="p">):</span>
@@ -319,9 +334,6 @@
     <span class="n">config_caproto_logging</span><span class="p">(</span><span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
 
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto&#39;</span><span class="p">)</span>
-<span class="n">ch_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">)</span>
-<span class="n">search_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.bcast.search&#39;</span><span class="p">)</span>
 <span class="n">current_handler</span> <span class="o">=</span> <span class="kc">None</span>
 
 
@@ -502,7 +514,8 @@
         <span class="nb">format</span> <span class="o">=</span> <span class="n">plain_log_format</span>
     <span class="n">handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span>
         <span class="n">LogFormatter</span><span class="p">(</span><span class="nb">format</span><span class="p">,</span> <span class="n">datefmt</span><span class="o">=</span><span class="n">datefmt</span><span class="p">))</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">logger_name</span><span class="p">)</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">logger_name</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">levelno</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">levelno</span><span class="p">)</span>
 
@@ -563,6 +576,7 @@
         <span class="nb">format</span> <span class="o">=</span> <span class="n">plain_log_format</span>
     <span class="n">handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span>
         <span class="n">LogFormatter</span><span class="p">(</span><span class="nb">format</span><span class="p">,</span> <span class="n">datefmt</span><span class="o">=</span><span class="n">datefmt</span><span class="p">))</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">current_handler</span> <span class="ow">in</span> <span class="n">logger</span><span class="o">.</span><span class="n">handlers</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">removeHandler</span><span class="p">(</span><span class="n">current_handler</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>

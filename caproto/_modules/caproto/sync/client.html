@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.4.2+0.g334679b.dirty documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.4.2+24.ge8c718d.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.4.2+0.g334679b.dirty
+                0.4.2+24.ge8c718d.dirty
               </div>
             
           
@@ -202,8 +202,12 @@
 
 
 <span class="c1"># Convenience functions that do both transport and caproto validation/ingest.</span>
-<span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">command</span><span class="p">):</span>
-    <span class="n">buffers_to_send</span> <span class="o">=</span> <span class="n">circuit</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="n">circuit</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">pv_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">pv_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;pv&#39;</span><span class="p">:</span> <span class="n">pv_name</span><span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">buffers_to_send</span> <span class="o">=</span> <span class="n">circuit</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
     <span class="n">sockets</span><span class="p">[</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">sendmsg</span><span class="p">(</span><span class="n">buffers_to_send</span><span class="p">)</span>
 
 
@@ -218,7 +222,7 @@
 <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="n">udp_sock</span><span class="p">,</span> <span class="n">timeout</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">max_retries</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
     <span class="c1"># Set Broadcaster log level to match our logger.</span>
     <span class="n">b</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">Broadcaster</span><span class="p">(</span><span class="n">our_role</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">)</span>
-    <span class="n">b</span><span class="o">.</span><span class="n">our_address</span> <span class="o">=</span> <span class="n">udp_sock</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">client_address</span> <span class="o">=</span> <span class="n">udp_sock</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[:</span><span class="mi">2</span><span class="p">]</span>
 
     <span class="c1"># Send registration request to the repeater</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Registering with the Channel Access repeater.&#39;</span><span class="p">)</span>
@@ -231,10 +235,14 @@
         <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ca</span><span class="o">.</span><span class="n">CaprotoNetworkError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to send to </span><span class="si">{host}</span><span class="s2">:</span><span class="si">{repeater_port}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Searching for &#39;</span><span class="si">%s</span><span class="s2">&#39;....&quot;</span><span class="p">,</span> <span class="n">pv_name</span><span class="p">)</span>
-    <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">send</span><span class="p">(</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Searching for </span><span class="si">%r</span><span class="s2">....&quot;</span><span class="p">,</span> <span class="n">pv_name</span><span class="p">)</span>
+    <span class="n">commands</span> <span class="o">=</span> <span class="p">(</span>
         <span class="n">ca</span><span class="o">.</span><span class="n">VersionRequest</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">),</span>
         <span class="n">ca</span><span class="o">.</span><span class="n">SearchRequest</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">))</span>
+    <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">*</span><span class="n">commands</span><span class="p">)</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;CLIENT&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="n">b</span><span class="o">.</span><span class="n">client_address</span><span class="p">,</span>
+            <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;---&gt;&gt;&gt;&#39;</span><span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">send_search</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_address_list</span><span class="p">():</span>
@@ -243,12 +251,15 @@
                 <span class="n">dest</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">specified_port</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">dest</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">CA_SERVER_PORT</span><span class="p">)</span>
+            <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;their_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dest</span>
+            <span class="n">b</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> commands </span><span class="si">%d</span><span class="s1">B&#39;</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">),</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
                 <span class="n">host</span><span class="p">,</span> <span class="n">port</span> <span class="o">=</span> <span class="n">dest</span>
                 <span class="k">raise</span> <span class="n">ca</span><span class="o">.</span><span class="n">CaprotoNetworkError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to send to </span><span class="si">{host}</span><span class="s2">:</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Search request sent to </span><span class="si">%r</span><span class="s1">.&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">check_timeout</span><span class="p">():</span>
         <span class="k">nonlocal</span> <span class="n">retry_at</span>
@@ -288,7 +299,7 @@
             <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">SearchResponse</span><span class="p">)</span> <span class="ow">and</span> <span class="n">command</span><span class="o">.</span><span class="n">cid</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">address</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">extract_address</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
-                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Found </span><span class="si">%s</span><span class="s1"> at </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">pv_name</span><span class="p">,</span> <span class="n">address</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Found </span><span class="si">%r</span><span class="s1"> at </span><span class="si">%s</span><span class="s1">:</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">pv_name</span><span class="p">,</span> <span class="o">*</span><span class="n">address</span><span class="p">)</span>
                     <span class="k">return</span> <span class="n">address</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># None of the commands we have seen are a reply to our request.</span>
@@ -322,10 +333,11 @@
             <span class="c1"># Initialize our new TCP-based CA connection with a VersionRequest.</span>
             <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">VersionRequest</span><span class="p">(</span>
                 <span class="n">priority</span><span class="o">=</span><span class="n">priority</span><span class="p">,</span>
-                <span class="n">version</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">))</span>
+                <span class="n">version</span><span class="o">=</span><span class="n">ca</span><span class="o">.</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">),</span>
+                <span class="n">pv_name</span><span class="p">)</span>
             <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">host_name</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">gethostname</span><span class="p">()))</span>
             <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">client_name</span><span class="p">(</span><span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()))</span>
-        <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">create</span><span class="p">())</span>
+        <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">create</span><span class="p">(),</span> <span class="n">pv_name</span><span class="p">)</span>
         <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -335,12 +347,18 @@
             <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">timeout</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">CaprotoTimeoutError</span><span class="p">(</span><span class="s2">&quot;Timeout while awaiting channel &quot;</span>
                                           <span class="s2">&quot;creation.&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
-                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> connected&#39;</span> <span class="o">%</span> <span class="n">pv_name</span><span class="p">)</span>
-                <span class="k">break</span>
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&lt;&lt;---&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">our_address</span><span class="p">,</span>
+                    <span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">address</span><span class="p">}</span>
             <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">command</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">DISCONNECTED</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">Message</span><span class="p">):</span>
+                    <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;bytesize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">command</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">DISCONNECTED</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="n">CaprotoError</span><span class="p">(</span><span class="s1">&#39;Disconnected during initialization&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
+                <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Channel connected.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
 
     <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
         <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -359,7 +377,7 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Changing requested data_type to STRING.&quot;</span><span class="p">)</span>
         <span class="n">data_type</span> <span class="o">=</span> <span class="n">ChannelType</span><span class="o">.</span><span class="n">STRING</span>
     <span class="n">req</span> <span class="o">=</span> <span class="n">chan</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="n">data_type</span><span class="p">,</span> <span class="n">notify</span><span class="o">=</span><span class="n">notify</span><span class="p">)</span>
-    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">)</span>
+    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
     <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -370,7 +388,13 @@
         <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="n">timeout</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">CaprotoTimeoutError</span><span class="p">(</span><span class="s2">&quot;Timeout while awaiting reading.&quot;</span><span class="p">)</span>
 
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&lt;&lt;---&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">our_address</span><span class="p">,</span>
+                <span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">address</span><span class="p">}</span>
         <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">Message</span><span class="p">):</span>
+                <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;bytesize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="p">(</span><span class="n">ca</span><span class="o">.</span><span class="n">ReadResponse</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">ReadNotifyResponse</span><span class="p">))</span> <span class="ow">and</span>
                     <span class="n">command</span><span class="o">.</span><span class="n">ioid</span> <span class="o">==</span> <span class="n">req</span><span class="o">.</span><span class="n">ioid</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">command</span>
@@ -432,7 +456,7 @@
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
-                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">())</span>
+                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">(),</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">del</span> <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span>
@@ -580,7 +604,7 @@
             <span class="n">loggers</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Subscribing with data_type </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span>
                                      <span class="n">time_type</span><span class="p">)</span>
             <span class="n">req</span> <span class="o">=</span> <span class="n">chan</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="n">time_type</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">sub</span><span class="o">.</span><span class="n">mask</span><span class="p">)</span>
-            <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">)</span>
+            <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
             <span class="n">sub_ids</span><span class="p">[(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="o">.</span><span class="n">subscriptionid</span><span class="p">)]</span> <span class="o">=</span> <span class="n">sub</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Subscribed. Building socket selector.&#39;</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
@@ -602,7 +626,7 @@
                     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Interrupted via &quot;</span>
                                  <span class="s2">&quot;caproto.sync.client.interrupt().&quot;</span><span class="p">)</span>
                     <span class="k">break</span>
-                <span class="k">for</span> <span class="n">selector_key</span><span class="p">,</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">selector_key</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
                     <span class="n">circuit</span> <span class="o">=</span> <span class="n">sock_to_circuit</span><span class="p">[</span><span class="n">selector_key</span><span class="o">.</span><span class="n">fileobj</span><span class="p">]</span>
                     <span class="n">commands</span> <span class="o">=</span> <span class="n">recv</span><span class="p">(</span><span class="n">circuit</span><span class="p">)</span>
                     <span class="k">for</span> <span class="n">response</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
@@ -622,7 +646,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">chan</span> <span class="ow">in</span> <span class="n">channels</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
                 <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
-                    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">())</span>
+                    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">(),</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="c1"># Reinstate the timeout for channel cleanup.</span>
             <span class="k">for</span> <span class="n">chan</span> <span class="ow">in</span> <span class="n">channels</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
@@ -645,7 +669,7 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Writing.&quot;</span><span class="p">)</span>
     <span class="n">req</span> <span class="o">=</span> <span class="n">chan</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">notify</span><span class="o">=</span><span class="n">notify</span><span class="p">,</span>
                      <span class="n">data_type</span><span class="o">=</span><span class="n">data_type</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
-    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">)</span>
+    <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">req</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">notify</span><span class="p">:</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -657,7 +681,13 @@
             <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="n">timeout</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">CaprotoTimeoutError</span><span class="p">(</span><span class="s2">&quot;Timeout while awaiting write reply.&quot;</span><span class="p">)</span>
 
+            <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&lt;&lt;---&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">our_address</span><span class="p">,</span>
+                    <span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="o">.</span><span class="n">address</span><span class="p">}</span>
             <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">Message</span><span class="p">):</span>
+                    <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;bytesize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
                 <span class="k">if</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">WriteNotifyResponse</span><span class="p">)</span> <span class="ow">and</span>
                         <span class="n">command</span><span class="o">.</span><span class="n">ioid</span> <span class="o">==</span> <span class="n">req</span><span class="o">.</span><span class="n">ioid</span><span class="p">):</span>
                     <span class="n">response</span> <span class="o">=</span> <span class="n">command</span>
@@ -730,7 +760,7 @@
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
-                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">())</span>
+                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">(),</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">del</span> <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span>
@@ -816,7 +846,7 @@
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">chan</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">ca</span><span class="o">.</span><span class="n">CLIENT</span><span class="p">]</span> <span class="ow">is</span> <span class="n">ca</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
-                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">())</span>
+                <span class="n">send</span><span class="p">(</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">clear</span><span class="p">(),</span> <span class="n">chan</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">finally</span><span class="p">:</span>
             <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">del</span> <span class="n">sockets</span><span class="p">[</span><span class="n">chan</span><span class="o">.</span><span class="n">circuit</span><span class="p">]</span>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._circuit &mdash; caproto 0.4.2+0.g334679b.dirty documentation</title>
+  <title>caproto._circuit &mdash; caproto 0.4.2+24.ge8c718d.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.4.2+0.g334679b.dirty
+                0.4.2+24.ge8c718d.dirty
               </div>
             
           
@@ -200,6 +200,7 @@
                      <span class="n">ChannelFilter</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">._dbr</span> <span class="kn">import</span> <span class="p">(</span><span class="n">ChannelType</span><span class="p">,</span> <span class="n">SubscriptionType</span><span class="p">,</span> <span class="n">field_types</span><span class="p">,</span> <span class="n">native_type</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">._constants</span> <span class="kn">import</span> <span class="n">DEFAULT_PROTOCOL_VERSION</span>
+<span class="kn">from</span> <span class="nn">._log</span> <span class="kn">import</span> <span class="n">ComposableLogAdapter</span>
 <span class="kn">from</span> <span class="nn">._status</span> <span class="kn">import</span> <span class="n">CAStatus</span>
 
 
@@ -303,7 +304,7 @@
     <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">hash</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">priority</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">))</span>
 
-<div class="viewcode-block" id="VirtualCircuit.send"><a class="viewcode-back" href="../../api.html#caproto.VirtualCircuit.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">commands</span><span class="p">):</span>
+<div class="viewcode-block" id="VirtualCircuit.send"><a class="viewcode-back" href="../../api.html#caproto.VirtualCircuit.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">commands</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Convert one or more high-level Commands into buffers of bytes that may</span>
 <span class="sd">        be broadcast together in one TCP packet. Update our internal</span>
@@ -313,6 +314,10 @@
 <span class="sd">        ----------</span>
 <span class="sd">        *commands :</span>
 <span class="sd">            any number of :class:`Message` objects</span>
+<span class="sd">        extra : dict or None</span>
+<span class="sd">            Used for logging purposes. This is merged into the ``extra``</span>
+<span class="sd">            parameter passed to the logger to provide information like ``&#39;pv&#39;``</span>
+<span class="sd">            to the logger.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -324,11 +329,11 @@
                 <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_address</span><span class="p">,</span>
                 <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;---&gt;&gt;&gt;&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
+        <span class="n">tags</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra</span> <span class="ow">or</span> <span class="p">{})</span>
         <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="p">(</span><span class="n">ClientNameRequest</span><span class="p">,</span> <span class="n">HostNameRequest</span><span class="p">)):</span>
-                <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;pv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">name</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;(</span><span class="si">%d</span><span class="s2">B) </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
+            <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;bytesize&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="n">buffers_to_send</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">memoryview</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">header</span><span class="p">))</span>
             <span class="n">buffers_to_send</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">buffers</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">buffers_to_send</span></div>
@@ -356,20 +361,13 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Zero-length recv; sending disconnect notification&#39;</span><span class="p">)</span>
             <span class="n">commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DISCONNECTED</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">commands</span><span class="p">,</span> <span class="mi">0</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">_data</span> <span class="o">+=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">buffers</span><span class="p">)</span>
-
-        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">address</span><span class="p">,</span>
-                <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">our_address</span><span class="p">,</span>
-                <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;&lt;&lt;&lt;---&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
              <span class="n">command</span><span class="p">,</span>
              <span class="n">num_bytes_needed</span><span class="p">)</span> <span class="o">=</span> <span class="n">read_from_bytestream</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_data</span><span class="p">,</span>
                                                       <span class="bp">self</span><span class="o">.</span><span class="n">their_role</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">command</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">NEED_DATA</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;(</span><span class="si">%d</span><span class="s2">B) </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">command</span><span class="p">),</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
                 <span class="n">commands</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Less than a full command&#39;s worth of bytes are cached. Wait</span>
@@ -591,7 +589,7 @@
                                                           <span class="bp">self</span><span class="o">.</span><span class="n">priority</span><span class="p">))</span>
             <span class="n">protocol_version</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span><span class="p">,</span> <span class="n">command</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
-            <span class="k">for</span> <span class="n">cid</span><span class="p">,</span> <span class="n">chan</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">chan</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
                 <span class="n">chan</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">VersionResponse</span><span class="p">):</span>
@@ -604,7 +602,7 @@
                 <span class="k">return</span>
             <span class="n">protocol_version</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span><span class="p">,</span> <span class="n">command</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
-            <span class="k">for</span> <span class="n">cid</span><span class="p">,</span> <span class="n">chan</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">chan</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
                 <span class="n">chan</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
 
 <div class="viewcode-block" id="VirtualCircuit.disconnect"><a class="viewcode-back" href="../../api.html#caproto.VirtualCircuit.disconnect">[docs]</a>    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -640,7 +638,10 @@
     <span class="c1"># methods for composing requests and repsponses, respectively. All of the</span>
     <span class="c1"># important code is here in the base class.</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">circuit</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">string_encoding</span><span class="o">=</span><span class="n">STRING_ENCODING</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">LoggerAdapter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">),</span> <span class="p">{</span><span class="s1">&#39;pv&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">})</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;pv&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+                <span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">circuit</span><span class="o">.</span><span class="n">address</span><span class="p">,</span>
+                <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="n">circuit</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">ComposableLogAdapter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">),</span> <span class="n">tags</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">circuit</span><span class="o">.</span><span class="n">protocol_version</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">string_encoding</span> <span class="o">=</span> <span class="n">string_encoding</span>
