@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Threading Client &mdash; caproto 0.4.2+24.ge8c718d.dirty documentation</title>
+  <title>Threading Client &mdash; caproto 0.4.2+31.ga604bf2.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.4.2+24.ge8c718d.dirty
+                0.4.2+31.ga604bf2.dirty
               </div>
             
           
@@ -268,7 +268,7 @@ In [10]: res.header  # a ctypes.BigEndianStructure
 Out[10]: MessageHeader(command=15, payload_size=8, data_type=6, data_count=1, parameter1=1, parameter2=0)
 
 In [11]: res.buffers  # a collection of one or more buffers
-Out[11]: (b'', &lt;memory at 0x7f74bc05b948&gt;)
+Out[11]: (b'', &lt;memory at 0x7f572426d288&gt;)
 </pre>
 <p class="last">They were received directly from the socket into these structure with no
 intermediate copies. Accessing the <code class="docutils literal notranslate"><span class="pre">res.data</span></code> — which returns a
@@ -319,13 +319,28 @@ First, we define a <a class="reference internal" href="#caproto.threading.client
 </pre></div>
 </div>
 <p>Next, we define a callback function, a function that will be called whenever
-the server sends an update. It must accept one positional argument.</p>
+the server sends an update. It must accept two positional arguments.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [14]: </span><span class="n">responses</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="gp">In [15]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+<span class="gp">In [15]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Received response from&#39;</span><span class="p">,</span> <span class="n">sub</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 <span class="gp">   ....: </span>    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
 <span class="gp">   ....: </span>
 </pre></div>
+</div>
+<p>This user-defined function <code class="docutils literal notranslate"><span class="pre">f</span></code> has access to the full response from the
+server, which includes data and any metadata. The server’s response does not
+include the name of the PV involved (it identifies it indirectly via a
+“subscription ID” code) so caproto provides the function with <code class="docutils literal notranslate"><span class="pre">sub</span></code> as well,
+from which you can obtain the pertinent PV <code class="docutils literal notranslate"><span class="pre">sub.pv</span></code> and its name
+<code class="docutils literal notranslate"><span class="pre">sub.pv.name</span></code> as illustrated above. This is useful for distinguishing
+responses when the same function is added to multiple subscriptions.</p>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.5.0: </span>The expected signature of the callback function was changed from
+<code class="docutils literal notranslate"><span class="pre">f(response)</span></code> to <code class="docutils literal notranslate"><span class="pre">f(sub,</span> <span class="pre">response)</span></code>. For backward compatibility,
+functions with signature <code class="docutils literal notranslate"><span class="pre">f(response)</span></code> are still accepted, but caproto
+will issue a warning that a future release may require the new signature,
+<code class="docutils literal notranslate"><span class="pre">f(sub,</span> <span class="pre">response)</span></code>.</p>
 </div>
 <p>We register this function with <code class="docutils literal notranslate"><span class="pre">sub</span></code>.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [16]: </span><span class="n">token</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -335,7 +350,7 @@ the server sends an update. It must accept one positional argument.</p>
 define a second callback:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [17]: </span><span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="gp">In [18]: </span><span class="k">def</span> <span class="nf">g</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+<span class="gp">In [18]: </span><span class="k">def</span> <span class="nf">g</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
 <span class="gp">   ....: </span>    <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 <span class="gp">   ....: </span>
 </pre></div>
@@ -352,12 +367,12 @@ Out[20]: 6
 
 In [21]: values
 Out[21]: 
-[2.051254888627999,
- 2.145258979218045,
- 1.4161856268731485,
- 1.6172465805974303,
- 2.4444260768894193,
- 3.0784372574409415]
+[0.9633558094226091,
+ 1.0304653589006305,
+ 1.3438969951367814,
+ 1.9201617632716763,
+ 0.9910287972979825,
+ 0.6335565528855547]
 </pre>
 <p>At any point we can remove a specific callback function:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [22]: </span><span class="n">sub</span><span class="o">.</span><span class="n">remove_callback</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
@@ -381,13 +396,13 @@ re-initiates updates. All of this is transparent to the user.</p>
 to the user callback functions. If there are no other references to the
 function, it will be silently garbage collected and removed. Therefore,
 constructions like this do not work:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The lambda function will be promptly garbage collected by Python and
 removed from <code class="docutils literal notranslate"><span class="pre">sub</span></code> by caproto. To avoid that, make a reference before
 passing the function to <a class="reference internal" href="#caproto.threading.client.Subscription.add_callback" title="caproto.threading.client.Subscription.add_callback"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Subscription.add_callback()</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cb</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cb</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -435,7 +450,7 @@ upon exiting the <code class="docutils literal notranslate"><span class="pre">wi
 background thread. As the responses come in, the <code class="docutils literal notranslate"><span class="pre">results</span></code> dictionary will be
 updated.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [30]: </span><span class="n">results</span>
-<span class="gh">Out[30]: </span><span class="go">{&#39;random_walk:x&#39;: array([3.07843726]), &#39;random_walk:dt&#39;: array([1.])}</span>
+<span class="gh">Out[30]: </span><span class="go">{&#39;random_walk:x&#39;: array([0.63355655]), &#39;random_walk:dt&#39;: array([1.])}</span>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="#caproto.threading.client.Batch" title="caproto.threading.client.Batch"><code class="xref py py-class docutils literal notranslate"><span class="pre">Batch</span></code></a> for more.</p>
@@ -449,7 +464,7 @@ made “idle” (disconnected). It will silently, automatically reconnect the ne
 time it is used.</p>
 <pre class="literal-block">
 In [31]: x
-Out[31]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 50095), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
+Out[31]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 55328), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
 
 In [32]: x.go_idle()
 
@@ -457,10 +472,10 @@ In [33]: x
 Out[33]: &lt;PV name='random_walk:x' priority=0 (idle)&gt;
 
 In [34]: x.read()
-Out[34]: ReadNotifyResponse(data=array([3.07843726]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name='ECA_NORMAL', code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description='Normal successful completion'), ioid=4, metadata=None)
+Out[34]: ReadNotifyResponse(data=array([0.5469836]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name='ECA_NORMAL', code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description='Normal successful completion'), ioid=4, metadata=None)
 
 In [35]: x
-Out[35]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 50095), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
+Out[35]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 55328), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
 </pre>
 <p>Notice that when the PV was read it automatically reconnected, requiring no
 action from the user.</p>
@@ -565,7 +580,7 @@ value from 1.</p>
 </table>
 <dl class="method">
 <dt id="caproto.threading.client.Context.get_pvs">
-<code class="descname">get_pvs</code><span class="sig-paren">(</span><em>self</em>, <em>*names</em>, <em>priority=0</em>, <em>connection_state_callback=None</em>, <em>access_rights_callback=None</em>, <em>timeout=&lt;object object at 0x7f74bf015770&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#Context.get_pvs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.Context.get_pvs" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_pvs</code><span class="sig-paren">(</span><em>self</em>, <em>*names</em>, <em>priority=0</em>, <em>connection_state_callback=None</em>, <em>access_rights_callback=None</em>, <em>timeout=&lt;object object at 0x7f57258d8a00&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#Context.get_pvs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.Context.get_pvs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a list of PV objects.</p>
 <p>These objects may not be connected at first. Channel creation occurs on
 a background thread.</p>
@@ -634,7 +649,7 @@ request will be processed when they are complete.</p>
 
 <dl class="method">
 <dt id="caproto.threading.client.PV.read">
-<code class="descname">read</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>wait=True</em>, <em>callback=None</em>, <em>timeout=&lt;object object at 0x7f74bf015780&gt;</em>, <em>data_type=None</em>, <em>data_count=None</em>, <em>notify=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.read" title="Permalink to this definition">¶</a></dt>
+<code class="descname">read</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>wait=True</em>, <em>callback=None</em>, <em>timeout=&lt;object object at 0x7f57258d8a10&gt;</em>, <em>data_type=None</em>, <em>data_count=None</em>, <em>notify=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request a fresh reading.</p>
 <p>Can do one or both of:
 - Block while waiting for the response, and return it.
@@ -731,7 +746,7 @@ is added.</p>
 
 <dl class="method">
 <dt id="caproto.threading.client.PV.time_since_last_heard">
-<code class="descname">time_since_last_heard</code><span class="sig-paren">(</span><em>self</em>, <em>timeout=&lt;object object at 0x7f74bf015780&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.time_since_last_heard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.time_since_last_heard" title="Permalink to this definition">¶</a></dt>
+<code class="descname">time_since_last_heard</code><span class="sig-paren">(</span><em>self</em>, <em>timeout=&lt;object object at 0x7f57258d8a10&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.time_since_last_heard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.time_since_last_heard" title="Permalink to this definition">¶</a></dt>
 <dd><p>Seconds since last message from the server that provides this channel.</p>
 <p>The time is reset to 0 whenever we receive a TCP message related to
 user activity <em>or</em> a Beacon. Servers are expected to send Beacons at
@@ -779,7 +794,7 @@ set. If None, never timeout.</p>
 
 <dl class="method">
 <dt id="caproto.threading.client.PV.wait_for_connection">
-<code class="descname">wait_for_connection</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=&lt;object object at 0x7f74bf015780&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_connection" title="Permalink to this definition">¶</a></dt>
+<code class="descname">wait_for_connection</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=&lt;object object at 0x7f57258d8a10&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for this PV to be connected.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -800,7 +815,7 @@ set. If None, never timeout.</p>
 
 <dl class="method">
 <dt id="caproto.threading.client.PV.wait_for_search">
-<code class="descname">wait_for_search</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=&lt;object object at 0x7f74bf015780&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_search" title="Permalink to this definition">¶</a></dt>
+<code class="descname">wait_for_search</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=&lt;object object at 0x7f57258d8a10&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_search" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for this PV to be found.</p>
 <p>This does not wait for the PV’s Channel to be created; it merely waits
 for an address (and a VirtualCircuit) to be assigned.</p>
@@ -823,7 +838,7 @@ None, never timeout.</p>
 
 <dl class="method">
 <dt id="caproto.threading.client.PV.write">
-<code class="descname">write</code><span class="sig-paren">(</span><em>self</em>, <em>data</em>, <em>*</em>, <em>wait=True</em>, <em>callback=None</em>, <em>timeout=&lt;object object at 0x7f74bf015780&gt;</em>, <em>notify=None</em>, <em>data_type=None</em>, <em>data_count=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.write" title="Permalink to this definition">¶</a></dt>
+<code class="descname">write</code><span class="sig-paren">(</span><em>self</em>, <em>data</em>, <em>*</em>, <em>wait=True</em>, <em>callback=None</em>, <em>timeout=&lt;object object at 0x7f57258d8a10&gt;</em>, <em>notify=None</em>, <em>data_type=None</em>, <em>data_count=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write a new value. Optionally, request confirmation from the server.</p>
 <p>Can do one or both of:
 - Block while waiting for the response, and return it.
@@ -890,16 +905,23 @@ it should be made by calling the <code class="docutils literal notranslate"><spa
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>func</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable</span></dt>
-<dd><p class="first last">Expected signature: <code class="docutils literal notranslate"><span class="pre">func(response)</span></code></p>
+<dd><p class="first last">Expected signature: <code class="docutils literal notranslate"><span class="pre">func(sub,</span> <span class="pre">response)</span></code>.
+The signature <code class="docutils literal notranslate"><span class="pre">func(response)</span></code> is also supported for
+backward-compatibility but will issue warnings. Support will be
+removed in a future release of caproto.</p>
 </dd>
 </dl>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
 <dd><p class="first last">Integer token that can be passed to <a class="reference internal" href="#caproto.threading.client.Subscription.remove_callback" title="caproto.threading.client.Subscription.remove_callback"><code class="xref py py-meth docutils literal notranslate"><span class="pre">remove_callback()</span></code></a>.</p>
 </dd>
 </dl>
+<div class="last versionchanged">
+<p><span class="versionmodified">Changed in version 0.5.0: </span>Changed the expected signature of <code class="docutils literal notranslate"><span class="pre">func</span></code> from <code class="docutils literal notranslate"><span class="pre">func(response)</span></code>
+to <code class="docutils literal notranslate"><span class="pre">func(sub,</span> <span class="pre">response)</span></code>.</p>
+</div>
 </td>
 </tr>
 </tbody>
