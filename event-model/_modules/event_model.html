@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.13.0b5.post6+g0226446 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.13.0b5.post10+g8e78974 documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                1.13.0b5.post6+g0226446
+                1.13.0b5.post10+g8e78974
               </div>
             
           
@@ -713,18 +713,24 @@
                 <span class="sa">f</span><span class="s2">&quot;handler registry.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
         <span class="c1"># Apply root_map.</span>
         <span class="n">resource_path</span> <span class="o">=</span> <span class="n">resource</span><span class="p">[</span><span class="s1">&#39;resource_path&#39;</span><span class="p">]</span>
-        <span class="n">root</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+        <span class="n">original_root</span> <span class="o">=</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">original_root</span><span class="p">,</span> <span class="n">original_root</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">root</span><span class="p">:</span>
             <span class="n">resource_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">resource_path</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">handler</span> <span class="o">=</span> <span class="n">handler_class</span><span class="p">(</span><span class="n">resource_path</span><span class="p">,</span>
                                     <span class="o">**</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;resource_kwargs&#39;</span><span class="p">])</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">EventModelError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error instantiating handler &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;class </span><span class="si">{handler_class}</span><span class="s2"> &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;with Resource document </span><span class="si">{resource}</span><span class="s2">.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error instantiating handler &quot;</span>
+                   <span class="sa">f</span><span class="s2">&quot;class </span><span class="si">{handler_class}</span><span class="s2"> &quot;</span>
+                   <span class="sa">f</span><span class="s2">&quot;with Resource document </span><span class="si">{resource}</span><span class="s2">. &quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">root</span> <span class="o">!=</span> <span class="n">original_root</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">+=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Its &#39;root&#39; field was &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;mapped from </span><span class="si">{original_root}</span><span class="s2"> to </span><span class="si">{root}</span><span class="s2"> by root_map.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">+=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Its &#39;root&#39; field </span><span class="si">{original_root}</span><span class="s2"> was &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;*not* modified by root_map.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">EventModelError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">err</span>
         <span class="k">return</span> <span class="n">handler</span></div>
 
     <span class="k">def</span> <span class="nf">_get_handler_maybe_cached</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resource</span><span class="p">):</span>
