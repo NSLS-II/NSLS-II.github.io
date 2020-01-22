@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.13.0.post1+g8b16949 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.13.0.post9+gb330911 documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                1.13.0.post1+g8b16949
+                1.13.0.post9+gb330911
               </div>
             
           
@@ -237,47 +237,77 @@
 <span class="sd">        Optionally validate that the result is still a valid document.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">output_doc</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)(</span><span class="n">doc</span><span class="p">)</span>
+
+        <span class="c1"># If &#39;event&#39; is not defined by the subclass but &#39;event_page&#39; is, or</span>
+        <span class="c1"># vice versa, use that. And the same for &#39;datum_page&#39; / &#39;datum.</span>
+        <span class="k">if</span> <span class="n">output_doc</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event&#39;</span><span class="p">:</span>
+                <span class="n">event_page</span> <span class="o">=</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+                <span class="c1"># Subclass&#39; implementation of event_page may return a valid</span>
+                <span class="c1"># EventPage or None or NotImplemented.</span>
+                <span class="n">output_event_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">)</span> <span class="ow">or</span> <span class="n">event_page</span>
+                <span class="k">if</span> <span class="n">output_event_page</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+                    <span class="n">output_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">output_event_page</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span><span class="p">:</span>
+                <span class="n">datum_page</span> <span class="o">=</span> <span class="n">pack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+                <span class="c1"># Subclass&#39; implementation of datum_page may return a valid</span>
+                <span class="c1"># DatumPage or None or NotImplemented.</span>
+                <span class="n">output_datum_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">datum_page</span><span class="p">)</span> <span class="ow">or</span> <span class="n">datum_page</span>
+                <span class="k">if</span> <span class="n">output_datum_page</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+                    <span class="n">output_doc</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">output_datum_page</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;event_page&#39;</span><span class="p">:</span>
+                <span class="n">output_events</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+                    <span class="c1"># Subclass&#39; implementation of event may return a valid</span>
+                    <span class="c1"># Event or None or NotImplemented.</span>
+                    <span class="n">output_event</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span> <span class="ow">or</span> <span class="n">event</span>
+                    <span class="k">if</span> <span class="n">output_event</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+                        <span class="k">break</span>
+                    <span class="n">output_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_event</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">output_doc</span> <span class="o">=</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="o">*</span><span class="n">output_events</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum_page&#39;</span><span class="p">:</span>
+                <span class="n">output_datums</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">datum</span> <span class="ow">in</span> <span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">):</span>
+                    <span class="c1"># Subclass&#39; implementation of datum may return a valid</span>
+                    <span class="c1"># Datum or None or NotImplemented.</span>
+                    <span class="n">output_datum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datum</span><span class="p">(</span><span class="n">datum</span><span class="p">)</span> <span class="ow">or</span> <span class="n">datum</span>
+                    <span class="k">if</span> <span class="n">output_datums</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+                        <span class="k">break</span>
+                    <span class="n">output_datums</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_datum</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">output_doc</span> <span class="o">=</span> <span class="n">pack_datum_page</span><span class="p">(</span><span class="o">*</span><span class="n">output_datums</span><span class="p">)</span>
+        <span class="c1"># If we still don&#39;t find an implemented method by here, then pass the</span>
+        <span class="c1"># original document through.</span>
+        <span class="k">if</span> <span class="n">output_doc</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+            <span class="n">output_doc</span> <span class="o">=</span> <span class="n">doc</span>
         <span class="k">if</span> <span class="n">validate</span><span class="p">:</span>
             <span class="n">schema_validators</span><span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="n">DocumentNames</span><span class="p">,</span> <span class="n">name</span><span class="p">)]</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">output_doc</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">output_doc</span> <span class="k">if</span> <span class="n">output_doc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">doc</span><span class="p">)</span>
 
 <div class="viewcode-block" id="DocumentRouter.start"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.start">[docs]</a>    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.stop"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.stop">[docs]</a>    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.descriptor"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.descriptor">[docs]</a>    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.resource"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.resource">[docs]</a>    <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.event"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.event">[docs]</a>    <span class="k">def</span> <span class="nf">event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">event_page</span> <span class="o">=</span> <span class="n">pack_event_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-        <span class="n">output_event_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">event_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">)</span>
-        <span class="c1"># Subclass&#39; implementation of event_page may return a valid EventPage</span>
-        <span class="c1"># or None.</span>
-        <span class="k">if</span> <span class="n">output_event_page</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">output_event</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_event_page</span><span class="p">(</span><span class="n">output_event_page</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">output_event</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.datum"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.datum">[docs]</a>    <span class="k">def</span> <span class="nf">datum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">datum_page</span> <span class="o">=</span> <span class="n">pack_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
-        <span class="n">output_datum_page</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">datum_page</span><span class="p">)</span>
-        <span class="c1"># Subclass&#39; implementation of event_page may return a valid DatumPage</span>
-        <span class="c1"># or None.</span>
-        <span class="k">if</span> <span class="n">output_datum_page</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">None</span>
-        <span class="n">output_datum</span><span class="p">,</span> <span class="o">=</span> <span class="n">unpack_datum_page</span><span class="p">(</span><span class="n">output_datum_page</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">output_datum</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.event_page"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.event_page">[docs]</a>    <span class="k">def</span> <span class="nf">event_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.datum_page"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.datum_page">[docs]</a>    <span class="k">def</span> <span class="nf">datum_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">doc</span></div>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 <div class="viewcode-block" id="DocumentRouter.bulk_events"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.bulk_events">[docs]</a>    <span class="k">def</span> <span class="nf">bulk_events</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
         <span class="c1"># Do not modify this in a subclass. Use event_page.</span>
