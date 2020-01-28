@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b7.post5+g5acf62b documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b7.post14+gf982bc6 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b7.post5+g5acf62b
+                1.0.0b7.post14+gf982bc6
               </div>
             
           
@@ -1456,31 +1456,35 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Created </span><span class="si">%s</span><span class="s2"> for stream name </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_load_header</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="c1"># TODO Add driver API to fetch only the descriptors of interest instead</span>
         <span class="c1"># of fetching all of them and then filtering.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="p">[</span><span class="n">Descriptor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">descriptor</span><span class="p">))</span>
-                             <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
-                             <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="n">Descriptor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">](</span><span class="n">descriptor</span><span class="p">))</span>
+                                 <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_event_descriptors</span><span class="p">()</span>
+                                 <span class="k">if</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;descriptors&#39;</span><span class="p">:</span> <span class="n">d</span><span class="p">})</span>
         <span class="c1"># TODO Should figure out a way so that self._resources doesn&#39;t have to</span>
         <span class="c1"># be all of the Run&#39;s resources.</span>
+        <span class="c1"># TDOO Should we expose this in metadata as well? Since</span>
+        <span class="c1"># _get_resources() only discovers new-style Resources that have a</span>
+        <span class="c1"># run_start in them, leave it private for now.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span> <span class="o">=</span> <span class="p">[</span><span class="n">Resource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;resource&#39;</span><span class="p">](</span><span class="n">resource</span><span class="p">))</span>
                            <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_resources</span><span class="p">()]</span>
-        
+
         <span class="c1"># get_run_stop() may return None if the document was never created due</span>
         <span class="c1"># to a critical failure or simply not yet emitted during a Run that is</span>
         <span class="c1"># still in progress. If it returns None, pass that through.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">stop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_run_stop</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">stop</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">Stop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="n">stop</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">stop</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">s</span> <span class="o">=</span> <span class="n">Stop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">](</span><span class="n">stop</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;stop&#39;</span><span class="p">:</span> <span class="n">s</span><span class="p">})</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Loaded </span><span class="si">%s</span><span class="s2"> for stream name </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
@@ -1489,13 +1493,13 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&lt;Intake catalog: Stream </span><span class="si">{self._stream_name!r}</span><span class="s2"> &quot;</span>
-                   <span class="sa">f</span><span class="s2">&quot;from Run {self._get_run_start()[&#39;uid&#39;][:8]}...&gt;&quot;</span><span class="p">)</span>
+                   <span class="sa">f</span><span class="s2">&quot;from Run </span><span class="si">{self._run_start_doc[&#39;uid&#39;][:8]}</span><span class="s2">...&gt;&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
             <span class="n">out</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;Intake catalog: Stream *REPR_RENDERING_FAILURE* </span><span class="si">{exc!r}</span><span class="s2">&gt;&quot;</span>
         <span class="k">return</span> <span class="n">out</span>
 
     <span class="k">def</span> <span class="nf">_open_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray</span><span class="p">(</span>
             <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
             <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
@@ -1526,7 +1530,7 @@
         <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_dask</span><span class="p">()</span></div>
 
     <span class="k">def</span> <span class="nf">_load_partitions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_load</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
         <span class="n">datum_gens</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">(</span><span class="n">resource</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])</span>
                       <span class="k">for</span> <span class="n">resource</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">]</span>
         <span class="n">event_gens</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]))</span>
