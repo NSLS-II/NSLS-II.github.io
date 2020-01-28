@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._utils &mdash; caproto 0.4.2+33.g7cc2ce6.dirty documentation</title>
+  <title>caproto._utils &mdash; caproto 0.4.2+39.g94c43d0.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.4.2+33.g7cc2ce6.dirty
+                0.4.2+39.g94c43d0.dirty
               </div>
             
           
@@ -174,6 +174,7 @@
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">array</span>
 <span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">socket</span>
@@ -1046,6 +1047,26 @@
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">namespace</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">option_string</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">__version__</span><span class="p">)</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">safe_getsockname</span><span class="p">(</span><span class="n">sock</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Call sock.getsockname() and, on Windows, return (&#39;0.0.0.0&#39;, 0) if an error is raised.</span>
+
+<span class="sd">    This is a workaround to a critical issue affecting Windows. A better</span>
+<span class="sd">    solution should be found but requires more discussion. See</span>
+<span class="sd">    https://github.com/caproto/caproto/issues/514</span>
+<span class="sd">    and issues/PRs linked from there.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sock</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="o">!=</span> <span class="s1">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="k">raise</span>
+        <span class="c1"># This is what the Linux OS returns for a unconnected socket that has</span>
+        <span class="c1"># not yet been sent from.</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 </pre></div>
 
            </div>
