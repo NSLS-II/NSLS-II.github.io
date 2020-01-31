@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b8 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b8.post7+gc6d2b25 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b8
+                1.0.0b8.post7+gc6d2b25
               </div>
             
           
@@ -317,8 +317,11 @@
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># This cache holds datasources, the result of calling super().get(...)</span>
         <span class="c1"># with potentially different arguments.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span> <span class="o">=</span> <span class="n">cachetools</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_cache</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Created Entry named </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_make_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">cachetools</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_create_open_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user_parameters</span><span class="p">):</span>
         <span class="n">plugin</span><span class="p">,</span> <span class="n">open_args</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_open_args</span><span class="p">(</span><span class="n">user_parameters</span><span class="p">)</span>
@@ -344,10 +347,12 @@
         <span class="k">return</span> <span class="n">datasource</span>
 
 
-<span class="k">class</span> <span class="nc">StreamEntry</span><span class="p">(</span><span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">LocalCatalogEntry</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">StreamEntry</span><span class="p">(</span><span class="n">Entry</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is a temporary fix that is being proposed to include in intake.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">_make_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">arg</span><span class="o">.</span><span class="n">__getstate__</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">DictSerialiseMixin</span><span class="p">)</span>
@@ -931,7 +936,6 @@
             <span class="k">yield from</span> <span class="n">partition</span>
 
     <span class="n">streams</span> <span class="o">=</span> <span class="p">[</span><span class="n">stream_gen</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
-
     <span class="k">yield</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
 
     <span class="c1"># This following code filters out duplicate documents.</span>
@@ -1431,6 +1435,7 @@
                  <span class="n">fillers</span><span class="p">,</span>
                  <span class="n">transforms</span><span class="p">,</span>
                  <span class="n">metadata</span><span class="p">,</span>
+                 <span class="n">entry</span><span class="p">,</span>
                  <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
@@ -1450,12 +1455,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _open_dataset below</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">include</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">exclude</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Created </span><span class="si">%s</span><span class="s2"> for stream name </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
