@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Synchronous Client &mdash; caproto 0.5.0a1+0.gf2cf563.dirty documentation</title>
+  <title>Synchronous Client &mdash; caproto 0.5.0a1+8.g1a73564.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.5.0a1+0.gf2cf563.dirty
+                0.5.0a1+8.g1a73564.dirty
               </div>
             
           
@@ -226,17 +226,36 @@ raw bytes of that response are:</p>
 <span class="gh">Out[5]: </span><span class="go">array([1.])</span>
 </pre></div>
 </div>
+<p>By default, the client does not request any metadata</p>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [6]: </span><span class="n">res</span><span class="o">.</span><span class="n">metadata</span>
+</pre></div>
+</div>
+<p>Use the <code class="docutils literal notranslate"><span class="pre">data_type</span></code> parameter to request a richer data type.</p>
+<pre class="literal-block">
+In [7]: richer_res = read('random_walk:dt', data_type='time')
+
+In [8]: richer_res.metadata
+Out[8]: DBR_TIME_DOUBLE(status=&lt;AlarmStatus.NO_ALARM: 0&gt;, severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;, timestamp=1580754798.688541)
+
+In [9]: richer_res.metadata.timestamp
+Out[9]: 1580754798.688541
+
+In [10]: richer_res.metadata.stamp.as_datetime()  # a convenience method
+Out[10]: datetime.datetime(2020, 2, 3, 18, 33, 18, 688541)
+</pre>
+<p>See <a class="reference internal" href="#caproto.sync.client.read" title="caproto.sync.client.read"><code class="xref py py-func docutils literal notranslate"><span class="pre">read()</span></code></a> for more information on the values accepted by the
+<code class="docutils literal notranslate"><span class="pre">data_type</span></code> parameter.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p><strong>Performance Note</strong></p>
 <p>The underlying metadata and data are stored in efficient, contiguous-memory
 data structures.</p>
 <pre class="literal-block">
-In [6]: res.header  # a ctypes.BigEndianStructure
-Out[6]: MessageHeader(command=15, payload_size=8, data_type=6, data_count=1, parameter1=1, parameter2=0)
+In [11]: res.header  # a ctypes.BigEndianStructure
+Out[11]: MessageHeader(command=15, payload_size=8, data_type=6, data_count=1, parameter1=1, parameter2=0)
 
-In [7]: res.buffers  # a collection of one or more buffers
-Out[7]: (b'', &lt;memory at 0x7f9b8ca02588&gt;)
+In [12]: res.buffers  # a collection of one or more buffers
+Out[12]: (b'', &lt;memory at 0x7f171d44e288&gt;)
 </pre>
 <p class="last">They were received directly from the socket into these structure with no
 intermediate copies. Accessing the <code class="docutils literal notranslate"><span class="pre">res.data</span></code> — which returns a
@@ -248,19 +267,19 @@ once) or one copy (if the data bridged multiple receipts).</p>
 <div class="section" id="write">
 <h3>Write<a class="headerlink" href="#write" title="Permalink to this headline">¶</a></h3>
 <p>Let us set the value to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [8]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">write</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [13]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">write</span>
 
-<span class="gp">In [9]: </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">In [14]: </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The function returns <code class="docutils literal notranslate"><span class="pre">None</span></code> immediately. To wait for confirmation that the
 write has been successfully processed by the server, use the <code class="docutils literal notranslate"><span class="pre">notify</span></code> keyword
 argument. (This is not guaranteed to be supported by an EPICS server; it may
 result in an <code class="docutils literal notranslate"><span class="pre">ErrorResponse</span></code>.)</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">write</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [15]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">write</span>
 
-<span class="gp">In [11]: </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">notify</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="gh">Out[11]: </span><span class="go">WriteNotifyResponse(data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0)</span>
+<span class="gp">In [16]: </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">notify</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gh">Out[16]: </span><span class="go">WriteNotifyResponse(data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0)</span>
 </pre></div>
 </div>
 </div>
@@ -270,16 +289,16 @@ result in an <code class="docutils literal notranslate"><span class="pre">ErrorR
 periodically at some period set by <code class="docutils literal notranslate"><span class="pre">random_walk:dt</span></code>. We can subscribe
 to updates and fan them out to one or more user-defined callback functions.
 First, we define a <a class="reference internal" href="#caproto.sync.client.Subscription" title="caproto.sync.client.Subscription"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscription</span></code></a>.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [12]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">subscribe</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [17]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">subscribe</span>
 
-<span class="gp">In [13]: </span><span class="n">sub</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
+<span class="gp">In [18]: </span><span class="n">sub</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Next, we define a callback function, a function that will be called whenever
 the server sends an update. It must accept one positional argument.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [14]: </span><span class="n">responses</span> <span class="o">=</span> <span class="p">[]</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [19]: </span><span class="n">responses</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="gp">In [15]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+<span class="gp">In [20]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
 <span class="gp">   ....: </span>    <span class="s2">&quot;On each update, print the data and cache the full response in a list.&quot;</span>
 <span class="gp">   ....: </span>    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
 <span class="gp">   ....: </span>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
@@ -288,7 +307,7 @@ the server sends an update. It must accept one positional argument.</p>
 </div>
 <p>We register this function with <code class="docutils literal notranslate"><span class="pre">sub</span></code>. We can register multiple such functions
 is we wish.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [16]: </span><span class="n">token</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [21]: </span><span class="n">token</span> <span class="o">=</span> <span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">token</span></code> is just an integer which we can use to remove <code class="docutils literal notranslate"><span class="pre">f</span></code> later.</p>
@@ -296,7 +315,7 @@ is we wish.</p>
 operation,. (See the <a class="reference internal" href="threading-client.html"><span class="doc">Threading Client</span></a> to process subscriptions on a
 separate, background thread.) To activate the subscription, call
 <code class="docutils literal notranslate"><span class="pre">sub.block()</span></code>.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [17]: </span><span class="n">sub</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [22]: </span><span class="n">sub</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
 <span class="go">[14.14272394]</span>
 <span class="go">[14.94322537]</span>
 <span class="go">[15.35695388]</span>
@@ -313,35 +332,35 @@ reactivated by calling <code class="docutils literal notranslate"><span class="p
 <p>Recall that the user-defined function <code class="docutils literal notranslate"><span class="pre">f</span></code> printed the data from each response
 and accumulated the response objects in a list. Indeed, we have captured four
 responses.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [18]: </span><span class="nb">len</span><span class="p">(</span><span class="n">responses</span><span class="p">)</span>
-<span class="gh">Out[18]: </span><span class="go">4</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [23]: </span><span class="nb">len</span><span class="p">(</span><span class="n">responses</span><span class="p">)</span>
+<span class="gh">Out[23]: </span><span class="go">4</span>
 </pre></div>
 </div>
 <p>At any point we can remove a specific callback function:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [19]: </span><span class="n">sub</span><span class="o">.</span><span class="n">remove_callback</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [24]: </span><span class="n">sub</span><span class="o">.</span><span class="n">remove_callback</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>or clear all the callbacks on a subscription:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [20]: </span><span class="n">sub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [25]: </span><span class="n">sub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>To activate multiple subscriptions concurrently, use the top-level function
 <a class="reference internal" href="#caproto.sync.client.block" title="caproto.sync.client.block"><code class="xref py py-func docutils literal notranslate"><span class="pre">block()</span></code></a>, which accepts any number of <a class="reference internal" href="#caproto.sync.client.Subscription" title="caproto.sync.client.Subscription"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscription</span></code></a> objects as
 arguments. Again, use Ctrl+C to interrupt (or call <a class="reference internal" href="#caproto.sync.client.interrupt" title="caproto.sync.client.interrupt"><code class="xref py py-func docutils literal notranslate"><span class="pre">interrupt()</span></code></a> from
 another thread).</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [21]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">block</span>
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [26]: </span><span class="kn">from</span> <span class="nn">caproto.sync.client</span> <span class="kn">import</span> <span class="n">block</span>
 
-<span class="gp">In [22]: </span><span class="n">sub_dt</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">)</span>
+<span class="gp">In [27]: </span><span class="n">sub_dt</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">)</span>
 
-<span class="gp">In [23]: </span><span class="n">sub_x</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
+<span class="gp">In [28]: </span><span class="n">sub_x</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
 
-<span class="gp">In [24]: </span><span class="n">sub_dt</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-<span class="gh">Out[24]: </span><span class="go">0</span>
+<span class="gp">In [29]: </span><span class="n">sub_dt</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="gh">Out[29]: </span><span class="go">0</span>
 
-<span class="gp">In [25]: </span><span class="n">sub_x</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-<span class="gh">Out[25]: </span><span class="go">0</span>
+<span class="gp">In [30]: </span><span class="n">sub_x</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="gh">Out[30]: </span><span class="go">0</span>
 
-<span class="gp">In [26]: </span><span class="n">block</span><span class="p">(</span><span class="n">sub_x</span><span class="p">,</span> <span class="n">sub_dt</span><span class="p">)</span>
+<span class="gp">In [31]: </span><span class="n">block</span><span class="p">(</span><span class="n">sub_x</span><span class="p">,</span> <span class="n">sub_dt</span><span class="p">)</span>
 <span class="go">[63.34866867]</span>
 <span class="go">[1.]</span>
 <span class="go">[63.53448681]</span>
@@ -396,7 +415,8 @@ one of the other clients.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>pv_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd></dd>
+<dd><p class="first last">The PV name to read from</p>
+</dd>
 <dt><strong>data_type</strong> <span class="classifier-delimiter">:</span> <span class="classifier">{‘native’, ‘status’, ‘time’, ‘graphic’, ‘control’} or ChannelType or int ID, optional</span></dt>
 <dd><p class="first last">Request specific data type or a class of data types, matched to the
 channel’s native data type. Default is Channel’s native data type.</p>
@@ -430,8 +450,57 @@ clients should do this.</p>
 </tbody>
 </table>
 <p class="rubric">Examples</p>
-<p>Get the value of a Channel named ‘cat’.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+<p>Get the value of a Channel named ‘simple:A’.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;simple:A&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">data</span>
+<span class="go">array([1], dtype=int32)</span>
+</pre></div>
+</div>
+<p>Request a richer Channel Access data type that includes the timestamp, and
+access the timestamp.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">timestmap</span>
+<span class="go">1570622339.042392</span>
+</pre></div>
+</div>
+<p>A convenience method is provided for access the timestamp as a Python
+datetime object.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span> <span class="n">data_type</span><span class="o">=</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">stamp</span><span class="o">.</span><span class="n">as_datetime</span><span class="p">()</span>
+<span class="go">datetime.datetime(2019, 10, 9, 11, 58, 59, 42392)</span>
+</pre></div>
+</div>
+<p>The requested data type may also been given as a specific Channel Access
+type</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">ChannelType</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="n">ChannelType</span><span class="o">.</span><span class="n">CTRL_FLOAT</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span>
+<span class="go">DBR_CTRL_FLOAT(</span>
+<span class="go">    status=&lt;AlarmStatus.NO_ALARM: 0&gt;,</span>
+<span class="go">    severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;,</span>
+<span class="go">    upper_disp_limit=0.0,</span>
+<span class="go">    lower_disp_limit=0.0,</span>
+<span class="go">    upper_alarm_limit=0.0,</span>
+<span class="go">    upper_warning_limit=0.0,</span>
+<span class="go">    lower_warning_limit=0.0,</span>
+<span class="go">    lower_alarm_limit=0.0,</span>
+<span class="go">    upper_ctrl_limit=0.0,</span>
+<span class="go">    lower_ctrl_limit=0.0,</span>
+<span class="go">    precision=0,</span>
+<span class="go">    units=b&#39;&#39;)</span>
+</pre></div>
+</div>
+<p>or the corresponding integer identifer</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span><span class="o">.</span><span class="n">metadata</span>
+<span class="go">DBR_CTRL_FLOAT(</span>
+<span class="go">status=&lt;AlarmStatus.NO_ALARM: 0&gt;,</span>
+<span class="go">severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;,</span>
+<span class="go">upper_disp_limit=0.0,</span>
+<span class="go">lower_disp_limit=0.0,</span>
+<span class="go">upper_alarm_limit=0.0,</span>
+<span class="go">upper_warning_limit=0.0,</span>
+<span class="go">lower_warning_limit=0.0,</span>
+<span class="go">lower_alarm_limit=0.0,</span>
+<span class="go">upper_ctrl_limit=0.0,</span>
+<span class="go">lower_ctrl_limit=0.0,</span>
+<span class="go">precision=0,</span>
+<span class="go">units=b&#39;&#39;)</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -446,7 +515,8 @@ clients should do this.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>pv_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd></dd>
+<dd><p class="first last">The PV name to write to</p>
+</dd>
 <dt><strong>data</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, int, or float or any Iterable of these</span></dt>
 <dd><p class="first last">Value(s) to write.</p>
 </dd>
@@ -482,12 +552,21 @@ clients should do this.</p>
 </tbody>
 </table>
 <p class="rubric">Examples</p>
-<p>Write the value 5 to a Channel named ‘cat’.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># returns None</span>
+<p>Write the value 5 to a Channel named ‘simple:A’.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;simple:A&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># returns None</span>
 </pre></div>
 </div>
 <p>Request notification of completion (“put completion”) and wait for it.
-&gt;&gt;&gt; write(‘cat’, 5, notify=True)  # returns a WriteNotifyResponse</p>
+&gt;&gt;&gt; write(‘cat’, 5, notify=True)  # blocks until complete, then returns:
+WriteNotifyResponse(
+data_type=&lt;ChannelType.LONG: 5&gt;,
+data_count=1,
+status=CAStatusCode(
+name=’ECA_NORMAL’, code=0, code_with_severity=1,
+severity=&lt;CASeverity.SUCCESS: 1&gt;,
+success=1, defunct=False,
+description=’Normal successful completion’),
+ioid=0)</p>
 </dd></dl>
 
 <dl class="function">
@@ -500,7 +579,8 @@ clients should do this.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
 <dt><strong>pv_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">string</span></dt>
-<dd></dd>
+<dd><p class="first last">The PV name to subscribe to</p>
+</dd>
 <dt><strong>priority</strong> <span class="classifier-delimiter">:</span> <span class="classifier">integer, optional</span></dt>
 <dd><p class="first last">Used by the server to triage subscription responses when under high
 load. 0 is lowest; 99 is highest.</p>
@@ -526,8 +606,8 @@ count, which can be checked in the Channel’s attribute
 </tbody>
 </table>
 <p class="rubric">Examples</p>
-<p>Define a subscription on the <code class="docutils literal notranslate"><span class="pre">cat</span></code> PV.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sub</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">)</span>
+<p>Define a subscription on the <code class="docutils literal notranslate"><span class="pre">random_walk:x</span></code> PV.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sub</span> <span class="o">=</span> <span class="n">subscribe</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Add one or more user-defined callbacks to process responses.</p>
@@ -566,7 +646,8 @@ the method.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
 <dt><strong>*subscriptions</strong> <span class="classifier-delimiter">:</span> <span class="classifier">Subscriptions</span></dt>
-<dd></dd>
+<dd><p class="first last">The list of subscriptions.</p>
+</dd>
 <dt><strong>duration</strong> <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
 <dd><p class="first last">How many seconds to run for. Run forever (None) by default.</p>
 </dd>
@@ -622,7 +703,8 @@ re-create a connection redundantly.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>pv_name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd></dd>
+<dd><p class="first last">The PV name to write/read/write</p>
+</dd>
 <dt><strong>data</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, int, or float or a list of these</span></dt>
 <dd><p class="first last">Value to write.</p>
 </dd>
@@ -668,7 +750,7 @@ clients should do this.</p>
 </tbody>
 </table>
 <p class="rubric">Examples</p>
-<p>Write the value 5 to a Channel named ‘cat’.</p>
+<p>Write the value 5 to a Channel named ‘simple:A’.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">read_write_read</span><span class="p">(</span><span class="s1">&#39;cat&#39;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>  <span class="c1"># returns initial, None, final</span>
 </pre></div>
 </div>

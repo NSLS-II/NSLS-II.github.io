@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.5.0a1+0.gf2cf563.dirty documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.5.0a1+8.g1a73564.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.0a1+0.gf2cf563.dirty
+                0.5.0a1+8.g1a73564.dirty
               </div>
             
           
@@ -413,6 +413,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : str</span>
+<span class="sd">        The PV name to read from</span>
 <span class="sd">    data_type : {&#39;native&#39;, &#39;status&#39;, &#39;time&#39;, &#39;graphic&#39;, &#39;control&#39;} or ChannelType or int ID, optional</span>
 <span class="sd">        Request specific data type or a class of data types, matched to the</span>
 <span class="sd">        channel&#39;s native data type. Default is Channel&#39;s native data type.</span>
@@ -436,9 +437,58 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    Get the value of a Channel named &#39;cat&#39;.</span>
+<span class="sd">    Get the value of a Channel named &#39;simple:A&#39;.</span>
 
-<span class="sd">    &gt;&gt;&gt; read(&#39;cat&#39;).data</span>
+<span class="sd">    &gt;&gt;&gt; read(&#39;simple:A&#39;).data</span>
+<span class="sd">    array([1], dtype=int32)</span>
+
+<span class="sd">    Request a richer Channel Access data type that includes the timestamp, and</span>
+<span class="sd">    access the timestamp.</span>
+
+<span class="sd">    &gt;&gt;&gt; read(&#39;cat&#39;, data_type=&#39;time&#39;).metadata.timestmap</span>
+<span class="sd">    1570622339.042392</span>
+
+<span class="sd">    A convenience method is provided for access the timestamp as a Python</span>
+<span class="sd">    datetime object.</span>
+
+<span class="sd">    &gt;&gt;&gt; read(&#39;cat&#39; data_type=&#39;time&#39;).metadata.stamp.as_datetime()</span>
+<span class="sd">    datetime.datetime(2019, 10, 9, 11, 58, 59, 42392)</span>
+
+<span class="sd">    The requested data type may also been given as a specific Channel Access</span>
+<span class="sd">    type</span>
+
+<span class="sd">    &gt;&gt;&gt; from caproto import ChannelType</span>
+<span class="sd">    &gt;&gt;&gt; read(&#39;cat&#39;, data_type=ChannelType.CTRL_FLOAT).metadata</span>
+<span class="sd">    DBR_CTRL_FLOAT(</span>
+<span class="sd">        status=&lt;AlarmStatus.NO_ALARM: 0&gt;,</span>
+<span class="sd">        severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;,</span>
+<span class="sd">        upper_disp_limit=0.0,</span>
+<span class="sd">        lower_disp_limit=0.0,</span>
+<span class="sd">        upper_alarm_limit=0.0,</span>
+<span class="sd">        upper_warning_limit=0.0,</span>
+<span class="sd">        lower_warning_limit=0.0,</span>
+<span class="sd">        lower_alarm_limit=0.0,</span>
+<span class="sd">        upper_ctrl_limit=0.0,</span>
+<span class="sd">        lower_ctrl_limit=0.0,</span>
+<span class="sd">        precision=0,</span>
+<span class="sd">        units=b&#39;&#39;)</span>
+
+<span class="sd">    or the corresponding integer identifer</span>
+
+<span class="sd">    &gt;&gt;&gt; read(&#39;cat&#39;, data_type=30).metadata</span>
+<span class="sd">    DBR_CTRL_FLOAT(</span>
+<span class="sd">    status=&lt;AlarmStatus.NO_ALARM: 0&gt;,</span>
+<span class="sd">    severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;,</span>
+<span class="sd">    upper_disp_limit=0.0,</span>
+<span class="sd">    lower_disp_limit=0.0,</span>
+<span class="sd">    upper_alarm_limit=0.0,</span>
+<span class="sd">    upper_warning_limit=0.0,</span>
+<span class="sd">    lower_warning_limit=0.0,</span>
+<span class="sd">    lower_alarm_limit=0.0,</span>
+<span class="sd">    upper_ctrl_limit=0.0,</span>
+<span class="sd">    lower_ctrl_limit=0.0,</span>
+<span class="sd">    precision=0,</span>
+<span class="sd">    units=b&#39;&#39;)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">repeater</span><span class="p">:</span>
         <span class="c1"># As per the EPICS spec, a well-behaved client should start a</span>
@@ -471,6 +521,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : string</span>
+<span class="sd">        The PV name to subscribe to</span>
 <span class="sd">    priority : integer, optional</span>
 <span class="sd">        Used by the server to triage subscription responses when under high</span>
 <span class="sd">        load. 0 is lowest; 99 is highest.</span>
@@ -489,9 +540,9 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    Define a subscription on the ``cat`` PV.</span>
+<span class="sd">    Define a subscription on the ``random_walk:x`` PV.</span>
 
-<span class="sd">    &gt;&gt;&gt; sub = subscribe(&#39;cat&#39;)</span>
+<span class="sd">    &gt;&gt;&gt; sub = subscribe(&#39;random_walk:x&#39;)</span>
 
 <span class="sd">    Add one or more user-defined callbacks to process responses.</span>
 
@@ -543,6 +594,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    *subscriptions : Subscriptions</span>
+<span class="sd">        The list of subscriptions.</span>
 <span class="sd">    duration : float, optional</span>
 <span class="sd">        How many seconds to run for. Run forever (None) by default.</span>
 <span class="sd">    timeout : float, optional</span>
@@ -714,6 +766,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : str</span>
+<span class="sd">        The PV name to write to</span>
 <span class="sd">    data : str, int, or float or any Iterable of these</span>
 <span class="sd">        Value(s) to write.</span>
 <span class="sd">    notify : boolean, optional</span>
@@ -737,12 +790,21 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    Write the value 5 to a Channel named &#39;cat&#39;.</span>
+<span class="sd">    Write the value 5 to a Channel named &#39;simple:A&#39;.</span>
 
-<span class="sd">    &gt;&gt;&gt; write(&#39;cat&#39;, 5)  # returns None</span>
+<span class="sd">    &gt;&gt;&gt; write(&#39;simple:A&#39;, 5)  # returns None</span>
 
 <span class="sd">    Request notification of completion (&quot;put completion&quot;) and wait for it.</span>
-<span class="sd">    &gt;&gt;&gt; write(&#39;cat&#39;, 5, notify=True)  # returns a WriteNotifyResponse</span>
+<span class="sd">    &gt;&gt;&gt; write(&#39;cat&#39;, 5, notify=True)  # blocks until complete, then returns:</span>
+<span class="sd">    WriteNotifyResponse(</span>
+<span class="sd">    data_type=&lt;ChannelType.LONG: 5&gt;,</span>
+<span class="sd">    data_count=1,</span>
+<span class="sd">    status=CAStatusCode(</span>
+<span class="sd">    name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1,</span>
+<span class="sd">    severity=&lt;CASeverity.SUCCESS: 1&gt;,</span>
+<span class="sd">    success=1, defunct=False,</span>
+<span class="sd">    description=&#39;Normal successful completion&#39;),</span>
+<span class="sd">    ioid=0)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">repeater</span><span class="p">:</span>
         <span class="c1"># As per the EPICS spec, a well-behaved client should start a</span>
@@ -787,6 +849,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : str</span>
+<span class="sd">        The PV name to write/read/write</span>
 <span class="sd">    data : str, int, or float or a list of these</span>
 <span class="sd">        Value to write.</span>
 <span class="sd">    notify : boolean, optional</span>
@@ -818,7 +881,7 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    Write the value 5 to a Channel named &#39;cat&#39;.</span>
+<span class="sd">    Write the value 5 to a Channel named &#39;simple:A&#39;.</span>
 
 <span class="sd">    &gt;&gt;&gt; read_write_read(&#39;cat&#39;, 5)  # returns initial, None, final</span>
 
