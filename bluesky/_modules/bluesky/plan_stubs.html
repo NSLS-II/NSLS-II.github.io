@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.plan_stubs &mdash; bluesky 1.6.0rc2.post56+g54673d4 documentation</title>
+  <title>bluesky.plan_stubs &mdash; bluesky 1.6.0rc2.post67+gfeb8e79 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc2.post56+g54673d4',
+              VERSION:'1.6.0rc2.post67+gfeb8e79',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post56+g54673d4
+                1.6.0rc2.post67+gfeb8e79
               </div>
             
           
@@ -1099,11 +1099,53 @@
         <span class="k">yield from</span> <span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">lst_plan</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">one_1d_step</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">one_shot</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">take_reading</span><span class="o">=</span><span class="n">trigger_and_read</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Inner loop of a count.</span>
+
+<span class="sd">    This is the default function for ``per_shot`` in count plans.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detectors : Iterable[OphydObj]</span>
+<span class="sd">        devices to read</span>
+
+<span class="sd">    take_reading : plan, optional</span>
+<span class="sd">        function to do the actual acquisition ::</span>
+
+<span class="sd">           def take_reading(dets, name=&#39;primary&#39;):</span>
+<span class="sd">                yield from ...</span>
+
+<span class="sd">        Callable[List[OphydObj], Optional[str]] -&gt; Generator[Msg], optional</span>
+
+<span class="sd">        Defaults to `trigger_and_read`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;checkpoint&#39;</span><span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">take_reading</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">one_1d_step</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">motor</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">take_reading</span><span class="o">=</span><span class="n">trigger_and_read</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inner loop of a 1D step scan</span>
 
 <span class="sd">    This is the default function for ``per_step`` param in 1D plans.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detectors : iterable</span>
+<span class="sd">        devices to read</span>
+<span class="sd">    motor : Settable</span>
+<span class="sd">        The motor to move</span>
+<span class="sd">    step : Any</span>
+<span class="sd">        Where to move the motor to</span>
+<span class="sd">    take_reading : plan, optional</span>
+<span class="sd">        function to do the actual acquisition ::</span>
+
+<span class="sd">           def take_reading(dets, name=&#39;primary&#39;):</span>
+<span class="sd">                yield from ...</span>
+
+<span class="sd">        Callable[List[OphydObj], Optional[str]] -&gt; Generator[Msg], optional</span>
+
+<span class="sd">        Defaults to `trigger_and_read`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="nf">move</span><span class="p">():</span>
         <span class="n">grp</span> <span class="o">=</span> <span class="n">_short_uid</span><span class="p">(</span><span class="s1">&#39;set&#39;</span><span class="p">)</span>
@@ -1112,7 +1154,7 @@
         <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">grp</span><span class="p">)</span>
 
     <span class="k">yield from</span> <span class="n">move</span><span class="p">()</span>
-    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">trigger_and_read</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">motor</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">take_reading</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="p">[</span><span class="n">motor</span><span class="p">]))</span>
 
 
 <span class="k">def</span> <span class="nf">move_per_step</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">):</span>
@@ -1139,7 +1181,7 @@
     <span class="k">yield</span> <span class="n">Msg</span><span class="p">(</span><span class="s1">&#39;wait&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">grp</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">one_nd_step</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">one_nd_step</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">,</span> <span class="n">take_reading</span><span class="o">=</span><span class="n">trigger_and_read</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Inner loop of an N-dimensional step scan</span>
 
@@ -1153,10 +1195,19 @@
 <span class="sd">        mapping motors to positions in this step</span>
 <span class="sd">    pos_cache : dict</span>
 <span class="sd">        mapping motors to their last-set positions</span>
+<span class="sd">    take_reading : plan, optional</span>
+<span class="sd">        function to do the actual acquisition ::</span>
+
+<span class="sd">           def take_reading(dets, name=&#39;primary&#39;):</span>
+<span class="sd">                yield from ...</span>
+
+<span class="sd">        Callable[List[OphydObj], Optional[str]] -&gt; Generator[Msg], optional</span>
+
+<span class="sd">        Defaults to `trigger_and_read`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">motors</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
     <span class="k">yield from</span> <span class="n">move_per_step</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">pos_cache</span><span class="p">)</span>
-    <span class="k">yield from</span> <span class="n">trigger_and_read</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">motors</span><span class="p">))</span>
+    <span class="k">yield from</span> <span class="n">take_reading</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">motors</span><span class="p">))</span>
 
 
 <div class="viewcode-block" id="repeat"><a class="viewcode-back" href="../../generated/bluesky.plan_stubs.repeat.html#bluesky.plan_stubs.repeat">[docs]</a><span class="k">def</span> <span class="nf">repeat</span><span class="p">(</span><span class="n">plan</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>

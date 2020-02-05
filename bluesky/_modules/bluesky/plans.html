@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.plans &mdash; bluesky 1.6.0rc2.post56+g54673d4 documentation</title>
+  <title>bluesky.plans &mdash; bluesky 1.6.0rc2.post67+gfeb8e79 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc2.post56+g54673d4',
+              VERSION:'1.6.0rc2.post67+gfeb8e79',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post56+g54673d4
+                1.6.0rc2.post67+gfeb8e79
               </div>
             
           
@@ -221,7 +221,7 @@
 <span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">plan_stubs</span> <span class="k">as</span> <span class="n">bps</span>
 
 
-<div class="viewcode-block" id="count"><a class="viewcode-back" href="../../generated/bluesky.plans.count.html#bluesky.plans.count">[docs]</a><span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="count"><a class="viewcode-back" href="../../generated/bluesky.plans.count.html#bluesky.plans.count">[docs]</a><span class="k">def</span> <span class="nf">count</span><span class="p">(</span><span class="n">detectors</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">per_shot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Take one or more readings from detectors.</span>
 
@@ -235,6 +235,13 @@
 <span class="sd">        If None, capture data until canceled</span>
 <span class="sd">    delay : iterable or scalar, optional</span>
 <span class="sd">        Time delay in seconds between successive readings; default is 0.</span>
+<span class="sd">    per_shot : callable, optional</span>
+<span class="sd">        hook for customizing action of inner loop (messages per step)</span>
+<span class="sd">        Expected signature ::</span>
+
+<span class="sd">           def f(detectors: Iterable[OphydObj]) -&gt; Generator[Msg]:</span>
+<span class="sd">               ...</span>
+
 <span class="sd">    md : dict, optional</span>
 <span class="sd">        metadata</span>
 
@@ -257,10 +264,13 @@
     <span class="n">_md</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">md</span> <span class="ow">or</span> <span class="p">{})</span>
     <span class="n">_md</span><span class="p">[</span><span class="s1">&#39;hints&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;dimensions&#39;</span><span class="p">,</span> <span class="p">[((</span><span class="s1">&#39;time&#39;</span><span class="p">,),</span> <span class="s1">&#39;primary&#39;</span><span class="p">)])</span>
 
+    <span class="k">if</span> <span class="n">per_shot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">per_shot</span> <span class="o">=</span> <span class="n">bps</span><span class="o">.</span><span class="n">one_shot</span>
+
     <span class="nd">@bpp</span><span class="o">.</span><span class="n">stage_decorator</span><span class="p">(</span><span class="n">detectors</span><span class="p">)</span>
     <span class="nd">@bpp</span><span class="o">.</span><span class="n">run_decorator</span><span class="p">(</span><span class="n">md</span><span class="o">=</span><span class="n">_md</span><span class="p">)</span>
     <span class="k">def</span> <span class="nf">inner_count</span><span class="p">():</span>
-        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">bps</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">bps</span><span class="o">.</span><span class="n">trigger_and_read</span><span class="p">,</span> <span class="n">detectors</span><span class="p">),</span>
+        <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">bps</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">partial</span><span class="p">(</span><span class="n">per_shot</span><span class="p">,</span> <span class="n">detectors</span><span class="p">),</span>
                                       <span class="n">num</span><span class="o">=</span><span class="n">num</span><span class="p">,</span> <span class="n">delay</span><span class="o">=</span><span class="n">delay</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">inner_count</span><span class="p">())</span></div>
