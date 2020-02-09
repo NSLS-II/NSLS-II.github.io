@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.4.0rc3.post26+g4b42c41
+                1.4.0rc4.post66+gb28ab7c
               </div>
             
           
@@ -101,7 +101,10 @@
 <p class="caption"><span class="caption-text">Signals and Devices</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Architecture</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#hardware-abstraction">Hardware abstraction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hardware-abstraction">Hardware abstraction</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#names">Names</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#uniform-high-level-interface">Uniform High-level Interface</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#read-able-interface">Read-able Interface</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="generated/ophyd.device.BlueskyInterface.trigger.html">ophyd.device.BlueskyInterface.trigger</a></li>
@@ -270,6 +273,40 @@ may be decomposed to, ultimately, the underlying Signals.</div></blockquote>
 </div></blockquote>
 <p>Put another way, if a hierarchical device is a tree, <strong>Signals</strong> are the leaves
 and <strong>Devices</strong> are the nodes.</p>
+<div class="section" id="names">
+<h3>Names<a class="headerlink" href="#names" title="Permalink to this headline">¶</a></h3>
+<p>In ophyd, we can think of a Device as a tree of sub-devices and
+eventually the ‘leaf’ nodes which are Signals (and map to 1 or 2 PVs).
+At the bottom of the tree, each Signal (leaf-node) has 3 names
+associated with it:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><em>The PV name it is going to talk to</em>.  Typically, this name must
+be globally unique within the control system you are using.  This
+can lead to them being both verbose and cryptic.  From
+<code class="docutils literal"><span class="pre">ophyd</span></code>’s point of view these strings are taken as given and
+does not require any particular pattern, scheme, rhyme, or reason
+in the names.</li>
+<li><em>The Python attribute name</em>.  These are the names of the
+components of a device and allow attribute-style access to the sub
+components as <code class="docutils literal"><span class="pre">dev.cpt_name</span></code>.  These names are set in the
+<cite>ophyd.Device</cite> sub-class definitions.  They need to be a valid
+Python identifiers (which Python enforces) and should be chosen to
+makes sense to the people directly working with the ophyd instances.
+They need be unique within a <cite>~ophyd.Device</cite> and hence Python ensures that
+the fully qualified name will be unique within a namespace.</li>
+<li><em>The ``obj.name`` attribute</em>.  This name is the one that will be
+used in the data returned by <cite>~ophyd.Device.read</cite> and will
+eventually end up in the flowing through <cite>bluesky</cite> and into
+<cite>databroker</cite> to be eventually exposed to the users at analysis
+times.  By default, these names are derived from the Python
+attribute name of the sub-device and the name of it’s parent, but
+can be set at runtime.  These names should be picked to make
+scientific sense at analysis time and must be unique among devices
+that will be used simultaneously.</li>
+</ol>
+</div></blockquote>
+</div>
 </div>
 <div class="section" id="uniform-high-level-interface">
 <span id="hl-api"></span><h2>Uniform High-level Interface<a class="headerlink" href="#uniform-high-level-interface" title="Permalink to this headline">¶</a></h2>
@@ -338,7 +375,7 @@ called.</p>
 </table>
 <p>Two additional optional methods are used to notify devices if,
 during a scan, the run is suspended.  The semantics of these methods
-is coupled to <a class="reference external" href="https://nsls-ii.github.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post49+g6f2617a)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
+is coupled to <a class="reference external" href="https://blueskyproject.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post67+gfeb8e79)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
 <table border="1" class="longtable docutils">
 <colgroup>
 <col width="10%" />
@@ -429,7 +466,7 @@ what can reasonably done in via EPICS/Python and tend to be called ‘fly scans�
 <td>Wait for flying to be complete.</td>
 </tr>
 <tr class="row-odd"><td><a class="reference internal" href="generated/ophyd.flyers.FlyerInterface.describe_collect.html#ophyd.flyers.FlyerInterface.describe_collect" title="ophyd.flyers.FlyerInterface.describe_collect"><code class="xref py py-obj docutils literal"><span class="pre">describe_collect</span></code></a>(self)</td>
-<td>Provide schema &amp; meta-data from <a class="reference external" href="https://nsls-ii.github.io/bluesky/hardware.html#collect" title="(in bluesky v1.6.0rc2.post49+g6f2617a)"><code class="xref py py-meth docutils literal"><span class="pre">collect()</span></code></a></td>
+<td>Provide schema &amp; meta-data from <a class="reference external" href="https://blueskyproject.io/bluesky/hardware.html#collect" title="(in bluesky v1.6.0rc2.post67+gfeb8e79)"><code class="xref py py-meth docutils literal"><span class="pre">collect()</span></code></a></td>
 </tr>
 <tr class="row-even"><td><a class="reference internal" href="generated/ophyd.flyers.FlyerInterface.collect.html#ophyd.flyers.FlyerInterface.collect" title="ophyd.flyers.FlyerInterface.collect"><code class="xref py py-obj docutils literal"><span class="pre">collect</span></code></a>(self)</td>
 <td>Retrieve data from the flyer as proto-events</td>
@@ -448,7 +485,7 @@ objects and in the callback registry at the core of
 <a class="reference internal" href="generated/ophyd.ophydobj.OphydObject.html#ophyd.ophydobj.OphydObject" title="ophyd.ophydobj.OphydObject"><code class="xref py py-obj docutils literal"><span class="pre">OphydObject</span></code></a>.  The <code class="xref py py-class docutils literal"><span class="pre">StatusBase</span></code> objects are the
 bridge between the asynchronous behavior of the underlying control
 system and the asynchronous behavior of
-<a class="reference external" href="https://nsls-ii.github.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post49+g6f2617a)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
+<a class="reference external" href="https://blueskyproject.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post67+gfeb8e79)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
 <p>The core API of the status objects is a property and a private method:</p>
 <table border="1" class="longtable docutils">
 <colgroup>
@@ -508,7 +545,7 @@ successful or not.</p>
 <p>This registry is used to connect to the underlying events from the
 control system and propagate them up to bluesky, either via
 <cite>~status.StatusBase</cite> objects or via direct subscription from the
-<a class="reference external" href="https://nsls-ii.github.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post49+g6f2617a)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
+<a class="reference external" href="https://blueskyproject.io/bluesky/run_engine_api.html#bluesky.run_engine.RunEngine" title="(in bluesky v1.6.0rc2.post67+gfeb8e79)"><code class="xref py py-class docutils literal"><span class="pre">RunEngine</span></code></a>.</p>
 </div>
 </div>
 
