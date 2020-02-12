@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.mpl_plotting &mdash; bluesky 1.6.0rc2.post67+gfeb8e79 documentation</title>
+  <title>bluesky.callbacks.mpl_plotting &mdash; bluesky 1.6.0rc2.post76+g8ff0469 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../../',
-              VERSION:'1.6.0rc2.post67+gfeb8e79',
+              VERSION:'1.6.0rc2.post76+g8ff0469',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc2.post67+gfeb8e79
+                1.6.0rc2.post76+g8ff0469
               </div>
             
           
@@ -200,6 +200,7 @@
 <span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">ChainMap</span>
 <span class="kn">from</span> <span class="nn">cycler</span> <span class="kn">import</span> <span class="n">cycler</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">from</span> <span class="nn">.core</span> <span class="kn">import</span> <span class="n">CallbackBase</span><span class="p">,</span> <span class="n">get_obj_fields</span><span class="p">,</span> <span class="n">make_class_safe</span>
@@ -207,14 +208,51 @@
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
+
+<span class="c1"># The purpose of initialize_teleporter, _get_teleporter, and QtAwareCallback is</span>
+<span class="c1"># to ensure that Qt GUI events are processed on the main thread.</span>
+
+
+<span class="k">def</span> <span class="nf">initialize_qt_teleporter</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set up the bluesky Qt &#39;teleporter&#39;.</span>
+
+<span class="sd">    This makes it safe to instantiate QtAwareCallback from a background thread.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    RuntimeError</span>
+<span class="sd">        If called from any thread but the main thread</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">threading</span><span class="o">.</span><span class="n">main_thread</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;initialize_qt_teleporter() may only be called from the main &quot;</span>
+            <span class="s2">&quot;thread.&quot;</span><span class="p">)</span>
+    <span class="n">_get_teleporter</span><span class="p">()</span>
+
+
 <span class="c1"># use function + LRU cache to hide Matplotib import until needed</span>
 <span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">_get_teleporter</span><span class="p">():</span>
     <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="kn">import</span> <span class="n">QtCore</span>
 
+    <span class="k">if</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">threading</span><span class="o">.</span><span class="n">main_thread</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="s2">&quot;A bluesky QtAwareCallback was instantiated from a backgrond &quot;</span>
+            <span class="s2">&quot;thread before the bluesky qt &#39;teleporter&#39; was created. &quot;</span>
+            <span class="s2">&quot;To avoid this issue, &quot;</span>
+            <span class="s2">&quot;call bluesky.mpl_plotting.initialize_teleporter() &quot;</span>
+            <span class="s2">&quot;from the main thread first.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">handle_teleport</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">obj</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="k">class</span> <span class="nc">Teleporter</span><span class="p">(</span><span class="n">QtCore</span><span class="o">.</span><span class="n">QObject</span><span class="p">):</span>
-        <span class="n">name_doc_escape</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">Teleporter</span>
+        <span class="n">name_doc_escape</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">Signal</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">Teleporter</span><span class="p">()</span>
+    <span class="n">t</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handle_teleport</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">t</span>
 
 
 <span class="k">class</span> <span class="nc">QtAwareCallback</span><span class="p">(</span><span class="n">CallbackBase</span><span class="p">):</span>
@@ -223,16 +261,14 @@
             <span class="kn">import</span> <span class="nn">matplotlib</span>
             <span class="n">use_teleporter</span> <span class="o">=</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">use_teleporter</span><span class="p">:</span>
-            <span class="n">Teleporter</span> <span class="o">=</span> <span class="n">_get_teleporter</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="o">=</span> <span class="n">Teleporter</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__call__</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="o">=</span> <span class="n">_get_teleporter</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">escape</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__teleporter</span><span class="o">.</span><span class="n">name_doc_escape</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">CallbackBase</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
 
@@ -279,44 +315,57 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">legend_keys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">xlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fig</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="s1">&#39;run&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_teleporter</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_teleporter&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">fig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Values were given for both `fig` and `ax`. &quot;</span>
-                                 <span class="s2">&quot;Only one can be used; prefer ax.&quot;</span><span class="p">)</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The `fig` keyword arugment of LivePlot is &quot;</span>
-                          <span class="s2">&quot;deprecated and will be removed in the future. &quot;</span>
-                          <span class="s2">&quot;Instead, use the new keyword argument `ax` to &quot;</span>
-                          <span class="s2">&quot;provide specific Axes to plot on.&quot;</span><span class="p">)</span>
-            <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">legend_keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">legend_keys</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">legend_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">legend_keys</span>
-        <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">others</span> <span class="o">=</span> <span class="n">get_obj_fields</span><span class="p">([</span><span class="n">x</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="s1">&#39;seq_num&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="o">*</span><span class="n">others</span> <span class="o">=</span> <span class="n">get_obj_fields</span><span class="p">([</span><span class="n">y</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x</span> <span class="ow">or</span> <span class="s1">&#39;sequence #&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">xlim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">*</span><span class="n">xlim</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">*</span><span class="n">ylim</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">legend</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">legend_title</span> <span class="o">=</span> <span class="s2">&quot; :: &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">legend_keys</span><span class="p">])</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_offset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># used if x == &#39;time&#39;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch</span> <span class="o">=</span> <span class="n">epoch</span>
+        <span class="k">def</span> <span class="nf">setup</span><span class="p">():</span>
+            <span class="c1"># Run this code in start() so that it runs on the correct thread.</span>
+            <span class="k">nonlocal</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">legend_keys</span><span class="p">,</span> <span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">fig</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">kwargs</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="k">return</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">fig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Values were given for both `fig` and `ax`. &quot;</span>
+                                    <span class="s2">&quot;Only one can be used; prefer ax.&quot;</span><span class="p">)</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;The `fig` keyword arugment of LivePlot is &quot;</span>
+                            <span class="s2">&quot;deprecated and will be removed in the future. &quot;</span>
+                            <span class="s2">&quot;Instead, use the new keyword argument `ax` to &quot;</span>
+                            <span class="s2">&quot;provide specific Axes to plot on.&quot;</span><span class="p">)</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
+
+            <span class="k">if</span> <span class="n">legend_keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">legend_keys</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">legend_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;scan_id&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">legend_keys</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="o">*</span><span class="n">others</span> <span class="o">=</span> <span class="n">get_obj_fields</span><span class="p">([</span><span class="n">x</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="s1">&#39;seq_num&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="o">*</span><span class="n">others</span> <span class="o">=</span> <span class="n">get_obj_fields</span><span class="p">([</span><span class="n">y</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x</span> <span class="ow">or</span> <span class="s1">&#39;sequence #&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">xlim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">*</span><span class="n">xlim</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">*</span><span class="n">ylim</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">legend</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">legend_title</span> <span class="o">=</span> <span class="s2">&quot; :: &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">legend_keys</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_offset</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># used if x == &#39;time&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_epoch</span> <span class="o">=</span> <span class="n">epoch</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span> <span class="o">=</span> <span class="n">setup</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span><span class="p">()</span>
         <span class="c1"># The doc is not used; we just use the signal that a new run began.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_offset</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>  <span class="c1"># used if self.x == &#39;time&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">x_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_data</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
@@ -423,40 +472,52 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">xlim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ylim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">clim</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">use_teleporter</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;use_teleporter&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
-        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-        <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
-        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
-            <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">I</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_sc</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_xdata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ydata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_minx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxy</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,)</span><span class="o">*</span><span class="mi">4</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="k">def</span> <span class="nf">setup</span><span class="p">():</span>
+            <span class="c1"># Run this code in start() so that it runs on the correct thread.</span>
+            <span class="k">nonlocal</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">xlim</span><span class="p">,</span> <span class="n">ylim</span><span class="p">,</span> <span class="n">clim</span><span class="p">,</span> <span class="n">cmap</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">kwargs</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="k">return</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
+            <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">I</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s1">&#39;equal&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sc</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">margins</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xdata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ydata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_minx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxx</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_miny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxy</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,)</span><span class="o">*</span><span class="mi">4</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">xlim</span> <span class="o">=</span> <span class="n">xlim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ylim</span> <span class="o">=</span> <span class="n">ylim</span>
-        <span class="k">if</span> <span class="n">xlim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xlim</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ylim</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">clim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmax</span> <span class="o">=</span> <span class="n">clim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clim</span> <span class="o">=</span> <span class="n">clim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="n">cmap</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;edgecolor&#39;</span><span class="p">,</span> <span class="s1">&#39;face&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">xlim</span> <span class="o">=</span> <span class="n">xlim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ylim</span> <span class="o">=</span> <span class="n">ylim</span>
+            <span class="k">if</span> <span class="n">xlim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">xlim</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ylim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">ylim</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">clim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmax</span> <span class="o">=</span> <span class="n">clim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clim</span> <span class="o">=</span> <span class="n">clim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="n">cmap</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;edgecolor&#39;</span><span class="p">,</span> <span class="s1">&#39;face&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span> <span class="o">=</span> <span class="n">setup</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_xdata</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_ydata</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -569,30 +630,43 @@
                  <span class="n">xlabel</span><span class="o">=</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">,</span>
                  <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x_positive</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">y_positive</span><span class="o">=</span><span class="s1">&#39;up&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
-        <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
-        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">I</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">raster_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">clim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmax</span> <span class="o">=</span> <span class="n">clim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">clim</span> <span class="o">=</span> <span class="n">clim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="n">cmap</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">raster_shape</span> <span class="o">=</span> <span class="n">raster_shape</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">im</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">extent</span> <span class="o">=</span> <span class="n">extent</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">aspect</span> <span class="o">=</span> <span class="n">aspect</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">x_positive</span> <span class="o">=</span> <span class="n">x_positive</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">y_positive</span> <span class="o">=</span> <span class="n">y_positive</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+        <span class="k">def</span> <span class="nf">setup</span><span class="p">():</span>
+            <span class="c1"># Run this code in start() so that it runs on the correct thread.</span>
+            <span class="k">nonlocal</span> <span class="n">raster_shape</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">clim</span><span class="p">,</span> <span class="n">cmap</span><span class="p">,</span> <span class="n">xlabel</span><span class="p">,</span> <span class="n">ylabel</span><span class="p">,</span> <span class="n">extent</span>
+            <span class="k">nonlocal</span> <span class="n">aspect</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">x_positive</span><span class="p">,</span> <span class="n">y_positive</span><span class="p">,</span> <span class="n">kwargs</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="k">return</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__setup_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+            <span class="kn">import</span> <span class="nn">matplotlib.colors</span> <span class="k">as</span> <span class="nn">mcolors</span>
+            <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">cla</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">I</span> <span class="o">=</span> <span class="n">I</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="n">aspect</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">raster_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span> <span class="o">=</span> <span class="n">mcolors</span><span class="o">.</span><span class="n">Normalize</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">clim</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="o">.</span><span class="n">vmax</span> <span class="o">=</span> <span class="n">clim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">clim</span> <span class="o">=</span> <span class="n">clim</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cmap</span> <span class="o">=</span> <span class="n">cmap</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">raster_shape</span> <span class="o">=</span> <span class="n">raster_shape</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">im</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">extent</span> <span class="o">=</span> <span class="n">extent</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">aspect</span> <span class="o">=</span> <span class="n">aspect</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x_positive</span> <span class="o">=</span> <span class="n">x_positive</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">y_positive</span> <span class="o">=</span> <span class="n">y_positive</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span> <span class="o">=</span> <span class="n">setup</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__setup</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">im</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Can not re-use LiveGrid&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_Idata</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raster_shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
@@ -713,6 +787,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_livefit</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">livefit</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">livefit</span><span class="o">.</span><span class="n">independent_vars</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>  <span class="c1"># in case it changed</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_has_been_run</span><span class="p">:</span>
@@ -722,7 +797,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_has_been_run</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">init_guess_line</span><span class="p">,</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">([],</span> <span class="p">[],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;grey&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">init_guess_line</span><span class="p">)</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
         <span class="c1"># Put fit above other lines (default 2) but below text (default 3).</span>
         <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">set_zorder</span><span class="p">(</span><span class="mf">2.5</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">]</span>
 
