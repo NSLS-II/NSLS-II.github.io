@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b8.post7+gc6d2b25 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b8.post17+gf5a63cd documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b8.post7+gc6d2b25
+                1.0.0b8.post17+gf5a63cd
               </div>
             
           
@@ -1747,11 +1747,35 @@
         <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
             <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">dd</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
     <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-        <span class="c1"># compatibility with dask &lt; 2</span>
-        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;shape&#39;</span><span class="p">):</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># compatibility with dask &lt; 2</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="s1">&#39;shape&#39;</span><span class="p">):</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">dask</span><span class="o">.</span><span class="n">array</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+            <span class="c1"># There are data structured that dask auto-chunking cannot handle,</span>
+            <span class="c1"># such as an list of list of variable length. For now, let these go</span>
+            <span class="c1"># out as plain numpy arrays. In the future we might make them dask</span>
+            <span class="c1"># arrays with manual chunks.</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="c1"># TEMPORARY EMERGENCY FALLBACK</span>
+            <span class="c1"># If environment variable is set to anything but 0, work around</span>
+            <span class="c1"># dask and return a numpy array.</span>
+            <span class="n">switch</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DATABROKER_ARRAY_FALLBACK&#39;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">switch</span><span class="p">:</span>
+                <span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Creating a dask array raised an error. Because the &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;environment variable DATABROKER_ARRAY_FALLBACK was set &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;to </span><span class="si">{switch}</span><span class="s2"> we have caught the error and fallen &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;back to returning a numpy array instead. This may be &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;very slow. The underlying issue should be resolved. The &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;error was </span><span class="si">{err!r}</span><span class="s2">.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span>
+
     <span class="k">return</span> <span class="n">out</span>
 
 
