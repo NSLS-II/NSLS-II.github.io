@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc4.post19+gc601c48 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc4.post46+g0a8643b documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc4.post19+gc601c48',
+              VERSION:'1.6.0rc4.post46+g0a8643b',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc4.post19+gc601c48
+                1.6.0rc4.post46+g0a8643b
               </div>
             
           
@@ -216,6 +216,8 @@
 <span class="kn">import</span> <span class="nn">concurrent</span>
 
 <span class="kn">from</span> <span class="nn">event_model</span> <span class="kn">import</span> <span class="n">DocumentNames</span><span class="p">,</span> <span class="n">schema_validators</span>
+<span class="kn">import</span> <span class="nn">jsonschema</span>
+<span class="kn">from</span> <span class="nn">.log</span> <span class="kn">import</span> <span class="n">logger</span><span class="p">,</span> <span class="n">msg_logger</span><span class="p">,</span> <span class="n">state_logger</span><span class="p">,</span> <span class="n">ComposableLogAdapter</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.machines</span> <span class="kn">import</span> <span class="n">StateMachine</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.extras</span> <span class="kn">import</span> <span class="n">PropertyMachine</span>
 <span class="kn">from</span> <span class="nn">super_state_machine.errors</span> <span class="kn">import</span> <span class="n">TransitionError</span>
@@ -312,8 +314,12 @@
         <span class="k">with</span> <span class="n">obj</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
             <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__set__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
         <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">own</span><span class="p">)</span>
-        <span class="n">obj</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Change state on </span><span class="si">%r</span><span class="s2"> from </span><span class="si">%r</span><span class="s2"> -&gt; </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
-                     <span class="n">obj</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;old_state&#39;</span><span class="p">:</span> <span class="n">old_value</span><span class="p">,</span>
+                <span class="s1">&#39;new_state&#39;</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span>
+                <span class="s1">&#39;RE&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="p">}</span>
+
+        <span class="n">state_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Change state on </span><span class="si">%r</span><span class="s2"> from </span><span class="si">%r</span><span class="s2"> -&gt; </span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span>
+                           <span class="n">obj</span><span class="p">,</span> <span class="n">old_value</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">obj</span><span class="o">.</span><span class="n">state_hook</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">old_value</span><span class="p">)</span>
 
@@ -503,8 +509,7 @@
 
         <span class="c1"># Make a logger for this specific RE instance, using the instance&#39;s</span>
         <span class="c1"># Python id, to keep from mixing output from separate instances.</span>
-        <span class="n">logger_name</span> <span class="o">=</span> <span class="s2">&quot;bluesky.RE.</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">logger_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">ComposableLogAdapter</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;RE&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="p">})</span>
 
         <span class="k">if</span> <span class="n">md</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">md</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1427,7 +1432,7 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_task</span> <span class="o">=</span> <span class="n">current_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loop</span><span class="p">)</span>
         <span class="n">stashed_exception</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="n">debug</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">.msg&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">name</span><span class="p">))</span><span class="o">.</span><span class="n">debug</span>
+        <span class="n">debug</span> <span class="o">=</span> <span class="n">msg_logger</span><span class="o">.</span><span class="n">debug</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_reason</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
         <span class="c1"># sentinel to decide if need to add to the response stack or not</span>
         <span class="n">sentinel</span> <span class="o">=</span> <span class="nb">object</span><span class="p">()</span>
@@ -1573,7 +1578,9 @@
                     <span class="c1"># if we have a message hook, call it</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">msg_hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">msg_hook</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-                    <span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                    <span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">(</span><span class="si">%r</span><span class="s2">, *</span><span class="si">%r</span><span class="s2"> **</span><span class="si">%r</span><span class="s2">, run=</span><span class="si">%r</span><span class="s2">)&quot;</span><span class="p">,</span>
+                          <span class="n">msg</span><span class="o">.</span><span class="n">command</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">kwargs</span><span class="p">,</span>
+                          <span class="n">msg</span><span class="o">.</span><span class="n">run</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;msg_command&#39;</span><span class="p">:</span> <span class="n">msg</span><span class="o">.</span><span class="n">command</span><span class="p">})</span>
 
                     <span class="c1"># update the running set of all objects we have seen</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_objs_seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">obj</span><span class="p">)</span>
