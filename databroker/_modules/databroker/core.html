@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b8.post17+gf5a63cd documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b8.post24+gd5d81f4 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b8.post17+gf5a63cd
+                1.0.0b8.post24+gd5d81f4
               </div>
             
           
@@ -236,10 +236,22 @@
     <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">popitem</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -250,6 +262,13 @@
         <span class="c1"># mutates any internally nested dicts there is no spooky action at a</span>
         <span class="c1"># distance.</span>
         <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
+        <span class="c1"># Without this, copy.deepcopy(Document(...)) fails because deepcopy</span>
+        <span class="c1"># creates a new, empty Document instance and then tries to add items to</span>
+        <span class="c1"># it.</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
+                              <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
 
     <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
