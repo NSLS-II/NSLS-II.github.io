@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.plans &mdash; bluesky 1.6.0rc4.post48+gdc6a3a9 documentation</title>
+  <title>bluesky.plans &mdash; bluesky 1.6.0rc4.post54+g8696340 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc4.post48+gdc6a3a9',
+              VERSION:'1.6.0rc4.post54+g8696340',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc4.post48+gdc6a3a9
+                1.6.0rc4.post54+g8696340
               </div>
             
           
@@ -199,7 +199,7 @@
   <h1>Source code for bluesky.plans</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span><span class="p">,</span> <span class="n">zip_longest</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span>
@@ -1119,9 +1119,27 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="c1"># Ensure that the user-defined per-step has the expected signature.</span>
         <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">per_step</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">_verify_1d_step</span><span class="p">(</span><span class="n">sig</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">p_name</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="ow">in</span> <span class="n">zip_longest</span><span class="p">([</span><span class="s1">&#39;detectors&#39;</span><span class="p">,</span> <span class="s1">&#39;motor&#39;</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">],</span> <span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="c1"># this is one of the first 3 positional arguements, check that the name matches</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">p_name</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">False</span>
+                <span class="c1"># it is any extra arguements, check that they do not have</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">is</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_KEYWORD</span> <span class="ow">or</span> <span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">is</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_KEYWORD</span><span class="p">:</span>
+                        <span class="k">continue</span>
+                    <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">default</span> <span class="ow">is</span> <span class="n">p</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
         <span class="k">if</span> <span class="n">sig</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">bps</span><span class="o">.</span><span class="n">one_nd_step</span><span class="p">):</span>
             <span class="k">pass</span>
-        <span class="k">elif</span> <span class="n">sig</span> <span class="o">==</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">bps</span><span class="o">.</span><span class="n">one_1d_step</span><span class="p">):</span>
+        <span class="k">elif</span> <span class="n">_verify_1d_step</span><span class="p">(</span><span class="n">sig</span><span class="p">):</span>
             <span class="c1"># Accept this signature for back-compat reasons (because</span>
             <span class="c1"># inner_product_scan was renamed scan).</span>
             <span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">cycler</span><span class="o">.</span><span class="n">keys</span><span class="p">))</span>
