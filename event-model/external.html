@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>External Assets &mdash; Bluesky Event Model 1.13.2.post24+g673d05a documentation</title>
+  <title>External Assets &mdash; Bluesky Event Model 1.13.2.post28+g01e88b4 documentation</title>
   
 
   
@@ -64,7 +64,7 @@
             
             
               <div class="version">
-                1.13.2.post24+g673d05a
+                1.13.2.post28+g01e88b4
               </div>
             
           
@@ -395,7 +395,21 @@ object, such as a <a class="reference external" href="https://cachetools.readthe
 <a class="reference external" href="https://cachetools.readthedocs.io/en/stable/index.html#cachetools.LFUCache" title="(in cachetools v4.0.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">cachetools.LFUCache</span></code></a>, to receive a prepopulated cache, or to share
 caches between Filler instances. This is an implementation detail left entirely
 up to the application. See <a class="reference internal" href="api.html#event_model.Filler" title="event_model.Filler"><code class="xref py py-class docutils literal notranslate"><span class="pre">Filler</span></code></a> for details on cache
-injection.</p>
+injection. Here is an example where two Fillers share a global LRU cache:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">event_model</span>
+<span class="kn">import</span> <span class="nn">cachetools</span>
+
+<span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{</span><span class="o">...</span><span class="p">}</span>  <span class="c1"># or use databroker.core.discover_handlers()</span>
+
+<span class="n">handler_cache</span> <span class="o">=</span> <span class="n">cachetools</span><span class="o">.</span><span class="n">LRUCache</span><span class="p">(</span><span class="mi">32</span><span class="p">)</span>
+<span class="n">f1</span> <span class="o">=</span> <span class="n">Filler</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">,</span> <span class="n">handler_cache</span><span class="o">=</span><span class="n">handler_cache</span><span class="p">)</span>
+<span class="n">f2</span> <span class="o">=</span> <span class="n">Filler</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">,</span> <span class="n">handler_cache</span><span class="o">=</span><span class="n">handler_cache</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If both fillers are asked for the same Resource, they can share the same
+handler instance and any system resources cached therein. When the handler is
+evicted from the LRUCache, the Filler will recover gracefully: an instance will
+be recreated on demand and put back into the cache.</p>
 <p>When streaming data from multiple runs, it is convenient to use the
 <a class="reference internal" href="api.html#event_model.RunRouter" title="event_model.RunRouter"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunRouter</span></code></a> to manage Filler creation and disposal.
 It accepts a <code class="docutils literal notranslate"><span class="pre">handler_registry</span></code> and other optional Filler-related arguments.
