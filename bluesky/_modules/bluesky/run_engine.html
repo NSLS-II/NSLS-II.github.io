@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc4.post54+g8696340 documentation</title>
+  <title>bluesky.run_engine &mdash; bluesky 1.6.0rc4.post77+gf2a5833 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc4.post54+g8696340',
+              VERSION:'1.6.0rc4.post77+gf2a5833',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc4.post54+g8696340
+                1.6.0rc4.post77+gf2a5833
               </div>
             
           
@@ -236,7 +236,7 @@
                     <span class="n">RunEngineInterrupted</span><span class="p">,</span> <span class="n">IllegalMessageSequence</span><span class="p">,</span>
                     <span class="n">FailedPause</span><span class="p">,</span> <span class="n">FailedStatus</span><span class="p">,</span> <span class="n">InvalidCommand</span><span class="p">,</span>
                     <span class="n">PlanHalt</span><span class="p">,</span> <span class="n">Msg</span><span class="p">,</span> <span class="n">ensure_generator</span><span class="p">,</span> <span class="n">single_gen</span><span class="p">,</span>
-                    <span class="n">default_during_task</span><span class="p">)</span>
+                    <span class="n">DefaultDuringTask</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">_RunEnginePanic</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
@@ -398,12 +398,13 @@
 <span class="sd">        Expected signature: f(md)</span>
 <span class="sd">        Expected return: updated scan_id value</span>
 
-<span class="sd">    during_task : callable, optional</span>
-<span class="sd">        Function to be run to block the main thread during `RE.__call__`</span>
+<span class="sd">    during_task : reference to an object of class DuringTask, optional</span>
+<span class="sd">        Class methods: ``block()`` to be run to block</span>
+<span class="sd">        the main thread during `RE.__call__`</span>
 
-<span class="sd">        The required signature is ::</span>
+<span class="sd">        The required signatures for the class methods ::</span>
 
-<span class="sd">              def blocking_func(ev: Threading.Event) -&gt; None:</span>
+<span class="sd">              def block(ev: Threading.Event) -&gt; None:</span>
 <span class="sd">                  &quot;Returns when ev is set&quot;</span>
 
 <span class="sd">        The default value handles the cases of:</span>
@@ -492,13 +493,12 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preprocessors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">context_managers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">md_validator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">scan_id_source</span><span class="o">=</span><span class="n">default_scan_id_source</span><span class="p">,</span>
-                 <span class="n">during_task</span><span class="o">=</span><span class="n">default_during_task</span><span class="p">):</span>
+                 <span class="n">during_task</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">loop</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">loop</span> <span class="o">=</span> <span class="n">get_bluesky_event_loop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_th</span> <span class="o">=</span> <span class="n">_ensure_event_loop_running</span><span class="p">(</span><span class="n">loop</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_state_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_loop</span> <span class="o">=</span> <span class="n">loop</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span> <span class="o">=</span> <span class="n">during_task</span>
 
         <span class="c1"># When set, RunEngine.__call__ should stop blocking.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
@@ -543,6 +543,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">waiting_hook</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">record_interruptions</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pause_msg</span> <span class="o">=</span> <span class="n">PAUSE_MSG</span>
+
+        <span class="k">if</span> <span class="n">during_task</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">during_task</span> <span class="o">=</span> <span class="n">DefaultDuringTask</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span> <span class="o">=</span> <span class="n">during_task</span>
 
         <span class="c1"># The RunEngine keeps track of a *lot* of state.</span>
         <span class="c1"># All flags and caches are defined here with a comment. Good luck.</span>
@@ -1072,7 +1076,7 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Block until plan is complete or exception is raised.</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_during_task</span><span class="o">.</span><span class="n">block</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blocking_event</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
                     <span class="kn">import</span> <span class="nn">ctypes</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_interrupted</span> <span class="o">=</span> <span class="kc">True</span>

@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.utils &mdash; bluesky 1.6.0rc4.post54+g8696340 documentation</title>
+  <title>bluesky.utils &mdash; bluesky 1.6.0rc4.post77+gf2a5833 documentation</title>
   
 
   
@@ -23,7 +23,7 @@
       <script type="text/javascript">
           var DOCUMENTATION_OPTIONS = {
               URL_ROOT:'../../',
-              VERSION:'1.6.0rc4.post54+g8696340',
+              VERSION:'1.6.0rc4.post77+gf2a5833',
               LANGUAGE:'None',
               COLLAPSE_INDEX:false,
               FILE_SUFFIX:'.html',
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                1.6.0rc4.post54+g8696340
+                1.6.0rc4.post77+gf2a5833
               </div>
             
           
@@ -1536,148 +1536,175 @@
 <span class="n">_qapp</span> <span class="o">=</span> <span class="kc">None</span>
 
 
-<span class="k">def</span> <span class="nf">default_during_task</span><span class="p">(</span><span class="n">blocking_event</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The default setting for the RunEngine&#39;s during_task parameter.</span>
+<span class="k">class</span> <span class="nc">DuringTask</span><span class="p">:</span>
 
-<span class="sd">    This makes it possible for plots that use matplotlib&#39;s Qt backend to update</span>
-<span class="sd">    live during data acquisition.</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
 
-<span class="sd">    It solves the problem that Qt must be run from the main thread.</span>
-<span class="sd">    If matplotlib and a known Qt binding are already imported, run the</span>
-<span class="sd">    matplotlib qApp until the task completes. If not, there is no need to</span>
-<span class="sd">    handle qApp: just wait on the task.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">global</span> <span class="n">_qapp</span>
-    <span class="k">if</span> <span class="s1">&#39;matplotlib&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
-        <span class="c1"># We are not using matplotlib + Qt. Just wait on the Event.</span>
+    <span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blocking_event</span><span class="p">):</span>
         <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-    <span class="c1"># Figure out if we are using matplotlib with which backend</span>
-    <span class="c1"># without importing anything that is not already imported.</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="kn">import</span> <span class="nn">matplotlib</span>
-        <span class="n">backend</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="c1"># if with a Qt backend, do the scary thing</span>
-        <span class="k">if</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="kn">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span>
-            <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">app</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">_qapp</span> <span class="o">=</span> <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="p">([</span><span class="sa">b</span><span class="s1">&#39;bluesky&#39;</span><span class="p">])</span>
-            <span class="k">assert</span> <span class="n">app</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-            <span class="n">event_loop</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QEventLoop</span><span class="p">()</span>
 
-            <span class="k">def</span> <span class="nf">start_killer_thread</span><span class="p">():</span>
-                <span class="k">def</span> <span class="nf">exit_loop</span><span class="p">():</span>
-                    <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-                    <span class="c1"># If the above wait ends quickly, we need to avoid the race</span>
-                    <span class="c1"># condition where this thread might try to exit the qApp</span>
-                    <span class="c1"># before it even starts.  Therefore, we use QTimer, below,</span>
-                    <span class="c1"># which will not start running until the qApp event loop is</span>
-                    <span class="c1"># running.</span>
-                    <span class="n">event_loop</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
 
-                <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">exit_loop</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+<span class="k">class</span> <span class="nc">DefaultDuringTask</span><span class="p">(</span><span class="n">DuringTask</span><span class="p">):</span>
 
-            <span class="c1"># https://www.riverbankcomputing.com/pipermail/pyqt/2015-March/035674.html</span>
-            <span class="c1"># adapted from code at</span>
-            <span class="c1"># https://bitbucket.org/tortoisehg/thg/commits/550e1df5fbad</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;posix&#39;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="s1">&#39;set_wakeup_fd&#39;</span><span class="p">):</span>
-                <span class="c1"># Wake up Python interpreter via pipe so that SIGINT</span>
-                <span class="c1"># can be handled immediately.</span>
-                <span class="c1"># (http://qt-project.org/doc/qt-4.8/unix-signals.html)</span>
-                <span class="c1"># Updated docs:</span>
-                <span class="c1"># https://doc.qt.io/qt-5/unix-signals.html</span>
-                <span class="kn">import</span> <span class="nn">fcntl</span>
-                <span class="n">rfd</span><span class="p">,</span> <span class="n">wfd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">pipe</span><span class="p">()</span>
-                <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="p">(</span><span class="n">rfd</span><span class="p">,</span> <span class="n">wfd</span><span class="p">):</span>
-                    <span class="n">flags</span> <span class="o">=</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_GETFL</span><span class="p">)</span>
-                    <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_SETFL</span><span class="p">,</span> <span class="n">flags</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span><span class="p">)</span>
-                <span class="n">wakeupsn</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QSocketNotifier</span><span class="p">(</span><span class="n">rfd</span><span class="p">,</span>
-                                                  <span class="n">QtCore</span><span class="o">.</span><span class="n">QSocketNotifier</span><span class="o">.</span><span class="n">Read</span><span class="p">)</span>
-                <span class="n">origwakeupfd</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">set_wakeup_fd</span><span class="p">(</span><span class="n">wfd</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize backend. Currently only the Qt backend is supported. The function</span>
+<span class="sd">        is initializing the &#39;teleporter&#39; if Qt backend is used.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;matplotlib&#39;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">matplotlib</span>
+            <span class="n">backend</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
+                <span class="kn">from</span> <span class="nn">.callbacks.mpl_plotting</span> <span class="kn">import</span> <span class="n">initialize_qt_teleporter</span>
+                <span class="n">initialize_qt_teleporter</span><span class="p">()</span>
 
-                <span class="k">def</span> <span class="nf">cleanup</span><span class="p">():</span>
-                    <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-                    <span class="n">rfd</span> <span class="o">=</span> <span class="n">wakeupsn</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
-                    <span class="n">wfd</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">set_wakeup_fd</span><span class="p">(</span><span class="n">origwakeupfd</span><span class="p">)</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">rfd</span><span class="p">))</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">wfd</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blocking_event</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The default setting for the RunEngine&#39;s during_task parameter.</span>
 
-                <span class="k">def</span> <span class="nf">handleWakeup</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
-                    <span class="c1"># here Python signal handler will be invoked</span>
-                    <span class="c1"># this book-keeping is to drain the pipe</span>
-                    <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-                    <span class="n">rfd</span> <span class="o">=</span> <span class="n">wakeupsn</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">os</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">rfd</span><span class="p">),</span> <span class="mi">4096</span><span class="p">)</span>
-                    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">inst</span><span class="p">:</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;failed to read wakeup fd: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">inst</span><span class="p">)</span>
+<span class="sd">        This makes it possible for plots that use matplotlib&#39;s Qt backend to update</span>
+<span class="sd">        live during data acquisition.</span>
 
-                    <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-
-                <span class="n">wakeupsn</span><span class="o">.</span><span class="n">activated</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handleWakeup</span><span class="p">)</span>
-
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># On Windows, non-blocking anonymous pipe or socket is</span>
-                <span class="c1"># not available.</span>
-
-                <span class="k">def</span> <span class="nf">null</span><span class="p">():</span>
-                    <span class="o">...</span>
-
-                <span class="c1"># we need to &#39;kick&#39; the python interpreter so it sees</span>
-                <span class="c1"># system signals</span>
-                <span class="c1"># https://stackoverflow.com/a/4939113/380231</span>
-                <span class="n">kick_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
-                <span class="n">kick_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">null</span><span class="p">)</span>
-                <span class="n">kick_timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
-
-                <span class="n">cleanup</span> <span class="o">=</span> <span class="n">kick_timer</span><span class="o">.</span><span class="n">stop</span>
-
-            <span class="c1"># we also need to make sure that the qApp never sees</span>
-            <span class="c1"># exceptions raised by python inside of a c++ callback (as</span>
-            <span class="c1"># it will segfault its self because due to the way the</span>
-            <span class="c1"># code is called there is no clear way to propgate that</span>
-            <span class="c1"># back to the python code.</span>
-            <span class="n">vals</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-
-            <span class="n">old_sys_handler</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span>
-
-            <span class="k">def</span> <span class="nf">my_exception_hook</span><span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
-                <span class="k">nonlocal</span> <span class="n">vals</span>
-                <span class="n">vals</span> <span class="o">=</span> <span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">)</span>
-                <span class="n">event_loop</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
-                <span class="n">old_sys_handler</span><span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">)</span>
-
-            <span class="c1"># this kill the Qt event loop when the plan is finished</span>
-            <span class="n">killer_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
-            <span class="n">killer_timer</span><span class="o">.</span><span class="n">setSingleShot</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">killer_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">start_killer_thread</span><span class="p">)</span>
-            <span class="n">killer_timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
-
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span> <span class="o">=</span> <span class="n">my_exception_hook</span>
-                <span class="n">event_loop</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
-                <span class="c1"># make sure any pending signals are processed</span>
-                <span class="n">event_loop</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-            <span class="k">finally</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">cleanup</span><span class="p">()</span>
-                <span class="k">finally</span><span class="p">:</span>
-                    <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span> <span class="o">=</span> <span class="n">old_sys_handler</span>
-        <span class="k">elif</span> <span class="s1">&#39;ipympl&#39;</span> <span class="ow">in</span> <span class="n">backend</span> <span class="ow">or</span> <span class="s1">&#39;nbagg&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
-            <span class="n">Gcf</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">_pylab_helpers</span><span class="o">.</span><span class="n">Gcf</span>
-            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="n">done</span> <span class="o">=</span> <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">f_mgr</span> <span class="ow">in</span> <span class="n">Gcf</span><span class="o">.</span><span class="n">get_all_fig_managers</span><span class="p">():</span>
-                    <span class="k">if</span> <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">stale</span><span class="p">:</span>
-                        <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
-                    <span class="k">return</span>
-        <span class="k">else</span><span class="p">:</span>
+<span class="sd">        It solves the problem that Qt must be run from the main thread.</span>
+<span class="sd">        If matplotlib and a known Qt binding are already imported, run the</span>
+<span class="sd">        matplotlib qApp until the task completes. If not, there is no need to</span>
+<span class="sd">        handle qApp: just wait on the task.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">global</span> <span class="n">_qapp</span>
+        <span class="k">if</span> <span class="s1">&#39;matplotlib&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
             <span class="c1"># We are not using matplotlib + Qt. Just wait on the Event.</span>
             <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="c1"># Figure out if we are using matplotlib with which backend</span>
+        <span class="c1"># without importing anything that is not already imported.</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">matplotlib</span>
+            <span class="n">backend</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">get_backend</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="c1"># if with a Qt backend, do the scary thing</span>
+            <span class="k">if</span> <span class="s1">&#39;qt&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
+
+                <span class="kn">from</span> <span class="nn">matplotlib.backends.qt_compat</span> <span class="kn">import</span> <span class="n">QtCore</span><span class="p">,</span> <span class="n">QtWidgets</span>
+                <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="o">.</span><span class="n">instance</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">app</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">_qapp</span> <span class="o">=</span> <span class="n">app</span> <span class="o">=</span> <span class="n">QtWidgets</span><span class="o">.</span><span class="n">QApplication</span><span class="p">([</span><span class="sa">b</span><span class="s1">&#39;bluesky&#39;</span><span class="p">])</span>
+                <span class="k">assert</span> <span class="n">app</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="n">event_loop</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QEventLoop</span><span class="p">()</span>
+
+                <span class="k">def</span> <span class="nf">start_killer_thread</span><span class="p">():</span>
+                    <span class="k">def</span> <span class="nf">exit_loop</span><span class="p">():</span>
+                        <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                        <span class="c1"># If the above wait ends quickly, we need to avoid the race</span>
+                        <span class="c1"># condition where this thread might try to exit the qApp</span>
+                        <span class="c1"># before it even starts.  Therefore, we use QTimer, below,</span>
+                        <span class="c1"># which will not start running until the qApp event loop is</span>
+                        <span class="c1"># running.</span>
+                        <span class="n">event_loop</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+
+                    <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">exit_loop</span><span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+                <span class="c1"># https://www.riverbankcomputing.com/pipermail/pyqt/2015-March/035674.html</span>
+                <span class="c1"># adapted from code at</span>
+                <span class="c1"># https://bitbucket.org/tortoisehg/thg/commits/550e1df5fbad</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;posix&#39;</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="s1">&#39;set_wakeup_fd&#39;</span><span class="p">):</span>
+                    <span class="c1"># Wake up Python interpreter via pipe so that SIGINT</span>
+                    <span class="c1"># can be handled immediately.</span>
+                    <span class="c1"># (http://qt-project.org/doc/qt-4.8/unix-signals.html)</span>
+                    <span class="c1"># Updated docs:</span>
+                    <span class="c1"># https://doc.qt.io/qt-5/unix-signals.html</span>
+                    <span class="kn">import</span> <span class="nn">fcntl</span>
+                    <span class="n">rfd</span><span class="p">,</span> <span class="n">wfd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">pipe</span><span class="p">()</span>
+                    <span class="k">for</span> <span class="n">fd</span> <span class="ow">in</span> <span class="p">(</span><span class="n">rfd</span><span class="p">,</span> <span class="n">wfd</span><span class="p">):</span>
+                        <span class="n">flags</span> <span class="o">=</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_GETFL</span><span class="p">)</span>
+                        <span class="n">fcntl</span><span class="o">.</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">fcntl</span><span class="o">.</span><span class="n">F_SETFL</span><span class="p">,</span> <span class="n">flags</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">O_NONBLOCK</span><span class="p">)</span>
+                    <span class="n">wakeupsn</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QSocketNotifier</span><span class="p">(</span><span class="n">rfd</span><span class="p">,</span>
+                                                      <span class="n">QtCore</span><span class="o">.</span><span class="n">QSocketNotifier</span><span class="o">.</span><span class="n">Read</span><span class="p">)</span>
+                    <span class="n">origwakeupfd</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">set_wakeup_fd</span><span class="p">(</span><span class="n">wfd</span><span class="p">)</span>
+
+                    <span class="k">def</span> <span class="nf">cleanup</span><span class="p">():</span>
+                        <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="n">rfd</span> <span class="o">=</span> <span class="n">wakeupsn</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
+                        <span class="n">wfd</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">set_wakeup_fd</span><span class="p">(</span><span class="n">origwakeupfd</span><span class="p">)</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">rfd</span><span class="p">))</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">wfd</span><span class="p">)</span>
+
+                    <span class="k">def</span> <span class="nf">handleWakeup</span><span class="p">(</span><span class="n">inp</span><span class="p">):</span>
+                        <span class="c1"># here Python signal handler will be invoked</span>
+                        <span class="c1"># this book-keeping is to drain the pipe</span>
+                        <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+                        <span class="n">rfd</span> <span class="o">=</span> <span class="n">wakeupsn</span><span class="o">.</span><span class="n">socket</span><span class="p">()</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">rfd</span><span class="p">),</span> <span class="mi">4096</span><span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">inst</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;failed to read wakeup fd: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">inst</span><span class="p">)</span>
+
+                        <span class="n">wakeupsn</span><span class="o">.</span><span class="n">setEnabled</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+                    <span class="n">wakeupsn</span><span class="o">.</span><span class="n">activated</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">handleWakeup</span><span class="p">)</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># On Windows, non-blocking anonymous pipe or socket is</span>
+                    <span class="c1"># not available.</span>
+
+                    <span class="k">def</span> <span class="nf">null</span><span class="p">():</span>
+                        <span class="o">...</span>
+
+                    <span class="c1"># we need to &#39;kick&#39; the python interpreter so it sees</span>
+                    <span class="c1"># system signals</span>
+                    <span class="c1"># https://stackoverflow.com/a/4939113/380231</span>
+                    <span class="n">kick_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+                    <span class="n">kick_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">null</span><span class="p">)</span>
+                    <span class="n">kick_timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+
+                    <span class="n">cleanup</span> <span class="o">=</span> <span class="n">kick_timer</span><span class="o">.</span><span class="n">stop</span>
+
+                <span class="c1"># we also need to make sure that the qApp never sees</span>
+                <span class="c1"># exceptions raised by python inside of a c++ callback (as</span>
+                <span class="c1"># it will segfault itself because due to the way the</span>
+                <span class="c1"># code is called there is no clear way to propagate that</span>
+                <span class="c1"># back to the python code.</span>
+                <span class="n">vals</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+                <span class="n">old_sys_handler</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span>
+
+                <span class="k">def</span> <span class="nf">my_exception_hook</span><span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+                    <span class="k">nonlocal</span> <span class="n">vals</span>
+                    <span class="n">vals</span> <span class="o">=</span> <span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">)</span>
+                    <span class="n">event_loop</span><span class="o">.</span><span class="n">exit</span><span class="p">()</span>
+                    <span class="n">old_sys_handler</span><span class="p">(</span><span class="n">exctype</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">)</span>
+
+                <span class="c1"># this kill the Qt event loop when the plan is finished</span>
+                <span class="n">killer_timer</span> <span class="o">=</span> <span class="n">QtCore</span><span class="o">.</span><span class="n">QTimer</span><span class="p">()</span>
+                <span class="n">killer_timer</span><span class="o">.</span><span class="n">setSingleShot</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">killer_timer</span><span class="o">.</span><span class="n">timeout</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">start_killer_thread</span><span class="p">)</span>
+                <span class="n">killer_timer</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span> <span class="o">=</span> <span class="n">my_exception_hook</span>
+                    <span class="n">event_loop</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
+                    <span class="c1"># make sure any pending signals are processed</span>
+                    <span class="n">event_loop</span><span class="o">.</span><span class="n">processEvents</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">vals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">finally</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">cleanup</span><span class="p">()</span>
+                    <span class="k">finally</span><span class="p">:</span>
+                        <span class="n">sys</span><span class="o">.</span><span class="n">excepthook</span> <span class="o">=</span> <span class="n">old_sys_handler</span>
+            <span class="k">elif</span> <span class="s1">&#39;ipympl&#39;</span> <span class="ow">in</span> <span class="n">backend</span> <span class="ow">or</span> <span class="s1">&#39;nbagg&#39;</span> <span class="ow">in</span> <span class="n">backend</span><span class="p">:</span>
+                <span class="n">Gcf</span> <span class="o">=</span> <span class="n">matplotlib</span><span class="o">.</span><span class="n">_pylab_helpers</span><span class="o">.</span><span class="n">Gcf</span>
+                <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">done</span> <span class="o">=</span> <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="o">.</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">f_mgr</span> <span class="ow">in</span> <span class="n">Gcf</span><span class="o">.</span><span class="n">get_all_fig_managers</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">stale</span><span class="p">:</span>
+                            <span class="n">f_mgr</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                        <span class="k">return</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># We are not using matplotlib + Qt. Just wait on the Event.</span>
+                <span class="n">blocking_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+
+<span class="n">default_during_task</span> <span class="o">=</span> <span class="n">DefaultDuringTask</span><span class="p">()</span>
 
 
 <span class="k">def</span> <span class="nf">_rearrange_into_parallel_dicts</span><span class="p">(</span><span class="n">readings</span><span class="p">):</span>
