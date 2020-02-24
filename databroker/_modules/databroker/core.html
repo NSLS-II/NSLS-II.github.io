@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b9 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b9.post10+gd9aa179 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b9
+                1.0.0b9.post10+gd9aa179
               </div>
             
           
@@ -228,31 +228,43 @@
 <span class="sd">    consumers that expect an object that satisfies isinstance(obj, dict).</span>
 <span class="sd">    This implementation detail may change in the future.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
-    <span class="n">_NOT_MUTABLE_MSG</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="s2">&quot;Documents are not mutable. Call the method to_dict() to make a &quot;</span>
-        <span class="s2">&quot;fully independent and mutable copy.&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;__not_a_real_dict&quot;</span><span class="p">,)</span>
 
-    <span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># This lets pickle recognize that this is not a literal dict and that</span>
+        <span class="c1"># it should respect its custom __setstate__.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__not_a_real_dict</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">popitem</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="nb">dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__not_a_real_dict</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__readonly</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span>
+            <span class="s2">&quot;Documents are not mutable. Call the method to_dict() to make a &quot;</span>
+            <span class="s2">&quot;fully independent and mutable deep copy.&quot;</span>
+        <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">setdefault</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__not_a_real_dict</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="c1"># This path is necessary to support un-pickling.</span>
+            <span class="k">return</span> <span class="nb">dict</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__readonly</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="n">NotMutable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_NOT_MUTABLE_MSG</span><span class="p">)</span>
+    <span class="fm">__delitem__</span> <span class="o">=</span> <span class="n">__readonly</span>
+    <span class="n">pop</span> <span class="o">=</span> <span class="n">__readonly</span>
+    <span class="n">popitem</span> <span class="o">=</span> <span class="n">__readonly</span>
+    <span class="n">clear</span> <span class="o">=</span> <span class="n">__readonly</span>
+    <span class="n">setdefault</span> <span class="o">=</span> <span class="n">__readonly</span>
+    <span class="n">update</span> <span class="o">=</span> <span class="n">__readonly</span>
 
     <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -267,17 +279,18 @@
         <span class="c1"># Without this, copy.deepcopy(Document(...)) fails because deepcopy</span>
         <span class="c1"># creates a new, empty Document instance and then tries to add items to</span>
         <span class="c1"># it.</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span>
-                              <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
 
     <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
 
 <span class="c1"># We must use dask&#39;s registration mechanism to tell it to treat Document</span>
 <span class="c1"># specially. Dask&#39;s tokenization dispatch mechanism discovers that Docuemnt is</span>
 <span class="c1"># a dict subclass and treats it as a dict, ignoring its __dask_tokenize__</span>
 <span class="c1"># method. To force it to respect our cutsom tokenization, we must explicitly</span>
 <span class="c1"># register it.</span>
+
 
 <span class="nd">@normalize_token</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">Document</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">tokenize_document</span><span class="p">(</span><span class="n">instance</span><span class="p">):</span>
