@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b9.post10+gd9aa179 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b9.post13+g4c49845 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b9.post10+gd9aa179
+                1.0.0b9.post13+g4c49845
               </div>
             
           
@@ -236,6 +236,31 @@
         <span class="c1"># This lets pickle recognize that this is not a literal dict and that</span>
         <span class="c1"># it should respect its custom __setstate__.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__not_a_real_dict</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># same as dict, but wrapped in the class name so the eval round-trips</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{self.__class__.__name__}</span><span class="s2">({dict(self)})&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_repr_pretty_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">cycle</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        A multi-line but eval-able text repr with readable indentation</span>
+
+<span class="sd">        This hooks into IPython/Jupyter&#39;s display mechanism</span>
+<span class="sd">        This is *not* invoked by print() or repr(), but it is invoked by</span>
+<span class="sd">        IPython.display.display() which is called in this common scenario::</span>
+
+<span class="sd">            In [1]: doc = Document(...)</span>
+<span class="sd">            In [2]: doc</span>
+<span class="sd">            &lt;pretty representation will show here&gt;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Note: IPython&#39;s pretty-prettying mechanism is custom and complex.</span>
+        <span class="c1"># The `text` method used below is a direct and blunt way to engage it</span>
+        <span class="c1"># and seems widely used in the IPython code base. There are other</span>
+        <span class="c1"># specific mechanisms for displaying collections like dicts, but they</span>
+        <span class="c1"># can *truncate* which I think we want to avoid and they would require</span>
+        <span class="c1"># more investment to understand how to use.</span>
+        <span class="kn">from</span> <span class="nn">pprint</span> <span class="kn">import</span> <span class="n">pformat</span>
+        <span class="k">return</span> <span class="n">p</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{self.__class__.__name__}</span><span class="s2">({pformat(dict(self))})&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
