@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.13.3.post6+gbaf6803 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.13.3.post11+g0666907 documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                1.13.3.post6+gbaf6803
+                1.13.3.post11+g0666907
               </div>
             
           
@@ -1030,6 +1030,18 @@
         <span class="k">return</span> <span class="n">doc</span></div>
 
 
+<span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;The callback </span><span class="si">{callback!r}</span><span class="s2"> raised </span><span class="si">{err!r}</span><span class="s2"> when &quot;</span>
+    <span class="s2">&quot;RunRouter passed it a </span><span class="si">{name!r}</span><span class="s2"> document. This is &quot;</span>
+    <span class="s2">&quot;probably because in earlier releases the RunRouter &quot;</span>
+    <span class="s2">&quot;expected its factory functions to forward the &#39;start&#39; &quot;</span>
+    <span class="s2">&quot;document, but starting in event-model 1.14.0 the &quot;</span>
+    <span class="s2">&quot;RunRouter passes in the document, causing the &quot;</span>
+    <span class="s2">&quot;callback to receive it twice and potentially raise &quot;</span>
+    <span class="s2">&quot;an error. Update the factory function. In a future &quot;</span>
+    <span class="s2">&quot;release this warning will become an error.&quot;</span><span class="p">)</span>
+
+
 <div class="viewcode-block" id="RunRouter"><a class="viewcode-back" href="../api.html#event_model.RunRouter">[docs]</a><span class="k">class</span> <span class="nc">RunRouter</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Routes documents, by run, to callbacks it creates from factory functions.</span>
@@ -1057,16 +1069,17 @@
 
 <span class="sd">            callback(name, doc)</span>
 
-<span class="sd">        that will receive all subsequent documents from the run including the</span>
-<span class="sd">        RunStop document. All items in the second list should be &quot;subfactories&quot;</span>
-<span class="sd">        with the signature::</span>
+<span class="sd">        that will receive that RunStart document and all subsequent documents</span>
+<span class="sd">        from the run including the RunStop document. All items in the second</span>
+<span class="sd">        list should be &quot;subfactories&quot; with the signature::</span>
 
 <span class="sd">            subfactory(&#39;descriptor&#39;, descriptor_doc) -&gt; List[Callbacks]</span>
 
 <span class="sd">        These will receive each of the EventDescriptor documents for the run,</span>
 <span class="sd">        as they arrive. They must return one list, which may be empty,</span>
-<span class="sd">        containing callbacks that will receive all Events that reference that</span>
-<span class="sd">        EventDescriptor and finally the RunStop document for the run.</span>
+<span class="sd">        containing callbacks that will receive the RunStart document, that</span>
+<span class="sd">        EventDescriptor, all Events that reference that EventDescriptor and</span>
+<span class="sd">        finally the RunStop document for the run.</span>
 <span class="sd">    handler_registry : dict, optional</span>
 <span class="sd">        This is passed to the Filler or whatever class is given in the</span>
 <span class="sd">        filler_class parametr below.</span>
@@ -1164,6 +1177,13 @@
         <span class="c1"># because Fillers do nothing with &#39;start&#39;.</span>
         <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">:</span>
             <span class="n">callbacks</span><span class="p">,</span> <span class="n">subfactories</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subfactories</span><span class="p">)</span></div>
 
@@ -1181,6 +1201,19 @@
             <span class="n">callbacks</span> <span class="o">=</span> <span class="n">subfactory</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+                    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                        <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
         <span class="c1"># Keep track of the RunStart UID -&gt; [EventDescriptor UIDs] mapping for</span>
         <span class="c1"># purposes of cleanup in stop().</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
