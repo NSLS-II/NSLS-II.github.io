@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.v2 &mdash; databroker 1.0.0b9.post26+g45ece09 documentation</title>
+  <title>databroker.v2 &mdash; databroker 1.0.0b9.post32+g5067d26 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b9.post26+g45ece09
+                1.0.0b9.post32+g5067d26
               </div>
             
           
@@ -284,15 +284,25 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="kn">from</span> <span class="nn">databroker._drivers.msgpack</span> <span class="kn">import</span> <span class="n">BlueskyMsgpackCatalog</span>
     <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="c1"># Let ophyd be an optional dependency.</span>
-    <span class="c1"># If it is not installed, then we clearly do not need its handler for this</span>
-    <span class="c1"># temporary data store.</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="kn">import</span> <span class="nn">ophyd.sim</span>
-    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-        <span class="k">pass</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">handler_registry</span><span class="p">[</span><span class="s1">&#39;NPY_SEQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ophyd</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">NumpySeqHandler</span>
+
+    <span class="kn">from</span> <span class="nn">databroker.core</span> <span class="kn">import</span> <span class="n">discover_handlers</span>
+    <span class="n">handler_registry</span> <span class="o">=</span> <span class="n">discover_handlers</span><span class="p">()</span>
+
+    <span class="c1"># The temp databroker is often (but not exclusively) used in the context of</span>
+    <span class="c1"># a demo or tutorial with the simulated devices in ophyd.sim, some of which</span>
+    <span class="c1"># require a handler registered for the spec &#39;NPY_SEQ&#39;.</span>
+    <span class="c1"># With ophyd &gt;= 1.4.0 this handler will be discovered in the normal way</span>
+    <span class="c1"># via discover_handlers() above. The following special case is here to</span>
+    <span class="c1"># support older versions of ophyd, which do not declare a</span>
+    <span class="c1"># &#39;databroker.handlers&#39; entrypoint.</span>
+    <span class="k">if</span> <span class="s1">&#39;NPY_SEQ&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">handler_registry</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">ophyd.sim</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">handler_registry</span><span class="p">[</span><span class="s1">&#39;NPY_SEQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ophyd</span><span class="o">.</span><span class="n">sim</span><span class="o">.</span><span class="n">NumpySeqHandler</span>
+
     <span class="n">tmp_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
     <span class="n">tmp_data_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmp_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s1">&#39;data&#39;</span>
     <span class="n">catalog</span> <span class="o">=</span> <span class="n">BlueskyMsgpackCatalog</span><span class="p">(</span>
