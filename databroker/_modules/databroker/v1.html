@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.v1 &mdash; databroker 1.0.0b9.post37+g2259499 documentation</title>
+  <title>databroker.v1 &mdash; databroker 1.0.0b9.post56+g7b86231 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b9.post37+g2259499
+                1.0.0b9.post56+g7b86231
               </div>
             
           
@@ -1730,6 +1730,11 @@
     <span class="k">return</span> <span class="s1">&#39;</span><span class="si">{ago}</span><span class="s1"> (</span><span class="si">{date}</span><span class="s1">)&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ago</span><span class="o">=</span><span class="n">ago</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">dt</span><span class="p">)</span>
 
 
+<span class="k">class</span> <span class="nc">InvalidConfig</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Raised when the configuration file is invalid.&quot;&quot;&quot;</span>
+    <span class="o">...</span>
+
+
 <span class="k">def</span> <span class="nf">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">auto_register</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Build (some version of) a Broker instance from a v0 configuration dict.</span>
@@ -1751,6 +1756,8 @@
         <span class="k">return</span> <span class="n">v0</span><span class="o">.</span><span class="n">Broker</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">auto_register</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">catalog</span> <span class="o">=</span> <span class="n">_from_v0_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">auto_register</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">InvalidConfig</span><span class="p">:</span>
+        <span class="k">raise</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Failed to load config. Falling back to v0.&quot;</span>
@@ -1776,6 +1783,7 @@
     <span class="k">if</span> <span class="n">mds_class</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;MDS&#39;</span><span class="p">,</span> <span class="s1">&#39;MDSRO&#39;</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Unable to handle metadatastore.class </span><span class="si">{</span><span class="n">mds_class</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+
     <span class="n">assets_module</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;assets&#39;</span><span class="p">][</span><span class="s1">&#39;module&#39;</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">assets_module</span> <span class="o">!=</span> <span class="s1">&#39;databroker.assets.mongo&#39;</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
@@ -1785,17 +1793,14 @@
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Unable to handle assets.class </span><span class="si">{</span><span class="n">assets_class</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
 
+    <span class="c1"># Get the mongo databases.</span>
+    <span class="n">metadatastore_db</span> <span class="o">=</span> <span class="n">_get_mongo_database</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadatastore&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">])</span>
+    <span class="n">asset_registry_db</span> <span class="o">=</span> <span class="n">_get_mongo_database</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;assets&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">])</span>
+
     <span class="kn">from</span> <span class="nn">._drivers.mongo_normalized</span> <span class="kn">import</span> <span class="n">BlueskyMongoCatalog</span>
     <span class="kn">from</span> <span class="nn">.core</span> <span class="kn">import</span> <span class="n">discover_handlers</span>
 
-    <span class="n">host</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadatastore&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;host&#39;</span><span class="p">]</span>
-    <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadatastore&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
-    <span class="n">database_name</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;metadatastore&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;database&#39;</span><span class="p">]</span>
-    <span class="n">metadatastore_db</span> <span class="o">=</span> <span class="n">_get_mongo_client</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)[</span><span class="n">database_name</span><span class="p">]</span>
-    <span class="n">host</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;assets&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;host&#39;</span><span class="p">]</span>
-    <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;assets&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
-    <span class="n">database_name</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;assets&#39;</span><span class="p">][</span><span class="s1">&#39;config&#39;</span><span class="p">][</span><span class="s1">&#39;database&#39;</span><span class="p">]</span>
-    <span class="n">asset_registry_db</span> <span class="o">=</span> <span class="n">_get_mongo_client</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)[</span><span class="n">database_name</span><span class="p">]</span>
+    <span class="c1"># Update the handler registry.</span>
     <span class="n">handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="n">auto_register</span><span class="p">:</span>
         <span class="n">handler_registry</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">discover_handlers</span><span class="p">())</span>
@@ -1803,8 +1808,8 @@
     <span class="k">for</span> <span class="n">spec</span><span class="p">,</span> <span class="n">contents</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;handlers&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">dotted_object</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="n">contents</span><span class="p">[</span><span class="s1">&#39;module&#39;</span><span class="p">],</span> <span class="n">contents</span><span class="p">[</span><span class="s1">&#39;class&#39;</span><span class="p">]))</span>
         <span class="n">handler_registry</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="n">dotted_object</span>
-    <span class="n">root_map</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;root_map&#39;</span><span class="p">)</span>
 
+    <span class="n">root_map</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;root_map&#39;</span><span class="p">)</span>
     <span class="n">transforms</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transforms&#39;</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">BlueskyMongoCatalog</span><span class="p">(</span><span class="n">metadatastore_db</span><span class="p">,</span> <span class="n">asset_registry_db</span><span class="p">,</span>
@@ -1817,16 +1822,45 @@
 <span class="n">_mongo_clients</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># cache of pymongo.MongoClient instances</span>
 
 
-<span class="k">def</span> <span class="nf">_get_mongo_client</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_get_mongo_database</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Return a pymongo.MongoClient. Use a cache to make just one per address.</span>
+<span class="sd">    Return a MongoClient.database. Use a cache in order to reuse the</span>
+<span class="sd">    MongoClient.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="n">_mongo_clients</span><span class="p">[(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)]</span>
-    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-        <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
-        <span class="n">_mongo_clients</span><span class="p">[(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)]</span> <span class="o">=</span> <span class="n">client</span>
-    <span class="k">return</span> <span class="n">client</span>
+    <span class="c1"># Check that config contains either uri, or host/port, but not both.</span>
+    <span class="k">if</span> <span class="p">{</span><span class="s1">&#39;uri&#39;</span><span class="p">,</span> <span class="s1">&#39;host&#39;</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{</span><span class="s1">&#39;uri&#39;</span><span class="p">,</span> <span class="s1">&#39;port&#39;</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">InvalidConfig</span><span class="p">(</span>
+            <span class="s2">&quot;The config file must define either uri, or host/port, but not both.&quot;</span><span class="p">)</span>
+
+    <span class="n">uri</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;uri&#39;</span><span class="p">)</span>
+    <span class="n">database</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;database&#39;</span><span class="p">]</span>
+
+    <span class="c1"># If this statement is True than uri does not exist in the config.</span>
+    <span class="c1"># If the config has username and password, turn it into a uri.</span>
+    <span class="c1"># This is only here for backward compatibility.</span>
+    <span class="k">if</span> <span class="p">{</span><span class="s1">&#39;mongo_user&#39;</span><span class="p">,</span> <span class="s1">&#39;mongo_pwd&#39;</span><span class="p">,</span> <span class="s1">&#39;host&#39;</span><span class="p">,</span> <span class="s1">&#39;port&#39;</span><span class="p">}</span> <span class="o">&lt;=</span> <span class="nb">set</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+        <span class="n">uri</span> <span class="o">=</span> <span class="s1">&#39;mongodb://</span><span class="si">{0}</span><span class="s1">:</span><span class="si">{1}</span><span class="s1">@</span><span class="si">{2}</span><span class="s1">:</span><span class="si">{3}</span><span class="s1">/&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;mongo_user&#39;</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;mongo_pwd&#39;</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;host&#39;</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;port&#39;</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">uri</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">_mongo_clients</span><span class="p">[</span><span class="n">uri</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+            <span class="n">_mongo_clients</span><span class="p">[</span><span class="n">uri</span><span class="p">]</span> <span class="o">=</span> <span class="n">client</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">host</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;host&#39;</span><span class="p">)</span>
+        <span class="n">port</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;port&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">_mongo_clients</span><span class="p">[(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">pymongo</span><span class="o">.</span><span class="n">MongoClient</span><span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)</span>
+            <span class="n">_mongo_clients</span><span class="p">[(</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="p">)]</span> <span class="o">=</span> <span class="n">client</span>
+
+    <span class="k">return</span> <span class="n">client</span><span class="p">[</span><span class="n">database</span><span class="p">]</span>
 
 
 <span class="k">class</span> <span class="nc">_GetDocumentsRouter</span><span class="p">:</span>
