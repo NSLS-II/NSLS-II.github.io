@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.0b9.post32+g5067d26 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.0b9.post35+gcd0e272 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0b9.post32+g5067d26
+                1.0.0b9.post35+gcd0e272
               </div>
             
           
@@ -179,7 +179,6 @@
 <span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">tokenize</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.base</span>
 <span class="kn">import</span> <span class="nn">intake.catalog.local</span>
-<span class="kn">import</span> <span class="nn">errno</span>
 <span class="kn">import</span> <span class="nn">intake.container.base</span>
 <span class="kn">from</span> <span class="nn">intake.compat</span> <span class="kn">import</span> <span class="n">unpack_kwargs</span>
 <span class="kn">import</span> <span class="nn">msgpack</span>
@@ -205,7 +204,7 @@
     <span class="o">...</span>
 
 
-<span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
+<div class="viewcode-block" id="Document"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.Document">[docs]</a><span class="k">class</span> <span class="nc">Document</span><span class="p">(</span><span class="nb">dict</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Document is an immutable dict subclass.</span>
 
@@ -291,14 +290,14 @@
     <span class="n">setdefault</span> <span class="o">=</span> <span class="n">__readonly</span>
     <span class="n">update</span> <span class="o">=</span> <span class="n">__readonly</span>
 
-    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Document.to_dict"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.Document.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create a mutable deep copy.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Convert to dict and then make a deep copy to ensure that if the user</span>
         <span class="c1"># mutates any internally nested dicts there is no spooky action at a</span>
         <span class="c1"># distance.</span>
-        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span></div>
 
     <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">):</span>
         <span class="c1"># Without this, copy.deepcopy(Document(...)) fails because deepcopy</span>
@@ -307,7 +306,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">memo</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
 
     <span class="k">def</span> <span class="nf">__dask_tokenize__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
 
 
 <span class="c1"># We must use dask&#39;s registration mechanism to tell it to treat Document</span>
@@ -420,67 +419,6 @@
         <span class="k">return</span> <span class="n">OrderedDict</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">classname</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">tail</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bsize</span><span class="o">=</span><span class="mi">2048</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Returns a generator with the last n lines of a file.</span>
-
-<span class="sd">    Thanks to Martijn Pieters for this solution:</span>
-<span class="sd">    https://stackoverflow.com/a/12295054/6513183</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    filename : string</span>
-<span class="sd">    n: int</span>
-<span class="sd">        number of lines</span>
-<span class="sd">    bsize: int</span>
-<span class="sd">        seek step size</span>
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    line : generator</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="c1"># get newlines type, open in universal mode to find it</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">hfile</span><span class="o">.</span><span class="n">readline</span><span class="p">():</span>
-            <span class="k">return</span>  <span class="c1"># empty, no point</span>
-        <span class="n">sep</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">newlines</span>  <span class="c1"># After reading a line, python gives us this</span>
-    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sep</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s1">&#39;multiple newline types found, aborting&#39;</span>
-
-    <span class="c1"># find a suitable seek position in binary mode</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
-        <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_END</span><span class="p">)</span>
-        <span class="n">linecount</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">while</span> <span class="n">linecount</span> <span class="o">&lt;=</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="c1"># read at least n lines + 1 more; we need to skip a partial line later on</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="o">-</span><span class="n">bsize</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_CUR</span><span class="p">)</span>           <span class="c1"># go backwards</span>
-                <span class="n">linecount</span> <span class="o">+=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">bsize</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">sep</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>  <span class="c1"># count newlines</span>
-                <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="o">-</span><span class="n">bsize</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_CUR</span><span class="p">)</span>           <span class="c1"># go back again</span>
-            <span class="k">except</span> <span class="ne">IOError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">errno</span> <span class="o">==</span> <span class="n">errno</span><span class="o">.</span><span class="n">EINVAL</span><span class="p">:</span>
-                    <span class="c1"># Attempted to seek past the start, can&#39;t go further</span>
-                    <span class="n">bsize</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
-                    <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_SET</span><span class="p">)</span>
-                    <span class="n">pos</span> <span class="o">=</span> <span class="mi">0</span>
-                    <span class="n">linecount</span> <span class="o">+=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">bsize</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">sep</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
-                    <span class="k">break</span>
-                <span class="k">raise</span>  <span class="c1"># Some other I/O exception, re-raise</span>
-            <span class="n">pos</span> <span class="o">=</span> <span class="n">hfile</span><span class="o">.</span><span class="n">tell</span><span class="p">()</span>
-
-    <span class="c1"># Re-open in text mode</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hfile</span><span class="p">:</span>
-        <span class="n">hfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">SEEK_SET</span><span class="p">)</span>  <span class="c1"># our file position from above</span>
-        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">hfile</span><span class="p">:</span>
-            <span class="c1"># We&#39;ve located n lines *or more*, so skip if needed</span>
-            <span class="k">if</span> <span class="n">linecount</span> <span class="o">&gt;</span> <span class="n">n</span><span class="p">:</span>
-                <span class="n">linecount</span> <span class="o">-=</span> <span class="mi">1</span>
-                <span class="k">continue</span>
-            <span class="c1"># The rest we yield</span>
-            <span class="k">yield</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
-
-
 <span class="k">def</span> <span class="nf">to_event_pages</span><span class="p">(</span><span class="n">get_event_cursor</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Decorator that changes get_event_cursor to get_event_pages.</span>
@@ -537,7 +475,7 @@
     <span class="k">return</span> <span class="n">get_datum_pages</span>
 
 
-<span class="k">def</span> <span class="nf">flatten_event_page_gen</span><span class="p">(</span><span class="n">gen</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_flatten_event_page_gen</span><span class="p">(</span><span class="n">gen</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts an event_page generator to an event generator.</span>
 
@@ -553,7 +491,7 @@
         <span class="k">yield from</span> <span class="n">event_model</span><span class="o">.</span><span class="n">unpack_event_page</span><span class="p">(</span><span class="n">page</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Take event_page generators and interlace their results by timestamp.</span>
 <span class="sd">    This is a modification of https://github.com/bluesky/databroker/pull/378/</span>
@@ -587,7 +525,7 @@
         <span class="n">safe_next</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">interlace_event_page_chunks</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_interlace_event_page_chunks</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Take event_page generators and interlace their results by timestamp.</span>
 
@@ -606,10 +544,10 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">iters</span> <span class="o">=</span> <span class="p">[</span><span class="nb">iter</span><span class="p">(</span><span class="n">event_model</span><span class="o">.</span><span class="n">rechunk_event_pages</span><span class="p">(</span><span class="n">g</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">))</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">gens</span><span class="p">]</span>
-    <span class="k">yield from</span> <span class="n">interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">iters</span><span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">_interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">iters</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_interlace</span><span class="p">(</span><span class="o">*</span><span class="n">gens</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Take event_page generators and interlace their results by timestamp.</span>
 
@@ -677,7 +615,7 @@
         <span class="k">yield</span> <span class="n">fifo</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
 
 
-<span class="k">def</span> <span class="nf">unfilled_partitions</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">resources</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">datum_gens</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">_unfilled_partitions</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">,</span> <span class="n">resources</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">datum_gens</span><span class="p">,</span>
                         <span class="n">event_gens</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a Bluesky run, in order, packed into partitions.</span>
@@ -723,7 +661,7 @@
     <span class="c1"># them into a partition.</span>
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">partition</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">event_page</span> <span class="ow">in</span> <span class="n">interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">event_gens</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">event_page</span> <span class="ow">in</span> <span class="n">_interlace_event_pages</span><span class="p">(</span><span class="o">*</span><span class="n">event_gens</span><span class="p">):</span>
         <span class="n">partition</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s1">&#39;event_page&#39;</span><span class="p">,</span> <span class="n">event_page</span><span class="p">))</span>
         <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="n">partition_size</span><span class="p">:</span>
@@ -736,7 +674,7 @@
     <span class="k">yield</span> <span class="n">partition</span>
 
 
-<span class="k">def</span> <span class="nf">fill</span><span class="p">(</span><span class="n">filler</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">_fill</span><span class="p">(</span><span class="n">filler</span><span class="p">,</span>
          <span class="n">event</span><span class="p">,</span>
          <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
          <span class="n">get_resource</span><span class="p">,</span>
@@ -780,7 +718,7 @@
         <span class="c1"># missing Datum. There might be another missing Datum in this same</span>
         <span class="c1"># Event document (hence this re-entrant structure) or might be good</span>
         <span class="c1"># to go.</span>
-        <span class="k">return</span> <span class="n">fill</span><span class="p">(</span>
+        <span class="k">return</span> <span class="n">_fill</span><span class="p">(</span>
             <span class="n">filler</span><span class="p">,</span>
             <span class="n">event</span><span class="p">,</span>
             <span class="n">lookup_resource_for_datum</span><span class="p">,</span>
@@ -790,7 +728,7 @@
         <span class="p">)</span>
 
 
-<div class="viewcode-block" id="documents_to_xarray"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.documents_to_xarray">[docs]</a><span class="k">def</span> <span class="nf">documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span>
+<span class="k">def</span> <span class="nf">_documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span>
                         <span class="n">get_event_pages</span><span class="p">,</span> <span class="n">filler</span><span class="p">,</span> <span class="n">get_resource</span><span class="p">,</span>
                         <span class="n">lookup_resource_for_datum</span><span class="p">,</span> <span class="n">get_datum_pages</span><span class="p">,</span>
                         <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -849,14 +787,14 @@
     <span class="n">dim_counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
     <span class="n">datasets</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptor_docs</span><span class="p">:</span>
-        <span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">flatten_event_page_gen</span><span class="p">(</span><span class="n">get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])))</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_flatten_event_page_gen</span><span class="p">(</span><span class="n">get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">events</span><span class="p">:</span>
             <span class="k">continue</span>
         <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;external&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">):</span>
             <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">)</span>
             <span class="n">filled_events</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
-                <span class="n">filled_event</span> <span class="o">=</span> <span class="n">fill</span><span class="p">(</span>
+                <span class="n">filled_event</span> <span class="o">=</span> <span class="n">_fill</span><span class="p">(</span>
                     <span class="n">filler</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">lookup_resource_for_datum</span><span class="p">,</span> <span class="n">get_resource</span><span class="p">,</span>
                     <span class="n">get_datum_pages</span><span class="p">)</span>
                 <span class="n">filled_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filled_event</span><span class="p">)</span>
@@ -942,10 +880,10 @@
     <span class="c1"># whole stream. (In the future we may simplify to one Event Descriptor</span>
     <span class="c1"># per stream, but as of this writing we must account for the</span>
     <span class="c1"># possibility of multiple.)</span>
-    <span class="k">return</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span></div>
+    <span class="k">return</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_canonical</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Yields documents from this Run in chronological order.</span>
 
@@ -990,7 +928,7 @@
     <span class="c1"># or datum documents belong to, so each stream has these documents.</span>
     <span class="c1"># Without this filter we would get multiple of the same resource and</span>
     <span class="c1"># datum documents.</span>
-    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">_interlace</span><span class="p">(</span><span class="o">*</span><span class="n">streams</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">):</span>
 
         <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;datum&#39;</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;datum_id&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">history</span><span class="p">:</span>
@@ -1096,11 +1034,11 @@
                 <span class="s2">&quot;Delayed access is not yet supported via the client--server &quot;</span>
                 <span class="s2">&quot;usage.&quot;</span><span class="p">)</span>
 
-        <span class="k">yield from</span> <span class="n">canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
-                             <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
-                             <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
-                             <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
-                             <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">_canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
+                              <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
+                              <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
+                              <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
+                              <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -1372,11 +1310,11 @@
             <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_entry</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-        <span class="k">yield from</span> <span class="n">canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
-                             <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
-                             <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
-                             <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
-                             <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">_canonical</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">],</span>
+                              <span class="n">stop</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;stop&#39;</span><span class="p">],</span>
+                              <span class="n">entries</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_entries</span><span class="p">,</span>
+                              <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">,</span>
+                              <span class="n">strict_order</span><span class="o">=</span><span class="n">strict_order</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">read_canonical</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -1569,7 +1507,7 @@
 
     <span class="k">def</span> <span class="nf">_open_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">_documents_to_xarray</span><span class="p">(</span>
             <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
             <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
             <span class="n">descriptor_docs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
@@ -1605,7 +1543,7 @@
         <span class="n">event_gens</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]))</span>
                       <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span>
-            <span class="n">unfilled_partitions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
+            <span class="n">_unfilled_partitions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
                                 <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
                                 <span class="n">datum_gens</span><span class="p">,</span> <span class="n">event_gens</span><span class="p">,</span> <span class="n">partition_size</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">npartitions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span><span class="p">)</span>
@@ -1859,7 +1797,7 @@
             <span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S.</span><span class="si">%f</span><span class="s1">&#39;</span><span class="p">))[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
 
 
-<span class="k">def</span> <span class="nf">xarray_to_event_gen</span><span class="p">(</span><span class="n">data_xarr</span><span class="p">,</span> <span class="n">ts_xarr</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_xarray_to_event_gen</span><span class="p">(</span><span class="n">data_xarr</span><span class="p">,</span> <span class="n">ts_xarr</span><span class="p">,</span> <span class="n">page_size</span><span class="p">):</span>
     <span class="k">for</span> <span class="n">start_idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_xarr</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]),</span> <span class="n">page_size</span><span class="p">):</span>
         <span class="n">stop_idx</span> <span class="o">=</span> <span class="n">start_idx</span> <span class="o">+</span> <span class="n">page_size</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">variable</span><span class="o">.</span><span class="n">values</span>
@@ -1885,7 +1823,7 @@
         <span class="k">yield</span> <span class="n">event_page</span>
 
 
-<span class="k">def</span> <span class="nf">discover_handlers</span><span class="p">(</span><span class="n">entrypoint_group_name</span><span class="o">=</span><span class="s1">&#39;databroker.handlers&#39;</span><span class="p">,</span>
+<div class="viewcode-block" id="discover_handlers"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.discover_handlers">[docs]</a><span class="k">def</span> <span class="nf">discover_handlers</span><span class="p">(</span><span class="n">entrypoint_group_name</span><span class="o">=</span><span class="s1">&#39;databroker.handlers&#39;</span><span class="p">,</span>
                       <span class="n">skip_failures</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Discover handlers via entrypoints.</span>
@@ -1929,7 +1867,7 @@
                 <span class="k">raise</span>
         <span class="n">handler_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">entrypoint</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
 
-    <span class="k">return</span> <span class="n">handler_registry</span>
+    <span class="k">return</span> <span class="n">handler_registry</span></div>
 
 
 <div class="viewcode-block" id="parse_handler_registry"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.parse_handler_registry">[docs]</a><span class="k">def</span> <span class="nf">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">):</span>
@@ -1960,7 +1898,7 @@
     <span class="k">return</span> <span class="n">result</span></div>
 
 
-<span class="k">def</span> <span class="nf">parse_transforms</span><span class="p">(</span><span class="n">transforms</span><span class="p">):</span>
+<div class="viewcode-block" id="parse_transforms"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.parse_transforms">[docs]</a><span class="k">def</span> <span class="nf">parse_transforms</span><span class="p">(</span><span class="n">transforms</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse mapping of spec name to &#39;import path&#39; into mapping to class itself.</span>
 
@@ -2006,7 +1944,7 @@
         <span class="k">return</span> <span class="n">result</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid transforms argument </span><span class="si">{</span><span class="n">transforms</span><span class="si">}</span><span class="s2">. &quot;</span>
-                         <span class="sa">f</span><span class="s2">&quot;transforms must be None or a dictionary.&quot;</span><span class="p">)</span>
+                         <span class="sa">f</span><span class="s2">&quot;transforms must be None or a dictionary.&quot;</span><span class="p">)</span></div>
 
 
 <span class="c1"># This determines the type of the class that you get on the</span>
@@ -2015,7 +1953,7 @@
 <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">container_map</span><span class="p">[</span><span class="s1">&#39;bluesky-event-stream&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">RemoteBlueskyEventStream</span>
 
 
-<span class="k">def</span> <span class="nf">concat_dataarray_pages</span><span class="p">(</span><span class="n">dataarray_pages</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_concat_dataarray_pages</span><span class="p">(</span><span class="n">dataarray_pages</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Combines a iterable of dataarray_pages to a single dataarray_page.</span>
 
@@ -2051,7 +1989,7 @@
                        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}}</span>
 
 
-<span class="k">def</span> <span class="nf">event_page_to_dataarray_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_event_page_to_dataarray_page</span><span class="p">(</span><span class="n">event_page</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts the event_page&#39;s data, timestamps, and filled to xarray.DataArray.</span>
 
@@ -2090,7 +2028,7 @@
                        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}}</span>
 
 
-<span class="k">def</span> <span class="nf">dataarray_page_to_dataset_page</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_dataarray_page_to_dataset_page</span><span class="p">(</span><span class="n">dataarray_page</span><span class="p">):</span>
 
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts the dataarray_page&#39;s data, timestamps, and filled to xarray.DataSet.</span>

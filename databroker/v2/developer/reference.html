@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; databroker 1.0.0b9.post32+g5067d26 documentation</title>
+  <title>API Reference &mdash; databroker 1.0.0b9.post35+gcd0e272 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.0.0b9.post32+g5067d26
+                1.0.0b9.post35+gcd0e272
               </div>
             
           
@@ -186,6 +186,33 @@
 <h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="core">
 <h2>Core<a class="headerlink" href="#core" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="databroker.core.Document">
+<em class="property">class </em><code class="sig-prename descclassname">databroker.core.</code><code class="sig-name descname">Document</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#Document"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.Document" title="Permalink to this definition">¶</a></dt>
+<dd><p>Document is an immutable dict subclass.</p>
+<p>It is immutable to help consumer code avoid accidentally corrupting data
+that another part of the cosumer code was expected to use unchanged.</p>
+<p>Subclasses of Document must define __dask_tokenize__. The tokenization
+schemes typically uniquely identify the document based on only a subset of
+its contents, and mutating the contents can thereby create situations where
+two unequal objects have colliding tokens. Immutability helps guard against
+this too.</p>
+<p>Note that Documents are not <em>recursively</em> immutable. Just as it is possible
+create a tuple (immutable) of lists (mutable) and mutate the lists, it is
+possible to mutate the internal contents of a Document, but this should not
+be done. It is safer to use the to_dict() method to create a mutable deep
+copy.</p>
+<p>This is implemented as a dict subclass in order to satisfy certain
+consumers that expect an object that satisfies isinstance(obj, dict).
+This implementation detail may change in the future.</p>
+<dl class="method">
+<dt id="databroker.core.Document.to_dict">
+<code class="sig-name descname">to_dict</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#Document.to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.Document.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a mutable deep copy.</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="class">
 <dt id="databroker.core.BlueskyRun">
 <em class="property">class </em><code class="sig-prename descclassname">databroker.core.</code><code class="sig-name descname">BlueskyRun</code><span class="sig-paren">(</span><em class="sig-param">get_run_start</em>, <em class="sig-param">get_run_stop</em>, <em class="sig-param">get_event_descriptors</em>, <em class="sig-param">get_event_pages</em>, <em class="sig-param">get_event_count</em>, <em class="sig-param">get_resource</em>, <em class="sig-param">get_resources</em>, <em class="sig-param">lookup_resource_for_datum</em>, <em class="sig-param">get_datum_pages</em>, <em class="sig-param">get_filler</em>, <em class="sig-param">entry</em>, <em class="sig-param">transforms</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#BlueskyRun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.BlueskyRun" title="Permalink to this definition">¶</a></dt>
@@ -368,40 +395,24 @@ access to the data, see <a class="reference internal" href="#databroker.core.Blu
 </dd></dl>
 
 <dl class="function">
-<dt id="databroker.core.documents_to_xarray">
-<code class="sig-prename descclassname">databroker.core.</code><code class="sig-name descname">documents_to_xarray</code><span class="sig-paren">(</span><em class="sig-param">*</em>, <em class="sig-param">start_doc</em>, <em class="sig-param">stop_doc</em>, <em class="sig-param">descriptor_docs</em>, <em class="sig-param">get_event_pages</em>, <em class="sig-param">filler</em>, <em class="sig-param">get_resource</em>, <em class="sig-param">lookup_resource_for_datum</em>, <em class="sig-param">get_datum_pages</em>, <em class="sig-param">include=None</em>, <em class="sig-param">exclude=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#documents_to_xarray"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.documents_to_xarray" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represent the data in one Event stream as an xarray.</p>
+<dt id="databroker.core.discover_handlers">
+<code class="sig-prename descclassname">databroker.core.</code><code class="sig-name descname">discover_handlers</code><span class="sig-paren">(</span><em class="sig-param">entrypoint_group_name='databroker.handlers'</em>, <em class="sig-param">skip_failures=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#discover_handlers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.discover_handlers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Discover handlers via entrypoints.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>start_doc: dict</strong></dt><dd><p>RunStart Document</p>
+<dt><strong>entrypoint_group_name: str</strong></dt><dd><p>Default is ‘databroker.handlers’, the “official” databroker entrypoint
+for handlers.</p>
 </dd>
-<dt><strong>stop_doc</strong><span class="classifier">dict</span></dt><dd><p>RunStop Document</p>
-</dd>
-<dt><strong>descriptor_docs</strong><span class="classifier">list</span></dt><dd><p>EventDescriptor Documents</p>
-</dd>
-<dt><strong>filler</strong><span class="classifier">event_model.Filler</span></dt><dd></dd>
-<dt><strong>get_resource</strong><span class="classifier">callable</span></dt><dd><p>Expected signature <code class="docutils literal notranslate"><span class="pre">get_resource(resource_uid)</span> <span class="pre">-&gt;</span> <span class="pre">Resource</span></code></p>
-</dd>
-<dt><strong>lookup_resource_for_datum</strong><span class="classifier">callable</span></dt><dd><p>Expected signature <code class="docutils literal notranslate"><span class="pre">lookup_resource_for_datum(datum_id)</span> <span class="pre">-&gt;</span> <span class="pre">resource_uid</span></code></p>
-</dd>
-<dt><strong>get_datum_pages</strong><span class="classifier">callable</span></dt><dd><p>Expected signature <code class="docutils literal notranslate"><span class="pre">get_datum_pages(resource_uid)</span> <span class="pre">-&gt;</span> <span class="pre">generator</span></code>
-where <code class="docutils literal notranslate"><span class="pre">generator</span></code> yields datum_page documents</p>
-</dd>
-<dt><strong>get_event_pages</strong><span class="classifier">callable</span></dt><dd><p>Expected signature <code class="docutils literal notranslate"><span class="pre">get_event_pages(descriptor_uid)</span> <span class="pre">-&gt;</span> <span class="pre">generator</span></code>
-where <code class="docutils literal notranslate"><span class="pre">generator</span></code> yields event_page documents</p>
-</dd>
-<dt><strong>include</strong><span class="classifier">list, optional</span></dt><dd><p>Fields (‘data keys’) to include. By default all are included. This
-parameter is mutually exclusive with <code class="docutils literal notranslate"><span class="pre">exclude</span></code>.</p>
-</dd>
-<dt><strong>exclude</strong><span class="classifier">list, optional</span></dt><dd><p>Fields (‘data keys’) to exclude. By default none are excluded. This
-parameter is mutually exclusive with <code class="docutils literal notranslate"><span class="pre">include</span></code>.</p>
+<dt><strong>skip_failures: boolean</strong></dt><dd><p>True by default. Errors loading a handler class are converted to
+warnings if this is True.</p>
 </dd>
 </dl>
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><dl class="simple">
-<dt><strong>dataset</strong><span class="classifier">xarray.Dataset</span></dt><dd></dd>
+<dt>handler_registry: dict</dt><dd><p>A suitable default handler registry</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -423,6 +434,32 @@ parameter is mutually exclusive with <code class="docutils literal notranslate">
 <p>Pass in name; get back actual class.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parse_handler_registry</span><span class="p">({</span><span class="s1">&#39;my_spec&#39;</span><span class="p">:</span> <span class="s1">&#39;package.module.ClassName&#39;</span><span class="p">})</span>
 <span class="go">{&#39;my_spec&#39;: &lt;package.module.ClassName&gt;}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="databroker.core.parse_transforms">
+<code class="sig-prename descclassname">databroker.core.</code><code class="sig-name descname">parse_transforms</code><span class="sig-paren">(</span><em class="sig-param">transforms</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/databroker/core.html#parse_transforms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#databroker.core.parse_transforms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse mapping of spec name to ‘import path’ into mapping to class itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>transforms</strong><span class="classifier">collections.abc.Mapping or None</span></dt><dd><p>A collections.abc.Mapping or subclass, that maps any subset of the
+keys {start, stop, resource, descriptor} to a function (or a string
+import path) that accepts a document of the corresponding type and
+returns it, potentially modified. This feature is for patching up
+erroneous metadata. It is intended for quick, temporary fixes that
+may later be applied permanently to the data at rest (e.g via a
+database migration).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>Pass in name; get back actual class.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">parse_transforms</span><span class="p">({</span><span class="s1">&#39;descriptor&#39;</span><span class="p">:</span> <span class="s1">&#39;package.module.ClassName&#39;</span><span class="p">})</span>
+<span class="go">{&#39;descriptor&#39;: &lt;package.module.ClassName&gt;}</span>
 </pre></div>
 </div>
 </dd></dl>
