@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.4.0rc5.post25+ga7c23bb
+                1.4.0
               </div>
             
           
@@ -110,9 +110,10 @@
 <p class="caption"><span class="caption-text">Developer notes</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Release History</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#v1-4-0-pre-release">v1.4.0 (Pre-release)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#v1-4-0-2020-03-13">v1.4.0 (2020-03-13)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#features">Features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#api-changes">API Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fixes">Fixes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#internals">Internals</a></li>
 </ul>
 </li>
@@ -177,13 +178,13 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-3-1-2016-09-23">v0.3.1 (2016-09-23)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#id21">Enhancements</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#fixes">Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">Fixes</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-3-0-2016-07-25">v0.3.0 (2016-07-25)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id22">Breaking Changes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">Breaking Changes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#new-features">New Features</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id23">Bug Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id24">Bug Fixes</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#v0-2-3-2016-05-05">v0.2.3 (2016-05-05)</a></li>
@@ -280,8 +281,8 @@
             
   <div class="section" id="release-history">
 <h1>Release History<a class="headerlink" href="#release-history" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="v1-4-0-pre-release">
-<h2>v1.4.0 (Pre-release)<a class="headerlink" href="#v1-4-0-pre-release" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="v1-4-0-2020-03-13">
+<h2>v1.4.0 (2020-03-13)<a class="headerlink" href="#v1-4-0-2020-03-13" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="features">
 <h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
@@ -306,6 +307,16 @@ child component.</li>
 signal class <code class="xref py py-class docutils literal"><span class="pre">ophyd.Signal</span></code>.</li>
 <li>Added metadata subscriptions for <code class="xref py py-class docutils literal"><span class="pre">ophyd.Signal</span></code>.</li>
 <li>Added <code class="xref py py-func docutils literal"><span class="pre">OphydObj.destroy()</span></code> method to all ophyd objects.</li>
+<li>Added support for ADLambda X-Spectrum Lambda 750K camera.</li>
+<li>Improved error message “Another set() call is still in progress” to include
+the name of the device that raised the error.</li>
+<li>Allowed <cite>ophyd.FormattedComponent</cite> strings to be written like
+<code class="docutils literal"><span class="pre">{prefix}{_ch_name}</span></code> as well as the previously-supported and more verbose
+<code class="docutils literal"><span class="pre">{self.prefix}{self._ch_name}</span></code>.</li>
+<li>Made timeouts more configurable, including separately configurable connection
+timeout, write timeout, and read timeout. New method
+<cite>ophyd.EpicsSignal.set_default_timeout</cite> sets class-wide defaults. Timeouts
+can also be specified per-instance and in a specific action.</li>
 </ul>
 </div>
 <div class="section" id="api-changes">
@@ -331,6 +342,25 @@ of ophyd - or please consider moving to <cite>make_fake_device</cite> or <cite>c
 simulation IOCs.</li>
 <li>Removed <code class="docutils literal"><span class="pre">ophyd.tests.AssertTools</span></code> and use standard pytest idioms throughout
 the test suite.</li>
+<li>Overhauled objects in <cite>ophyd.sim</cite> to inherit from <cite>ophyd.Signal</cite> and
+<cite>ophyd.Device</cite> and thus behave more like true hardware-connected devices.</li>
+<li>The <cite>ophyd.StatusBase.done</cite> attribute was formerly settable, but never
+intended to be. It should only be set by calling
+<cite>ophyd.StatusBase._finished()</cite>. Now, if it is set from <code class="docutils literal"><span class="pre">False</span></code> to <code class="docutils literal"><span class="pre">True</span></code>
+is warns, and if it is set from <code class="docutils literal"><span class="pre">True</span></code> to <code class="docutils literal"><span class="pre">False</span></code> (which does not make
+sense) it raises.</li>
+</ul>
+</div>
+<div class="section" id="fixes">
+<h3>Fixes<a class="headerlink" href="#fixes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Skip erroneous limits check on <code class="docutils literal"><span class="pre">EpicsMotor.set_current_position</span></code>.</li>
+<li>Handle bug in dispatcher to allow <code class="docutils literal"><span class="pre">functools.partial</span></code> objects to be
+registered as callbacks.</li>
+<li>Before shaping area detector image data, truncate any extra elements that
+exceed the declares waveform length.</li>
+<li>Fix clipping in status progress updates.</li>
+<li>Address numpy pickle CVE.</li>
 </ul>
 </div>
 <div class="section" id="internals">
@@ -344,6 +374,7 @@ down on destruction of the ophyd objects.</li>
 <li>Completely overhauled the dispatcher thread mechanism.</li>
 <li>Removed our backport of <code class="docutils literal"><span class="pre">enum</span></code>, as it is available on the minimum Python
 3.6.</li>
+<li>Refactor simulated text object <code class="docutils literal"><span class="pre">SynAxisNoHints</span></code> to be more realistic.</li>
 </ul>
 </div>
 </div>
@@ -939,8 +970,8 @@ user mistake.</li>
 <li>Add <code class="docutils literal"><span class="pre">target_initial_position</span></code> parameter to <code class="docutils literal"><span class="pre">PseudoSingle</span></code>.</li>
 </ul>
 </div>
-<div class="section" id="fixes">
-<h3>Fixes<a class="headerlink" href="#fixes" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id22">
+<h3>Fixes<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li>Add size-link to ROI plugin.</li>
 <li>Fix QuadEM port name uniqueness.</li>
@@ -952,8 +983,8 @@ the future.</li>
 </div>
 <div class="section" id="v0-3-0-2016-07-25">
 <h2>v0.3.0 (2016-07-25)<a class="headerlink" href="#v0-3-0-2016-07-25" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="id22">
-<h3>Breaking Changes<a class="headerlink" href="#id22" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id23">
+<h3>Breaking Changes<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li>Area detector now checks that all plugins in the pipeline of
 anything that will be collected as part of <code class="docutils literal"><span class="pre">read</span></code>.  The
@@ -972,8 +1003,8 @@ events.</li>
 <li>Add classes for PCO edge</li>
 </ul>
 </div>
-<div class="section" id="id23">
-<h3>Bug Fixes<a class="headerlink" href="#id23" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="id24">
+<h3>Bug Fixes<a class="headerlink" href="#id24" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
 <li>Be more careful about thread safety around <code class="docutils literal"><span class="pre">pyepics</span></code></li>
 </ul>
