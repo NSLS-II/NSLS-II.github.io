@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.callbacks.core &mdash; bluesky 1.6.0rc5.post44+gc43b1be documentation</title>
+  <title>bluesky.callbacks.core &mdash; bluesky 1.6.0 documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                1.6.0rc5.post44+gc43b1be
+                1.6.0
               </div>
             
           
@@ -208,7 +208,35 @@
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">make_callback_safe</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="make_callback_safe"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.make_callback_safe">[docs]</a><span class="k">def</span> <span class="nf">make_callback_safe</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If the wrapped func raises any exceptions, log them but continue.</span>
+
+<span class="sd">    This is intended to ensure that any failures in non-critical callbacks do</span>
+<span class="sd">    not interrupt data acquisition. It should *not* be applied to any</span>
+<span class="sd">    critical callbacks, such as ones that perform data-saving, but is well</span>
+<span class="sd">    suited to callbacks that perform non-critical streaming visualization or</span>
+<span class="sd">    data processing.</span>
+
+<span class="sd">    To debug the issue causing a failure, it can be convenient to turn this</span>
+<span class="sd">    off and let the failures raise. To do this, set the environment variable</span>
+<span class="sd">    ``BLUESKY_DEBUG_CALLBACK=1``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    func: callable</span>
+<span class="sd">    logger: logging.Logger, optional</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    Decorate a callback to make sure it will not interrupt data acquisition if</span>
+<span class="sd">    it fails.</span>
+
+<span class="sd">    &gt;&gt;&gt; @make_callback_safe</span>
+<span class="sd">    ... def callback(name, doc):</span>
+<span class="sd">    ...     ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_partial</span><span class="p">(</span><span class="n">make_callback_safe</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
 
@@ -232,10 +260,40 @@
             <span class="k">if</span> <span class="n">debug_mode</span><span class="p">:</span>
                 <span class="k">raise</span>
 
-    <span class="k">return</span> <span class="n">inner</span>
+    <span class="k">return</span> <span class="n">inner</span></div>
 
 
-<span class="k">def</span> <span class="nf">make_class_safe</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">to_wrap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="make_class_safe"><a class="viewcode-back" href="../../../callbacks.html#bluesky.callbacks.make_class_safe">[docs]</a><span class="k">def</span> <span class="nf">make_class_safe</span><span class="p">(</span><span class="bp">cls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">to_wrap</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    If the wrapped func raises any exceptions, log them but continue.</span>
+
+<span class="sd">    This is intended to ensure that any failures in non-critical callbacks do</span>
+<span class="sd">    not interrupt data acquisition. It should *not* be applied to any</span>
+<span class="sd">    critical callbacks, such as ones that perform data-saving, but is well</span>
+<span class="sd">    suited to callbacks that perform non-critical streaming visualization or</span>
+<span class="sd">    data processing.</span>
+
+<span class="sd">    To debug the issue causing a failure, it can be convenient to turn this</span>
+<span class="sd">    off and let the failures raise. To do this, set the environment variable</span>
+<span class="sd">    ``BLUESKY_DEBUG_CALLBACK=1``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cls: callable</span>
+<span class="sd">    to_wrap: List[String], optional</span>
+<span class="sd">        Names of methods of cls to wrap. Default is ``[&#39;__call__&#39;]``.</span>
+<span class="sd">    logger: logging.Logger, optional</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    Decorate a class to make sure it will not interrupt data acquisition if</span>
+<span class="sd">    it fails.</span>
+
+<span class="sd">    &gt;&gt;&gt; @make_class_safe</span>
+<span class="sd">    ... class Callback(event_model.DocumentRouter):</span>
+<span class="sd">    ...     ...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">if</span> <span class="bp">cls</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_partial</span><span class="p">(</span><span class="n">make_class_safe</span><span class="p">,</span> <span class="n">to_wrap</span><span class="o">=</span><span class="n">to_wrap</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
@@ -246,7 +304,7 @@
     <span class="k">for</span> <span class="n">f_name</span> <span class="ow">in</span> <span class="n">to_wrap</span><span class="p">:</span>
         <span class="nb">setattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">f_name</span><span class="p">,</span> <span class="n">make_callback_safe</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">f_name</span><span class="p">),</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">))</span>
 
-    <span class="k">return</span> <span class="bp">cls</span>
+    <span class="k">return</span> <span class="bp">cls</span></div>
 
 
 <span class="k">class</span> <span class="nc">CallbackBase</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>

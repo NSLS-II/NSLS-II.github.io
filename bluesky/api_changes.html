@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Release History &mdash; bluesky 1.6.0rc5.post44+gc43b1be documentation</title>
+  <title>Release History &mdash; bluesky 1.6.0 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.6.0rc5.post44+gc43b1be
+                1.6.0
               </div>
             
           
@@ -109,13 +109,14 @@
 <li class="toctree-l1"><a class="reference internal" href="msg.html">Message Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_engine.html">The RunEngine run loop</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Release History</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#v1-6-0-pre-release">v1.6.0 (Pre-release)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#v1-6-0-2020-03-16">v1.6.0 (2020-03-16)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#event-loop-re-factor">Event loop re-factor</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#api-changes">API Changes</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="#features">Features</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#bug-fixes">Bug Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#other-api-changes">Other API Changes</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#v1-5-4-2019-08-09">v1.5.4 (2019-08-09)</a></li>
@@ -365,8 +366,8 @@
             
   <div class="section" id="release-history">
 <h1>Release History<a class="headerlink" href="#release-history" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="v1-6-0-pre-release">
-<h2>v1.6.0 (Pre-release)<a class="headerlink" href="#v1-6-0-pre-release" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="v1-6-0-2020-03-16">
+<h2>v1.6.0 (2020-03-16)<a class="headerlink" href="#v1-6-0-2020-03-16" title="Permalink to this headline">¶</a></h2>
 <p>The most important change in this release is a complete reworking of how
 bluesky interacts with the asyncio event loop. This resolves a long-running
 issue of bluesky being incompatible with <code class="docutils literal notranslate"><span class="pre">tornado</span> <span class="pre">&gt;4</span></code>, which often tripped up
@@ -406,7 +407,7 @@ Instead we use <em>during_task</em> to block the main thread by running the
 Qt event loop directly.</p>
 </div>
 <div class="section" id="during-task-kwarg-to-runengine-init">
-<h5><em>during_task</em> kwarg to <code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.__init__()</span></code><a class="headerlink" href="#during-task-kwarg-to-runengine-init" title="Permalink to this headline">¶</a></h5>
+<h5><code class="docutils literal notranslate"><span class="pre">during_task</span></code> kwarg to <code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.__init__()</span></code><a class="headerlink" href="#during-task-kwarg-to-runengine-init" title="Permalink to this headline">¶</a></h5>
 <p>We need to block the main thread in <code class="xref py py-meth docutils literal notranslate"><span class="pre">__call__()</span></code> (and
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">resume()</span></code>) until the user supplied plan is complete.
 Previously, we would do this by calling <code class="docutils literal notranslate"><span class="pre">self.loop.run_forever()</span></code> to
@@ -420,10 +421,12 @@ will be set when the task for <code class="xref py py-meth docutils literal notr
 however we can not simple wait on that event as that would again cause the Qt
 windows to freeze.  We also do not want to bake a Matplotlib / Qt dependency
 directly into the <code class="xref py py-class docutils literal notranslate"><span class="pre">RunEngine</span></code> so we added a hook, set at init
-time, for a function that passed the <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a> and is
-responsible for blocking until it is set.  This function can do other things
-(such as run the Qt event loop) during that time.  The required signature is</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">blocking_func</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+time, for an object expected to implement the method <code class="docutils literal notranslate"><span class="pre">block(event)</span></code>.
+While the RunEngine executes a plan, it is passed the <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a>
+and is responsible for blocking until the Event is set.  This function can do
+other things (such as run the Qt event loop) during that time.  The required
+signature is</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="s2">&quot;Returns when ev is set&quot;</span>
 </pre></div>
 </div>
@@ -443,15 +446,43 @@ now expect that the iterable passed in is callables with the signature:</p>
 </pre></div>
 </div>
 </div>
+<div class="section" id="the-persistent-dict-used-by-re-md-must-be-thread-safe">
+<h5>The persistent dict used by <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> must be thread-safe<a class="headerlink" href="#the-persistent-dict-used-by-re-md-must-be-thread-safe" title="Permalink to this headline">¶</a></h5>
+<p>By default, <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> is an ordinary dictionary, but any dict-like object may
+be used. It is often convenient for the contents of that dictionary to persist
+between sessions. To achieve this, we formerly recommended using
+<code class="xref py py-class docutils literal notranslate"><span class="pre">HistoryDict</span></code>. Unfortunately,
+<code class="xref py py-class docutils literal notranslate"><span class="pre">HistoryDict</span></code> is not threadsafe and is not compatible with
+bluesky’s new concurrency model. We now recommend using
+<code class="xref py py-class docutils literal notranslate"><span class="pre">PersistentDict</span></code>. See <a class="reference internal" href="metadata.html#md-persistence"><span class="std std-ref">Persistence Between Sessions</span></a> for
+instructions on how to migrate existing metadata.</p>
+</div>
 </div>
 </div>
 <div class="section" id="features">
 <h3>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
+<li><p>Added support for <a class="reference internal" href="multi_run_plans.html"><span class="doc">Multi-Run Plans</span></a>.</p></li>
+<li><p>Added better logging and convenience functions for managing it more easily.
+See <a class="reference internal" href="debugging.html"><span class="doc">Debugging and Logging</span></a>.</p></li>
 <li><p>Generalized <a class="reference internal" href="generated/bluesky.plans.list_scan.html#bluesky.plans.list_scan" title="bluesky.plans.list_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">list_scan()</span></code></a> to work on any number of motors,
 not just one. In v1.2.0, <a class="reference internal" href="generated/bluesky.plans.scan.html#bluesky.plans.scan" title="bluesky.plans.scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">scan()</span></code></a> was generalized in the
 same way.</p></li>
 <li><p>Added <a class="reference internal" href="generated/bluesky.plans.list_grid_scan.html#bluesky.plans.list_grid_scan" title="bluesky.plans.list_grid_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">list_grid_scan()</span></code></a>.</p></li>
+<li><p>Added <a class="reference internal" href="generated/bluesky.plan_stubs.rd.html#bluesky.plan_stubs.rd" title="bluesky.plan_stubs.rd"><code class="xref py py-func docutils literal notranslate"><span class="pre">rd()</span></code></a>.</p></li>
+<li><p>Added <a class="reference internal" href="generated/bluesky.suspenders.SuspendWhenChanged.html#bluesky.suspenders.SuspendWhenChanged" title="bluesky.suspenders.SuspendWhenChanged"><code class="xref py py-class docutils literal notranslate"><span class="pre">SuspendWhenChanged</span></code></a>.</p></li>
+<li><p>Added <a class="reference internal" href="callbacks.html#bluesky.callbacks.core.make_callback_safe" title="bluesky.callbacks.core.make_callback_safe"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_callback_safe()</span></code></a> and</p></li>
+<li><p>Added a <code class="docutils literal notranslate"><span class="pre">per_shot</span></code> parameter to <a class="reference internal" href="generated/bluesky.plans.count.html#bluesky.plans.count" title="bluesky.plans.count"><code class="xref py py-func docutils literal notranslate"><span class="pre">bluesky.plans.count()</span></code></a>, analogous to
+the <code class="docutils literal notranslate"><span class="pre">per_step</span></code> parameter supported by plans that do scans.
+<a class="reference internal" href="callbacks.html#bluesky.callbacks.core.make_class_safe" title="bluesky.callbacks.core.make_class_safe"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_class_safe()</span></code></a>.</p></li>
+<li><p>Accept <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> to <a class="reference internal" href="generated/bluesky.plan_stubs.mv.html#bluesky.plan_stubs.mv" title="bluesky.plan_stubs.mv"><code class="xref py py-func docutils literal notranslate"><span class="pre">mv()</span></code></a> and
+<a class="reference internal" href="generated/bluesky.plan_stubs.mvr.html#bluesky.plan_stubs.mvr" title="bluesky.plan_stubs.mvr"><code class="xref py py-func docutils literal notranslate"><span class="pre">mvr()</span></code></a>. Pass them through to all motors involved in
+the move. Notably, this allows plans to pass a <code class="docutils literal notranslate"><span class="pre">timeout</span></code> parameter through
+the <code class="docutils literal notranslate"><span class="pre">obj.set()</span></code>.</p></li>
+<li><p>Added a new built-in RunEngine command, <code class="docutils literal notranslate"><span class="pre">RE_class</span></code>, which sends the type of
+the <code class="docutils literal notranslate"><span class="pre">RunEngine</span></code> into the generator. This allows the plan to know if it is
+being consumed by the usual <code class="docutils literal notranslate"><span class="pre">RunEngine</span></code>, a subclass, or some
+non-responsive consumer like <code class="docutils literal notranslate"><span class="pre">list</span></code>.</p></li>
 <li><p>Raise a more helpful error message if the <code class="docutils literal notranslate"><span class="pre">num</span></code> parameter given to
 <a class="reference internal" href="generated/bluesky.plans.scan.html#bluesky.plans.scan" title="bluesky.plans.scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">scan()</span></code></a> is not a whole number, as can happen if <code class="docutils literal notranslate"><span class="pre">num</span></code> is
 mistaken to mean “step size”.</p></li>
@@ -469,6 +500,20 @@ after it has been stopped, raise a more helpful error message.</p></li>
 it should have always been.</p></li>
 <li><p>In the Best-Effort Callback, do not assume that the RunStart document
 includes <code class="docutils literal notranslate"><span class="pre">'scan_id'</span></code>, which is an optional key.</p></li>
+<li><p>The commandline utility <code class="docutils literal notranslate"><span class="pre">bluesky-0MQ-proxy</span></code> now works on Windows.</p></li>
+<li><p>The IPython integrations have been updated for compatibility with IPython 7.</p></li>
+<li><p>Added support for “adaptive fly scans” by enabling the <code class="docutils literal notranslate"><span class="pre">'collect'</span></code> message
+to (optionally) return the Events it emitted.</p></li>
+<li><p>Fixed bug in tqdm-based progress bar where tqdm could be handed a value it
+considered invalid.</p></li>
+</ul>
+</div>
+<div class="section" id="other-api-changes">
+<h3>Other API Changes<a class="headerlink" href="#other-api-changes" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li><p>Removed attribute <code class="docutils literal notranslate"><span class="pre">nnls</span></code> from
+<code class="xref py py-class docutils literal notranslate"><span class="pre">bluesky.callbacks.best_effort.PeakResults</span></code>. It has always been
+<code class="docutils literal notranslate"><span class="pre">None</span></code> (never implemented) and only served to cause confusion.</p></li>
 </ul>
 </div>
 </div>
