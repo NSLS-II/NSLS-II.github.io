@@ -1,0 +1,509 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Debugging and Logging &mdash; ophyd  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript">
+          var DOCUMENTATION_OPTIONS = {
+              URL_ROOT:'./',
+              VERSION:'',
+              LANGUAGE:'None',
+              COLLAPSE_INDEX:false,
+              FILE_SUFFIX:'.html',
+              HAS_SOURCE:  true,
+              SOURCELINK_SUFFIX: '.txt'
+          };
+      </script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Release History" href="release_notes.html" />
+    <link rel="prev" title="ophyd.areadetector.base.ad_group" href="generated/ophyd.areadetector.base.ad_group.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> ophyd
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.4.0.post5+g4c8f974
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Standard Devices</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="builtin-devices.html">Ready-to-Use Devices</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Signals and Devices</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="device-overview.html">Device and Component</a></li>
+<li class="toctree-l1"><a class="reference internal" href="positioners.html">Positioners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="signals.html">Signals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="status.html">Status Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="area-detector.html">Area Detectors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Debugging and Logging</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#useful-snippets">Useful Snippets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#log-warnings">Log warnings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#maximum-verbosity">Maximum verbosity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-to-a-file">Log to a file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#ophyd-s-logging-related-api">Ophyd’s Logging-Related API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#logger-names">Logger Names</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#formatter">Formatter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#global-handler">Global Handler</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-example">Advanced Example</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Developer notes</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="release_notes.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="OEP/index.html">Ophyd Enhancement Proposals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docker.html">Docker setup</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data Collection</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/bluesky">bluesky</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/ophyd">ophyd</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/caproto">caproto</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Data Access and Management</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/databroker">databroker</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nsls-ii.github.io/suitcase">suitcase</a></li>
+</ul>
+<p class="caption"><span class="caption-text">GitHub Links</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NSLS-II/">NSLS-II Repositories</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NSLS-II/Bug-Reports/issues">Bug Reports</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ophyd</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Debugging and Logging</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/debugging.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="debugging-and-logging">
+<h1>Debugging and Logging<a class="headerlink" href="#debugging-and-logging" title="Permalink to this headline">¶</a></h1>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 1.4.0: </span>Ophyd’s use of Python’s logging framework has been completely reworked to
+follow Python’s documented best practices for libraries.</p>
+</div>
+<p>Ophyd uses Python’s logging framework, which enables sophisticated log
+management. For common simple cases, including viewing logs in the terminal or
+writing them to a file, the next section illustrates streamlined,
+copy/paste-able examples. Users who are familiar with that framework or who
+need to route logs to multiple destinations may wish to skip ahead to
+<a class="reference internal" href="#logger-api"><span class="std std-ref">Ophyd’s Logging-Related API</span></a>.</p>
+<div class="section" id="useful-snippets">
+<h2>Useful Snippets<a class="headerlink" href="#useful-snippets" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="log-warnings">
+<h3>Log warnings<a class="headerlink" href="#log-warnings" title="Permalink to this headline">¶</a></h3>
+<p>This is the recommended standard setup.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="n">config_ophyd_logging</span>
+<span class="n">config_ophyd_logging</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>It will display <code class="docutils literal"><span class="pre">'ophyd'</span></code> log records of <code class="docutils literal"><span class="pre">WARNING</span></code> level or higher in the
+terminal (standard out) with a format tailored to ophyd.</p>
+</div>
+<div class="section" id="maximum-verbosity">
+<h3>Maximum verbosity<a class="headerlink" href="#maximum-verbosity" title="Permalink to this headline">¶</a></h3>
+<p>If operations are “hanging,” running slowly, or repeatedly encountering an
+error, increasing the logging verbosity can help identify the underlying issue.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="n">config_ophyd_logging</span>
+<span class="n">config_ophyd_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="log-to-a-file">
+<h3>Log to a file<a class="headerlink" href="#log-to-a-file" title="Permalink to this headline">¶</a></h3>
+<p>This will direct all log messages to a file instead of the terminal (standard
+out).</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ophyd</span> <span class="kn">import</span> <span class="n">config_ophyd_logging</span>
+<span class="n">config_ophyd_logging</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="s1">&#39;/tmp/ophyd.log&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="ophyd-s-logging-related-api">
+<span id="logger-api"></span><h2>Ophyd’s Logging-Related API<a class="headerlink" href="#ophyd-s-logging-related-api" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="logger-names">
+<h3>Logger Names<a class="headerlink" href="#logger-names" title="Permalink to this headline">¶</a></h3>
+<p>Here are the primary loggers used by ophyd.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">'ophyd'</span></code> — the logger to which all ophyd log records propagate</li>
+<li><code class="docutils literal"><span class="pre">'ophyd.control_layer'</span></code> — logs requests issued to the underlying control
+layer (e.g. pyepics, caproto)</li>
+<li><code class="docutils literal"><span class="pre">'ophyd.event_dispatcher'</span></code> — issues regular summaries of the backlog of
+updates from the control layer that are being processed on background threads</li>
+</ul>
+<p>There are also many module-level loggers for specific features.</p>
+</div>
+<div class="section" id="formatter">
+<h3>Formatter<a class="headerlink" href="#formatter" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ophyd.log.LogFormatter">
+<em class="property">class </em><code class="descclassname">ophyd.log.</code><code class="descname">LogFormatter</code><span class="sig-paren">(</span><em>fmt='%(color)s[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]%(end_color)s %(message)s'</em>, <em>datefmt='%y%m%d %H:%M:%S'</em>, <em>style='%'</em>, <em>color=True</em>, <em>colors={10: 4</em>, <em>20: 2</em>, <em>30: 3</em>, <em>40: 1}</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.log.LogFormatter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Log formatter used in Tornado, modified for Python3-only ophyd.</p>
+<p>Key features of this formatter are:</p>
+<ul class="simple">
+<li>Color support when logging to a terminal that supports it.</li>
+<li>Timestamps on every log line.</li>
+<li>Robust against str/bytes encoding problems.</li>
+</ul>
+<p>This formatter is enabled automatically by
+<cite>tornado.options.parse_command_line</cite> or <cite>tornado.options.parse_config_file</cite>
+(unless <code class="docutils literal"><span class="pre">--logging=none</span></code> is used).
+Color support on Windows versions that do not support ANSI color codes is
+enabled by use of the <a class="reference external" href="https://pypi.python.org/pypi/colorama">colorama</a> library. Applications that wish to use
+this must first initialize colorama with a call to <code class="docutils literal"><span class="pre">colorama.init</span></code>.
+See the colorama documentation for details.</p>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 4.5: </span>Added support for <code class="docutils literal"><span class="pre">colorama</span></code>. Changed the constructor
+signature to be compatible with <cite>logging.config.dictConfig</cite>.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>color</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a>) – Enables color support.</li>
+<li><strong>fmt</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – Log message format.
+It will be applied to the attributes dict of log records. The
+text between <code class="docutils literal"><span class="pre">%(color)s</span></code> and <code class="docutils literal"><span class="pre">%(end_color)s</span></code> will be colored
+depending on the level if color support is on.</li>
+<li><strong>colors</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a>) – color mappings from logging level to terminal color
+code</li>
+<li><strong>datefmt</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – Datetime format.
+Used for formatting <code class="docutils literal"><span class="pre">(asctime)</span></code> placeholder in <code class="docutils literal"><span class="pre">prefix_fmt</span></code>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 3.2: </span>Added <code class="docutils literal"><span class="pre">fmt</span></code> and <code class="docutils literal"><span class="pre">datefmt</span></code> arguments.</p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="global-handler">
+<h3>Global Handler<a class="headerlink" href="#global-handler" title="Permalink to this headline">¶</a></h3>
+<p>Following Python’s recommendation, ophyd does not install any handlers at
+import time, but it provides a function to set up a basic useful configuration
+in one line, similar to Python’s <a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.basicConfig" title="(in Python v3.8)"><code class="xref py py-func docutils literal"><span class="pre">logging.basicConfig()</span></code></a> but with some
+additional options—and scoped to the <code class="docutils literal"><span class="pre">'ophyd'</span></code> logger with ophyd’s
+<a class="reference internal" href="#ophyd.log.LogFormatter" title="ophyd.log.LogFormatter"><code class="xref py py-class docutils literal"><span class="pre">ophyd.log.LogFormatter</span></code></a>. It streamlines common use cases without
+interfering with more sophisticated use cases.</p>
+<p>We recommend that facilities using ophyd leave this function for users and
+configure any standardized, facility-managed logging handlers separately, as
+described in the next section.</p>
+<dl class="function">
+<dt id="ophyd.log.config_ophyd_logging">
+<code class="descclassname">ophyd.log.</code><code class="descname">config_ophyd_logging</code><span class="sig-paren">(</span><em>file=&lt;_io.TextIOWrapper name='&lt;stdout&gt;' mode='w' encoding='UTF-8'&gt;</em>, <em>datefmt='%H:%M:%S'</em>, <em>color=True</em>, <em>level='WARNING'</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.log.config_ophyd_logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a new handler on the <code class="docutils literal"><span class="pre">logging.getLogger('ophyd')</span></code> logger.
+If this is called more than once, the handler from the previous invocation
+is removed (if still present) and replaced.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
+<dt><strong>file</strong> <span class="classifier-delimiter">:</span> <span class="classifier">object with <code class="docutils literal"><span class="pre">write</span></code> method or filename string</span></dt>
+<dd><p class="first last">Default is <code class="docutils literal"><span class="pre">sys.stdout</span></code>.</p>
+</dd>
+<dt><strong>datefmt</strong> <span class="classifier-delimiter">:</span> <span class="classifier">string</span></dt>
+<dd><p class="first last">Date format. Default is <code class="docutils literal"><span class="pre">'%H:%M:%S'</span></code>.</p>
+</dd>
+<dt><strong>color</strong> <span class="classifier-delimiter">:</span> <span class="classifier">boolean</span></dt>
+<dd><p class="first last">Use ANSI color codes. True by default.</p>
+</dd>
+<dt><strong>level</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str or int</span></dt>
+<dd><p class="first last">Python logging level, given as string or corresponding integer.
+Default is ‘WARNING’.</p>
+</dd>
+<dt><strong>Returns</strong></dt>
+<dd></dd>
+<dt><strong>——-</strong></dt>
+<dd></dd>
+<dt><strong>handler</strong> <span class="classifier-delimiter">:</span> <span class="classifier">logging.Handler</span></dt>
+<dd><p class="first last">The handler, which has already been added to the ‘ophyd’ logger.</p>
+</dd>
+<dt><strong>Examples</strong></dt>
+<dd></dd>
+<dt><strong>——–</strong></dt>
+<dd></dd>
+<dt><strong>Log to a file.</strong></dt>
+<dd></dd>
+<dt><strong>&gt;&gt;&gt; config_ophyd_logging(file=’/tmp/what_is_happening.txt’)</strong></dt>
+<dd></dd>
+<dt><strong>Include the date along with the time. (The log messages will always include</strong></dt>
+<dd></dd>
+<dt><strong>microseconds, which are configured separately, not as part of ‘datefmt’.)</strong></dt>
+<dd></dd>
+<dt><strong>&gt;&gt;&gt; config_ophyd_logging(datefmt=”%Y-%m-%d %H:%M:%S”)</strong></dt>
+<dd></dd>
+<dt><strong>Turn off ANSI color codes.</strong></dt>
+<dd></dd>
+<dt><strong>&gt;&gt;&gt; config_ophyd_logging(color=False)</strong></dt>
+<dd></dd>
+<dt><strong>Increase verbosity: show level DEBUG or higher.</strong></dt>
+<dd></dd>
+<dt><strong>&gt;&gt;&gt; config_ophyd_logging(level=’DEBUG’)</strong></dt>
+<dd></dd>
+</dl>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="ophyd.log.get_handler">
+<code class="descclassname">ophyd.log.</code><code class="descname">get_handler</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.log.get_handler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the handler configured by the most recent call to <a class="reference internal" href="#ophyd.log.config_ophyd_logging" title="ophyd.log.config_ophyd_logging"><code class="xref py py-func docutils literal"><span class="pre">config_ophyd_logging()</span></code></a>.
+If <a class="reference internal" href="#ophyd.log.config_ophyd_logging" title="ophyd.log.config_ophyd_logging"><code class="xref py py-func docutils literal"><span class="pre">config_ophyd_logging()</span></code></a> has not yet been called, this returns <code class="docutils literal"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="advanced-example">
+<h2>Advanced Example<a class="headerlink" href="#advanced-example" title="Permalink to this headline">¶</a></h2>
+<p>The flow of log event information in loggers and handlers is illustrated in the
+following diagram:</p>
+<img alt="https://docs.python.org/3/_images/logging_flow.png" src="https://docs.python.org/3/_images/logging_flow.png" />
+<p>For further reference, see the Python 3 logging howto:
+<a class="reference external" href="https://docs.python.org/3/howto/logging.html#logging-flow">https://docs.python.org/3/howto/logging.html#logging-flow</a></p>
+<p>As an illustrative example, we will set up two handlers using the Python
+logging framework directly, ignoring ophyd’s convenience function.</p>
+<p>Suppose we set up a handler aimed at a file:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">file_handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="s1">&#39;ophyd.log&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And another aimed at <a class="reference external" href="https://www.elastic.co/products/logstash">Logstash</a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logstash</span>  <span class="c1"># requires python-logstash package</span>
+<span class="n">logstash_handler</span> <span class="o">=</span> <span class="n">logstash</span><span class="o">.</span><span class="n">TCPLogstashHandler</span><span class="p">(</span><span class="o">&lt;</span><span class="n">host</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">port</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can attach the handlers to the ophyd logger, to which all log records
+created by ophyd propagate:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;ophyd&#39;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">logstash_handler</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">file_filter</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can set the verbosity of each handler. Suppose want maximum verbosity in the
+file but only medium verbosity in logstash.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">logstash_handler</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;INFO&#39;</span><span class="p">)</span>
+<span class="n">file_handler</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally, ensure that “effective level” of <code class="docutils literal"><span class="pre">logger</span></code> is at least as verbose as
+the most verbose handler—in this case, <code class="docutils literal"><span class="pre">'DEBUG'</span></code>. By default, at import,
+its level is not set</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="n">logging</span><span class="o">.</span><span class="n">getLevelName</span><span class="p">(</span><span class="n">logger</span><span class="o">.</span><span class="n">level</span><span class="p">)</span>
+
+<span class="gp">In [2]: </span><span class="s1">&#39;NOTSET&#39;</span>
+</pre></div>
+</div>
+<p>and so it inherits the level of Python’s default
+“handler of last resort,” <a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.lastResort" title="(in Python v3.8)"><code class="xref py py-obj docutils literal"><span class="pre">logging.lastResort</span></code></a>, which is <code class="docutils literal"><span class="pre">'WARNING'</span></code>.</p>
+<div class="highlight-ipython"><div class="highlight"><pre><span></span><span class="gp">In [3]: </span><span class="n">logging</span><span class="o">.</span><span class="n">getLevelName</span><span class="p">(</span><span class="n">logger</span><span class="o">.</span><span class="n">getEffectiveLevel</span><span class="p">())</span>
+
+<span class="gp">In [4]: </span><span class="s1">&#39;WARNING&#39;</span>
+</pre></div>
+</div>
+<p>In this case we should set it to <code class="docutils literal"><span class="pre">'DEBUG'</span></code>, to match the most verbose level
+of the handler we have added.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This makes DEBUG-level records <em>available</em> to all handlers. Our logstash
+handler, set to <code class="docutils literal"><span class="pre">'INFO'</span></code>, will filter out DEBUG-level records.</p>
+<p>To globally disable the generation of any log records at or below a certain
+verbosity, which may be helpful for optimizing performance, Python provides
+<a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.disable" title="(in Python v3.8)"><code class="xref py py-func docutils literal"><span class="pre">logging.disable()</span></code></a>.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="release_notes.html" class="btn btn-neutral float-right" title="Release History" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="generated/ophyd.areadetector.base.ad_group.html" class="btn btn-neutral float-left" title="ophyd.areadetector.base.ad_group" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Brookhaven National Lab
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
