@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>How Bluesky Interfaces with Hardware &mdash; bluesky 1.6.0rc5.post29+gce009a0 documentation</title>
+  <title>How Bluesky Interfaces with Hardware &mdash; bluesky 1.6.0rc5.post42+gdca02a2 documentation</title>
   
 
   
@@ -20,21 +20,11 @@
   <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
   
     
-      <script type="text/javascript">
-          var DOCUMENTATION_OPTIONS = {
-              URL_ROOT:'./',
-              VERSION:'1.6.0rc5.post29+gce009a0',
-              LANGUAGE:'None',
-              COLLAPSE_INDEX:false,
-              FILE_SUFFIX:'.html',
-              HAS_SOURCE:  true,
-              SOURCELINK_SUFFIX: '.txt'
-          };
-      </script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -70,7 +60,7 @@
             
             
               <div class="version">
-                1.6.0rc5.post29+gce009a0
+                1.6.0rc5.post42+gdca02a2
               </div>
             
           
@@ -106,6 +96,7 @@
 <li class="toctree-l1"><a class="reference internal" href="progress-bar.html">Progress Bar</a></li>
 <li class="toctree-l1"><a class="reference internal" href="event_descriptors.html">Event Descriptors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_run_plans.html">Multi-Run Plans</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging and Logging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_engine_api.html">RunEngine API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="magics.html">IPython ‘Magics’ [Experimental]</a></li>
@@ -233,71 +224,63 @@ every kind of hardware we have encountered.</p>
 <h2>Specification<a class="headerlink" href="#specification" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="status-object">
 <span id="status-obj-api"></span><h3>Status object<a class="headerlink" href="#status-object" title="Permalink to this headline">¶</a></h3>
-<p>The interface of a “status” object, which the <code class="docutils literal"><span class="pre">RunEngine</span></code> uses to
+<p>The interface of a “status” object, which the <code class="docutils literal notranslate"><span class="pre">RunEngine</span></code> uses to
 asynchronously monitor the compeletion of having triggered or set a device.</p>
 <dl class="class">
 <dt>
-<code class="descname">Status:</code></dt>
+<code class="sig-name descname">Status:</code></dt>
 <dd><dl class="attribute">
 <dt id="done">
-<code class="descname">done</code><a class="headerlink" href="#done" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">done</code><a class="headerlink" href="#done" title="Permalink to this definition">¶</a></dt>
 <dd><p>boolean</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="success">
-<code class="descname">success</code><a class="headerlink" href="#success" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">success</code><a class="headerlink" href="#success" title="Permalink to this definition">¶</a></dt>
 <dd><p>boolean</p>
 </dd></dl>
 
-<p>If <code class="docutils literal"><span class="pre">success</span></code> is <code class="docutils literal"><span class="pre">False</span></code> when the Status is marked done, this is taken
+<p>If <code class="docutils literal notranslate"><span class="pre">success</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code> when the Status is marked done, this is taken
 to mean, “We have given up.” For example, “The motor is stuck and will
-never get where it is going.” A <code class="docutils literal"><span class="pre">FailedStatus</span></code> exception will be raised
+never get where it is going.” A <code class="docutils literal notranslate"><span class="pre">FailedStatus</span></code> exception will be raised
 inside the RunEngine.</p>
 <dl class="attribute">
 <dt id="finished_cb">
-<code class="descname">finished_cb</code><a class="headerlink" href="#finished_cb" title="Permalink to this definition">¶</a></dt>
-<dd><p>a callback function that <code class="docutils literal"><span class="pre">Status</span></code> will call when it is marked done.</p>
+<code class="sig-name descname">finished_cb</code><a class="headerlink" href="#finished_cb" title="Permalink to this definition">¶</a></dt>
+<dd><p>a callback function that <code class="docutils literal notranslate"><span class="pre">Status</span></code> will call when it is marked done.</p>
 </dd></dl>
 
-<p>It may be that <code class="docutils literal"><span class="pre">Status</span></code> is done before a function has been attached to
-<code class="docutils literal"><span class="pre">finished_cb</span></code>. In that case, the function should be called as soon as it
+<p>It may be that <code class="docutils literal notranslate"><span class="pre">Status</span></code> is done before a function has been attached to
+<code class="docutils literal notranslate"><span class="pre">finished_cb</span></code>. In that case, the function should be called as soon as it
 is attached.</p>
 <dl class="method">
 <dt id="watch">
-<code class="descname">watch</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#watch" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">watch</code><span class="sig-paren">(</span><em class="sig-param">func</em><span class="sig-paren">)</span><a class="headerlink" href="#watch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Subscribe to notifications about progress. Useful for progress bars.</p>
-</dd></dl>
-
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>func</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable</span></dt>
-<dd><p class="first">Expected to accept the keyword arguments:</p>
+<p><strong>Parameters</strong></p>
+<dl>
+<dt>func<span class="classifier">callable</span></dt><dd><p>Expected to accept the keyword arguments:</p>
 <blockquote>
 <div><ul class="simple">
-<li><code class="docutils literal"><span class="pre">name</span></code></li>
-<li><code class="docutils literal"><span class="pre">current</span></code></li>
-<li><code class="docutils literal"><span class="pre">initial</span></code></li>
-<li><code class="docutils literal"><span class="pre">target</span></code></li>
-<li><code class="docutils literal"><span class="pre">unit</span></code></li>
-<li><code class="docutils literal"><span class="pre">precision</span></code></li>
-<li><code class="docutils literal"><span class="pre">fraction</span></code></li>
-<li><code class="docutils literal"><span class="pre">time_elapsed</span></code></li>
-<li><code class="docutils literal"><span class="pre">time_remaining</span></code></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">current</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">initial</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unit</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">precision</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fraction</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">time_elapsed</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">time_remaining</span></code></p></li>
 </ul>
 </div></blockquote>
-<p class="last">Any given call to <code class="docutils literal"><span class="pre">func</span></code> may only include a subset of these
+<p>Any given call to <code class="docutils literal notranslate"><span class="pre">func</span></code> may only include a subset of these
 parameters, depending on what the status object knows about its own
 progress.</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -306,30 +289,30 @@ progress.</p>
 <p>The interface of a readable device:</p>
 <dl class="class">
 <dt id="ReadableDevice">
-<em class="property">class </em><code class="descname">ReadableDevice</code><a class="headerlink" href="#ReadableDevice" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-name descname">ReadableDevice</code><a class="headerlink" href="#ReadableDevice" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="attribute">
 <dt id="ReadableDevice.name">
-<code class="descname">name</code><a class="headerlink" href="#ReadableDevice.name" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">name</code><a class="headerlink" href="#ReadableDevice.name" title="Permalink to this definition">¶</a></dt>
 <dd><p>a human-readable string identifying the device</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ReadableDevice.parent">
-<code class="descname">parent</code><a class="headerlink" href="#ReadableDevice.parent" title="Permalink to this definition">¶</a></dt>
-<dd><p><code class="docutils literal"><span class="pre">None</span></code>, or a reference to a parent device</p>
-<p>See the <code class="docutils literal"><span class="pre">stage</span></code> method below for the operational signifance of
-<code class="docutils literal"><span class="pre">parent</span></code>.</p>
+<code class="sig-name descname">parent</code><a class="headerlink" href="#ReadableDevice.parent" title="Permalink to this definition">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, or a reference to a parent device</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">stage</span></code> method below for the operational signifance of
+<code class="docutils literal notranslate"><span class="pre">parent</span></code>.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.read">
-<code class="descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.read" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return an OrderedDict mapping field name(s) to values and timestamps.
 The field names must be strings. The values can be any JSON-encodable
 type or a numpy array, which the RunEngine will convert to (nested)
 lsits. The timestamps should be UNIX time (seconds since 1970).</p>
 <p>Example return value:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">OrderedDict</span><span class="p">((</span><span class="s1">&#39;channel1&#39;</span><span class="p">,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">OrderedDict</span><span class="p">((</span><span class="s1">&#39;channel1&#39;</span><span class="p">,</span>
              <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="mf">1472493713.271991</span><span class="p">}),</span>
              <span class="p">(</span><span class="s1">&#39;channel2&#39;</span><span class="p">,</span>
              <span class="p">{</span><span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="mf">1472493713.539238</span><span class="p">}))</span>
@@ -339,11 +322,11 @@ lsits. The timestamps should be UNIX time (seconds since 1970).</p>
 
 <dl class="method">
 <dt id="ReadableDevice.describe">
-<code class="descname">describe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.describe" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return an OrderedDict with exactly the same keys as the <code class="docutils literal"><span class="pre">read</span></code>
+<code class="sig-name descname">describe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.describe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an OrderedDict with exactly the same keys as the <code class="docutils literal notranslate"><span class="pre">read</span></code>
 method, here mapped to metadata about each field.</p>
 <p>Example return value:</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">OrderedDict</span><span class="p">((</span><span class="s1">&#39;channel1&#39;</span><span class="p">,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">OrderedDict</span><span class="p">((</span><span class="s1">&#39;channel1&#39;</span><span class="p">,</span>
              <span class="p">{</span><span class="s1">&#39;source&#39;</span><span class="p">:</span> <span class="s1">&#39;XF23-ID:SOME_PV_NAME&#39;</span><span class="p">,</span>
               <span class="s1">&#39;dtype&#39;</span><span class="p">:</span> <span class="s1">&#39;number&#39;</span><span class="p">,</span>
               <span class="s1">&#39;shape&#39;</span><span class="p">:</span> <span class="p">[]}),</span>
@@ -355,29 +338,29 @@ method, here mapped to metadata about each field.</p>
 </div>
 <p>We refer to each entry as a “data key.” These fields are required:</p>
 <ul class="simple">
-<li>source (a descriptive string — e.g., an EPICS Process Variable)</li>
-<li>dtype: one of the JSON data types: {‘number’, ‘string’, ‘array’}</li>
-<li>shape: <code class="docutils literal"><span class="pre">None</span></code> or a list of dimensions — e.g., <code class="docutils literal"><span class="pre">[5,</span> <span class="pre">5]</span></code> for a
-5x5 array</li>
+<li><p>source (a descriptive string — e.g., an EPICS Process Variable)</p></li>
+<li><p>dtype: one of the JSON data types: {‘number’, ‘string’, ‘array’}</p></li>
+<li><p>shape: <code class="docutils literal notranslate"><span class="pre">None</span></code> or a list of dimensions — e.g., <code class="docutils literal notranslate"><span class="pre">[5,</span> <span class="pre">5]</span></code> for a
+5x5 array</p></li>
 </ul>
 <p>Optional additional fields (precision, units, etc.) are allowed.
-The optional field <code class="docutils literal"><span class="pre">external</span></code> should be used to provide information
+The optional field <code class="docutils literal notranslate"><span class="pre">external</span></code> should be used to provide information
 about references to externally-stored data, such as large image arrays.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.trigger">
-<code class="descname">trigger</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.trigger" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a <code class="docutils literal"><span class="pre">Status</span></code> that is marked done when the device is done
+<code class="sig-name descname">trigger</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.trigger" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> that is marked done when the device is done
 triggering.</p>
-<p>If the device does not need to be triggered, simply return a <code class="docutils literal"><span class="pre">Status</span></code>
+<p>If the device does not need to be triggered, simply return a <code class="docutils literal notranslate"><span class="pre">Status</span></code>
 that is marked done immediately.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.read_configuration">
-<code class="descname">read_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.read_configuration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Same API as <code class="docutils literal"><span class="pre">read</span></code> but for slow-changing fields related to
+<code class="sig-name descname">read_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.read_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same API as <code class="docutils literal notranslate"><span class="pre">read</span></code> but for slow-changing fields related to
 configuration (e.g., exposure time). These will typically be read only
 once per run.</p>
 <p>Of course, for simple cases, you can effectively omit this complexity
@@ -386,14 +369,14 @@ by returning an empty dictionary.</p>
 
 <dl class="method">
 <dt id="ReadableDevice.describe_configuration">
-<code class="descname">describe_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.describe_configuration" title="Permalink to this definition">¶</a></dt>
-<dd><p>Same API as <code class="docutils literal"><span class="pre">describe</span></code>, but corresponding to the keys in
-<code class="docutils literal"><span class="pre">read_configuration</span></code>.</p>
+<code class="sig-name descname">describe_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.describe_configuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same API as <code class="docutils literal notranslate"><span class="pre">describe</span></code>, but corresponding to the keys in
+<code class="docutils literal notranslate"><span class="pre">read_configuration</span></code>.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="ReadableDevice.hints">
-<code class="descname">hints</code><a class="headerlink" href="#ReadableDevice.hints" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">hints</code><a class="headerlink" href="#ReadableDevice.hints" title="Permalink to this definition">¶</a></dt>
 <dd><p>A dictionary of suggestions for best-effort visualization and
 processing. This does not affect what data is read or saved; it is only
 a suggestion to enable automated tools to provide helpful information
@@ -402,29 +385,29 @@ with minimal guidance from the user. See <a class="reference internal" href="cal
 
 <dl class="method">
 <dt id="ReadableDevice.configure">
-<code class="descname">configure</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.configure" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">configure</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.configure" title="Permalink to this definition">¶</a></dt>
 <dd><p>This can change the device’s configuration in an arbitrary way. When
 the RunEngine calls this method, it also emits a fresh Event Descriptor
 because it assumes that the configuration in the previous Event
 Descriptor might no longer be valid.</p>
-<p>Returns a tuple of the <em>old</em> result of <code class="docutils literal"><span class="pre">read_configuration()</span></code> and the
-<em>new</em> result of <code class="docutils literal"><span class="pre">read_configuration()</span></code>.</p>
+<p>Returns a tuple of the <em>old</em> result of <code class="docutils literal notranslate"><span class="pre">read_configuration()</span></code> and the
+<em>new</em> result of <code class="docutils literal notranslate"><span class="pre">read_configuration()</span></code>.</p>
 </dd></dl>
 
 <p><em>This concludes the required API. The following are optional.</em></p>
 <dl class="method">
 <dt id="ReadableDevice.stage">
-<code class="descname">stage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.stage" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">stage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.stage" title="Permalink to this definition">¶</a></dt>
 <dd><p>An optional hook for “setting up” the device for acquisition.</p>
 <p>It should return a list of devices including itself and any other
 devices that are staged as a result of staging this one.
-(The <code class="docutils literal"><span class="pre">parent</span></code> attribute expresses this relationship: a device should
+(The <code class="docutils literal notranslate"><span class="pre">parent</span></code> attribute expresses this relationship: a device should
 be staged/unstaged whenever its parent is staged/unstaged.)</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.unstage">
-<code class="descname">unstage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.unstage" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unstage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.unstage" title="Permalink to this definition">¶</a></dt>
 <dd><p>A hook for “cleaning up” the device after acquisition.</p>
 <p>It should return a list of devices including itself and any other
 devices that are unstaged as a result of unstaging this one.</p>
@@ -432,28 +415,28 @@ devices that are unstaged as a result of unstaging this one.</p>
 
 <dl class="method">
 <dt id="ReadableDevice.subscribe">
-<code class="descname">subscribe</code><span class="sig-paren">(</span><em>function</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.subscribe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">subscribe</code><span class="sig-paren">(</span><em class="sig-param">function</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.subscribe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Optional, needed only if the device will be <a class="reference internal" href="async.html"><span class="doc">monitored</span></a>.</p>
-<p>When the device has a new value ready, it should call <code class="docutils literal"><span class="pre">function</span></code>
+<p>When the device has a new value ready, it should call <code class="docutils literal notranslate"><span class="pre">function</span></code>
 asynchronously in a separate thread.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.clear_sub">
-<code class="descname">clear_sub</code><span class="sig-paren">(</span><em>function</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.clear_sub" title="Permalink to this definition">¶</a></dt>
-<dd><p>Remove a subscription. (See <code class="docutils literal"><span class="pre">subscribe</span></code>, above.)</p>
+<code class="sig-name descname">clear_sub</code><span class="sig-paren">(</span><em class="sig-param">function</em><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.clear_sub" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove a subscription. (See <code class="docutils literal notranslate"><span class="pre">subscribe</span></code>, above.)</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.pause">
-<code class="descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.pause" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.pause" title="Permalink to this definition">¶</a></dt>
 <dd><p>An optional hook to do some device-specific work when the RunEngine
 pauses.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="ReadableDevice.resume">
-<code class="descname">resume</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.resume" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">resume</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ReadableDevice.resume" title="Permalink to this definition">¶</a></dt>
 <dd><p>An optional hook to do some device-specific work when the RunEngine
 resumes after a pause.</p>
 </dd></dl>
@@ -467,26 +450,26 @@ resumes after a pause.</p>
 with the following additional methods and attributes:</p>
 <dl class="class">
 <dt>
-<code class="descname">SettableDevice:</code></dt>
+<code class="sig-name descname">SettableDevice:</code></dt>
 <dd><dl class="method">
 <dt id="stop">
-<code class="descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#stop" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">stop</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Safely stop a device that may or may not be in motion.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="set">
-<code class="descname">set</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#set" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a <code class="docutils literal"><span class="pre">Status</span></code> that is marked done when the device is done
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> that is marked done when the device is done
 moving.</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="position">
-<code class="descname">position</code><a class="headerlink" href="#position" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">position</code><a class="headerlink" href="#position" title="Permalink to this definition">¶</a></dt>
 <dd><p>a heuristic that describes the current position of a device as a
 single scalar, as opposed to the potentially multi-valued description
-provided by <code class="docutils literal"><span class="pre">read()</span></code></p>
+provided by <code class="docutils literal notranslate"><span class="pre">read()</span></code></p>
 </dd></dl>
 
 </dd></dl>
@@ -499,23 +482,23 @@ provided by <code class="docutils literal"><span class="pre">read()</span></code
 or settable device, though there is some overlap.</p>
 <dl class="class">
 <dt>
-<code class="descname">FlyableDevice:</code></dt>
+<code class="sig-name descname">FlyableDevice:</code></dt>
 <dd><dl class="method">
 <dt id="kickoff">
-<code class="descname">kickoff</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#kickoff" title="Permalink to this definition">¶</a></dt>
-<dd><p>Begin acculumating data. Return a <code class="docutils literal"><span class="pre">Status</span></code> and mark it done when
+<code class="sig-name descname">kickoff</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#kickoff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Begin acculumating data. Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> and mark it done when
 acqusition has begun.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="complete">
-<code class="descname">complete</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#complete" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a <code class="docutils literal"><span class="pre">Status</span></code> and mark it done when acquisition has completed.</p>
+<code class="sig-name descname">complete</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#complete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> and mark it done when acquisition has completed.</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="collect">
-<code class="descname">collect</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#collect" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">collect</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#collect" title="Permalink to this definition">¶</a></dt>
 <dd><p>Yield dictionaries that are partial Event documents. They should
 contain the keys ‘time’, ‘data’, and ‘timestamps’. A ‘uid’ is added by
 the RunEngine.</p>
@@ -523,65 +506,65 @@ the RunEngine.</p>
 
 <dl class="method">
 <dt id="describe_collect">
-<code class="descname">describe_collect</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#describe_collect" title="Permalink to this definition">¶</a></dt>
-<dd><p>This is like <code class="docutils literal"><span class="pre">describe()</span></code> on readable devices, but with an extra
+<code class="sig-name descname">describe_collect</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#describe_collect" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is like <code class="docutils literal notranslate"><span class="pre">describe()</span></code> on readable devices, but with an extra
 layer of nesting. Since a flyer can potentially return more than one
 event stream, this is a dict of stream names (strings) mapped to a
-<code class="docutils literal"><span class="pre">describe()</span></code>-type output for each.</p>
+<code class="docutils literal notranslate"><span class="pre">describe()</span></code>-type output for each.</p>
 </dd></dl>
 
 <p><em>The remaining methods and attributes match ReadableDevice.</em></p>
 <dl class="method">
 <dt id="configure">
-<code class="descname">configure</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#configure" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">configure</code><span class="sig-paren">(</span><em class="sig-param">*args</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#configure" title="Permalink to this definition">¶</a></dt>
 <dd><p>same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="read_configuration">
-<code class="descname">read_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#read_configuration" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">read_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#read_configuration" title="Permalink to this definition">¶</a></dt>
 <dd><p>same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="describe_configuration">
-<code class="descname">describe_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#describe_configuration" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">describe_configuration</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#describe_configuration" title="Permalink to this definition">¶</a></dt>
 <dd><p>same as for a readable device</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="name">
-<code class="descname">name</code><a class="headerlink" href="#name" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">name</code><a class="headerlink" href="#name" title="Permalink to this definition">¶</a></dt>
 <dd><p>same as for a readable device</p>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="parent">
-<code class="descname">parent</code><a class="headerlink" href="#parent" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">parent</code><a class="headerlink" href="#parent" title="Permalink to this definition">¶</a></dt>
 <dd><p>same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="stage">
-<code class="descname">stage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#stage" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">stage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#stage" title="Permalink to this definition">¶</a></dt>
 <dd><p>optional, same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="unstage">
-<code class="descname">unstage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#unstage" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unstage</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#unstage" title="Permalink to this definition">¶</a></dt>
 <dd><p>optional, same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="pause">
-<code class="descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pause" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">pause</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pause" title="Permalink to this definition">¶</a></dt>
 <dd><p>optional, same as for a readable device</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="resume">
-<code class="descname">resume</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#resume" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">resume</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#resume" title="Permalink to this definition">¶</a></dt>
 <dd><p>optional, same as for a readable device</p>
 </dd></dl>
 
@@ -603,7 +586,7 @@ by implementing this same interface.</p>
 <div class="section" id="simulated-hardware">
 <h3>Simulated Hardware<a class="headerlink" href="#simulated-hardware" title="Permalink to this headline">¶</a></h3>
 <p>A toy “test” implementation the interface is included in the
-<code class="xref py py-mod docutils literal"><span class="pre">ophyd.sim</span></code> module. These implementations act as simulated hardware,
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">ophyd.sim</span></code> module. These implementations act as simulated hardware,
 and we use them extensively in examples, demos, and the test suite. They can
 also be useful for exercising analysis workflows before running a real
 experiment. API documentation is below.</p>

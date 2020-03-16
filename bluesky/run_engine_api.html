@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>RunEngine API Documentation &mdash; bluesky 1.6.0rc5.post29+gce009a0 documentation</title>
+  <title>RunEngine API Documentation &mdash; bluesky 1.6.0rc5.post42+gdca02a2 documentation</title>
   
 
   
@@ -20,21 +20,11 @@
   <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
   
     
-      <script type="text/javascript">
-          var DOCUMENTATION_OPTIONS = {
-              URL_ROOT:'./',
-              VERSION:'1.6.0rc5.post29+gce009a0',
-              LANGUAGE:'None',
-              COLLAPSE_INDEX:false,
-              FILE_SUFFIX:'.html',
-              HAS_SOURCE:  true,
-              SOURCELINK_SUFFIX: '.txt'
-          };
-      </script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -70,7 +60,7 @@
             
             
               <div class="version">
-                1.6.0rc5.post29+gce009a0
+                1.6.0rc5.post42+gdca02a2
               </div>
             
           
@@ -106,6 +96,7 @@
 <li class="toctree-l1"><a class="reference internal" href="progress-bar.html">Progress Bar</a></li>
 <li class="toctree-l1"><a class="reference internal" href="event_descriptors.html">Event Descriptors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="async.html">Asynchronous Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_run_plans.html">Multi-Run Plans</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging and Logging</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">RunEngine API Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="magics.html">IPython ‘Magics’ [Experimental]</a></li>
@@ -204,186 +195,154 @@
 <h1>RunEngine API Documentation<a class="headerlink" href="#runengine-api-documentation" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="bluesky.run_engine.RunEngine">
-<em class="property">class </em><code class="descclassname">bluesky.run_engine.</code><code class="descname">RunEngine</code><span class="sig-paren">(</span><em>md=None</em>, <em>*</em>, <em>loop=None</em>, <em>preprocessors=None</em>, <em>context_managers=None</em>, <em>md_validator=None</em>, <em>scan_id_source=&lt;function default_scan_id_source&gt;</em>, <em>during_task=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">bluesky.run_engine.</code><code class="sig-name descname">RunEngine</code><span class="sig-paren">(</span><em class="sig-param">md=None</em>, <em class="sig-param">*</em>, <em class="sig-param">loop=None</em>, <em class="sig-param">preprocessors=None</em>, <em class="sig-param">context_managers=None</em>, <em class="sig-param">md_validator=None</em>, <em class="sig-param">scan_id_source=&lt;function default_scan_id_source&gt;</em>, <em class="sig-param">during_task=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine" title="Permalink to this definition">¶</a></dt>
 <dd><p>The Run Engine execute messages and emits Documents.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>md</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict-like, optional</span></dt>
-<dd><p class="first last">The default is a standard Python dictionary, but fancier
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>md</strong><span class="classifier">dict-like, optional</span></dt><dd><p>The default is a standard Python dictionary, but fancier
 objects can be used to store long-term history and persist
 it between sessions. The standard configuration
 instantiates a Run Engine with historydict.HistoryDict, a
 simple interface to a sqlite file. Any object supporting
 <cite>__getitem__</cite>, <cite>__setitem__</cite>, and <cite>clear</cite> will work.</p>
 </dd>
-<dt><strong>loop</strong> <span class="classifier-delimiter">:</span> <span class="classifier">asyncio event loop</span></dt>
-<dd><p class="first last">e.g., <code class="docutils literal"><span class="pre">asyncio.get_event_loop()</span></code> or <code class="docutils literal"><span class="pre">asyncio.new_event_loop()</span></code></p>
+<dt><strong>loop</strong><span class="classifier">asyncio event loop</span></dt><dd><p>e.g., <code class="docutils literal notranslate"><span class="pre">asyncio.get_event_loop()</span></code> or <code class="docutils literal notranslate"><span class="pre">asyncio.new_event_loop()</span></code></p>
 </dd>
-<dt><strong>preprocessors</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list, optional</span></dt>
-<dd><p class="first last">Generator functions that take in a plan (generator instance) and
+<dt><strong>preprocessors</strong><span class="classifier">list, optional</span></dt><dd><p>Generator functions that take in a plan (generator instance) and
 modify its messages on the way out. Suitable examples include
-the functions in the module <code class="docutils literal"><span class="pre">bluesky.plans</span></code> with names ending in
+the functions in the module <code class="docutils literal notranslate"><span class="pre">bluesky.plans</span></code> with names ending in
 ‘wrapper’.  Functions are composed in order: the preprocessors
-<code class="docutils literal"><span class="pre">[f,</span> <span class="pre">g]</span></code> are applied like <code class="docutils literal"><span class="pre">f(g(plan))</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">[f,</span> <span class="pre">g]</span></code> are applied like <code class="docutils literal notranslate"><span class="pre">f(g(plan))</span></code>.</p>
 </dd>
-<dt><strong>context_managers</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list, optional</span></dt>
-<dd><p class="first last">Context managers that will be entered when we run a plan. The context
+<dt><strong>context_managers</strong><span class="classifier">list, optional</span></dt><dd><p>Context managers that will be entered when we run a plan. The context
 managers will be composed in order, much like the preprocessors. If
 this argument is omitted, we will use a user-oriented handler for
-SIGINT. The elements of this list will be passed this <code class="docutils literal"><span class="pre">RunEngine</span></code>
+SIGINT. The elements of this list will be passed this <code class="docutils literal notranslate"><span class="pre">RunEngine</span></code>
 instance as their only argument. You may pass an empty list if you
-would like a <code class="docutils literal"><span class="pre">RunEngine</span></code> with no signal handling and no context
+would like a <code class="docutils literal notranslate"><span class="pre">RunEngine</span></code> with no signal handling and no context
 managers.</p>
 </dd>
-<dt><strong>md_validator</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable, optional</span></dt>
-<dd><p class="first last">a function that raises and prevents starting a run if it deems
+<dt><strong>md_validator</strong><span class="classifier">callable, optional</span></dt><dd><p>a function that raises and prevents starting a run if it deems
 the metadata to be invalid or incomplete
 Expected signature: f(md)
 Function should raise if md is invalid. What that means is
 completely up to the user. The function’s return value is
 ignored.</p>
 </dd>
-<dt><strong>scan_id_source</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable, optional</span></dt>
-<dd><p class="first last">a function that will be used to calculate scan_id. Default is to
+<dt><strong>scan_id_source</strong><span class="classifier">callable, optional</span></dt><dd><p>a function that will be used to calculate scan_id. Default is to
 increment scan_id by 1 each time. However you could pass in a
 customized function to get a scan_id from any source.
 Expected signature: f(md)
 Expected return: updated scan_id value</p>
 </dd>
-<dt><strong>during_task</strong> <span class="classifier-delimiter">:</span> <span class="classifier">reference to an object of class DuringTask, optional</span></dt>
-<dd><p class="first">Class methods: <code class="docutils literal"><span class="pre">block()</span></code> to be run to block
+<dt><strong>during_task</strong><span class="classifier">reference to an object of class DuringTask, optional</span></dt><dd><p>Class methods: <code class="docutils literal notranslate"><span class="pre">block()</span></code> to be run to block
 the main thread during <cite>RE.__call__</cite></p>
 <p>The required signatures for the class methods</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="n">ev</span><span class="p">:</span> <span class="n">Threading</span><span class="o">.</span><span class="n">Event</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
     <span class="s2">&quot;Returns when ev is set&quot;</span>
 </pre></div>
 </div>
-<dl class="last docutils">
-<dt>The default value handles the cases of:</dt>
-<dd><ul class="first last simple">
-<li>Matplotlib is not imported (just wait on the event)</li>
-<li>Matplotlib is imported, but not using a Qt, notebook or ipympl
-backend (just wait on the event)</li>
-<li>Matplotlib is imported and using a Qt backend (run the Qt app
-on the main thread until the run finishes)</li>
-<li>Matplotlib is imported and using a nbagg or ipympl backend (
-wait on the event and poll to push updates to the browser)</li>
+<dl class="simple">
+<dt>The default value handles the cases of:</dt><dd><ul class="simple">
+<li><p>Matplotlib is not imported (just wait on the event)</p></li>
+<li><p>Matplotlib is imported, but not using a Qt, notebook or ipympl
+backend (just wait on the event)</p></li>
+<li><p>Matplotlib is imported and using a Qt backend (run the Qt app
+on the main thread until the run finishes)</p></li>
+<li><p>Matplotlib is imported and using a nbagg or ipympl backend (
+wait on the event and poll to push updates to the browser)</p></li>
 </ul>
 </dd>
 </dl>
 </dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Attributes:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>md</strong></dt>
-<dd><p class="first last">Direct access to the dict-like persistent storage described above</p>
 </dd>
-<dt><strong>record_interruptions</strong></dt>
-<dd><p class="first last">False by default. Set to True to generate an extra event stream
+<dt class="field-even">Attributes</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>md</strong></dt><dd><p>Direct access to the dict-like persistent storage described above</p>
+</dd>
+<dt><strong>record_interruptions</strong></dt><dd><p>False by default. Set to True to generate an extra event stream
 that records any interruptions (pauses, suspensions).</p>
 </dd>
-<dt><strong>state</strong></dt>
-<dd><p class="first last">{‘idle’, ‘running’, ‘paused’}</p>
+<dt><strong>state</strong></dt><dd><p>{‘idle’, ‘running’, ‘paused’}</p>
 </dd>
-<dt><strong>suspenders</strong></dt>
-<dd><p class="first last">Read-only collection of <cite>bluesky.suspenders.SuspenderBase</cite> objects
+<dt><strong>suspenders</strong></dt><dd><p>Read-only collection of <cite>bluesky.suspenders.SuspenderBase</cite> objects
 which can suspend and resume execution; see related methods.</p>
 </dd>
-<dt><strong>preprocessors</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">Generator functions that take in a plan (generator instance) and
+<dt><strong>preprocessors</strong><span class="classifier">list</span></dt><dd><p>Generator functions that take in a plan (generator instance) and
 modify its messages on the way out. Suitable examples include
-the functions in the module <code class="docutils literal"><span class="pre">bluesky.plans</span></code> with names ending in
+the functions in the module <code class="docutils literal notranslate"><span class="pre">bluesky.plans</span></code> with names ending in
 ‘wrapper’.  Functions are composed in order: the preprocessors
-<code class="docutils literal"><span class="pre">[f,</span> <span class="pre">g]</span></code> are applied like <code class="docutils literal"><span class="pre">f(g(plan))</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">[f,</span> <span class="pre">g]</span></code> are applied like <code class="docutils literal notranslate"><span class="pre">f(g(plan))</span></code>.</p>
 </dd>
-<dt><strong>msg_hook</strong></dt>
-<dd><p class="first last">Callable that receives all messages before they are processed
+<dt><strong>msg_hook</strong></dt><dd><p>Callable that receives all messages before they are processed
 (useful for logging or other development purposes); expected
-signature is <code class="docutils literal"><span class="pre">f(msg)</span></code> where <code class="docutils literal"><span class="pre">msg</span></code> is a <code class="docutils literal"><span class="pre">bluesky.Msg</span></code>, a
+signature is <code class="docutils literal notranslate"><span class="pre">f(msg)</span></code> where <code class="docutils literal notranslate"><span class="pre">msg</span></code> is a <code class="docutils literal notranslate"><span class="pre">bluesky.Msg</span></code>, a
 kind of namedtuple; default is None.</p>
 </dd>
-<dt><strong>state_hook</strong></dt>
-<dd><p class="first last">Callable with signature <code class="docutils literal"><span class="pre">f(new_state,</span> <span class="pre">old_state)</span></code> that will be
+<dt><strong>state_hook</strong></dt><dd><p>Callable with signature <code class="docutils literal notranslate"><span class="pre">f(new_state,</span> <span class="pre">old_state)</span></code> that will be
 called whenever the RunEngine’s state attribute is updated; default
 is None</p>
 </dd>
-<dt><strong>waiting_hook</strong></dt>
-<dd><p class="first last">Callable with signature <code class="docutils literal"><span class="pre">f(status_object)</span></code> that will be called
+<dt><strong>waiting_hook</strong></dt><dd><p>Callable with signature <code class="docutils literal notranslate"><span class="pre">f(status_object)</span></code> that will be called
 whenever the RunEngine is waiting for long-running commands
 (trigger, set, kickoff, complete) to complete. This hook is useful to
 incorporate a progress bar.</p>
 </dd>
-<dt><strong>ignore_callback_exceptions</strong></dt>
-<dd><p class="first last">Boolean, False by default.</p>
+<dt><strong>ignore_callback_exceptions</strong></dt><dd><p>Boolean, False by default.</p>
 </dd>
-<dt><strong>loop</strong> <span class="classifier-delimiter">:</span> <span class="classifier">asyncio event loop</span></dt>
-<dd><p class="first last">e.g., <code class="docutils literal"><span class="pre">asyncio.get_event_loop()</span></code> or <code class="docutils literal"><span class="pre">asyncio.new_event_loop()</span></code></p>
+<dt><strong>loop</strong><span class="classifier">asyncio event loop</span></dt><dd><p>e.g., <code class="docutils literal notranslate"><span class="pre">asyncio.get_event_loop()</span></code> or <code class="docutils literal notranslate"><span class="pre">asyncio.new_event_loop()</span></code></p>
 </dd>
-<dt><strong>max_depth</strong></dt>
-<dd><p class="first last">Maximum stack depth; set this to prevent users from calling the
+<dt><strong>max_depth</strong></dt><dd><p>Maximum stack depth; set this to prevent users from calling the
 RunEngine inside a function (which can result in unexpected
 behavior and breaks introspection tools). Default is None.
 For built-in Python interpreter, set to 2. For IPython, set to 11
 (tested on IPython 5.1.0; other versions may vary).</p>
 </dd>
-<dt><strong>pause_msg</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd><p class="first last">The message printed when a run is interrupted. This message
+<dt><strong>pause_msg</strong><span class="classifier">str</span></dt><dd><p>The message printed when a run is interrupted. This message
 includes instructions of changing the state of the RunEngine.
-It is set to <code class="docutils literal"><span class="pre">bluesky.run_engine.PAUSE_MSG</span></code> by default and
+It is set to <code class="docutils literal notranslate"><span class="pre">bluesky.run_engine.PAUSE_MSG</span></code> by default and
 can be modified based on needs.</p>
 </dd>
-<dt><strong>commands:</strong></dt>
-<dd><p class="first last">The list of commands available to Msg.</p>
+<dt><strong>commands:</strong></dt><dd><p>The list of commands available to Msg.</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.__call__">
-<code class="descname">__call__</code><span class="sig-paren">(</span><em>self</em>, <em>plan</em>, <em>subs=None</em>, <em>/</em>, <em>**metadata_kw</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.__call__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.__call__" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">__call__</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">plan</em>, <em class="sig-param">subs=None</em>, <em class="sig-param">/</em>, <em class="sig-param">**metadata_kw</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.__call__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.__call__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Execute a plan.</p>
 <p>Any keyword arguments will be interpreted as metadata and recorded with
 any run(s) created by executing the plan. Notice that the plan
 (required) and extra subscriptions (optional) must be given as
 positional arguments.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>plan</strong> <span class="classifier-delimiter">:</span> <span class="classifier">generator (positional only)</span></dt>
-<dd><p class="first last">a generator or that yields <code class="docutils literal"><span class="pre">Msg</span></code> objects (or an iterable that
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>plan</strong><span class="classifier">generator (positional only)</span></dt><dd><p>a generator or that yields <code class="docutils literal notranslate"><span class="pre">Msg</span></code> objects (or an iterable that
 returns such a generator)</p>
 </dd>
-<dt><strong>subs</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable, list, or dict, optional (positional only)</span></dt>
-<dd><p class="first">Temporary subscriptions (a.k.a. callbacks) to be used on this run.
+<dt><strong>subs</strong><span class="classifier">callable, list, or dict, optional (positional only)</span></dt><dd><p>Temporary subscriptions (a.k.a. callbacks) to be used on this run.
 For convenience, any of the following are accepted:</p>
-<ul class="last simple">
-<li>a callable, which will be subscribed to ‘all’</li>
-<li>a list of callables, which again will be subscribed to ‘all’</li>
-<li>a dictionary, mapping specific subscriptions to callables or
+<ul class="simple">
+<li><p>a callable, which will be subscribed to ‘all’</p></li>
+<li><p>a list of callables, which again will be subscribed to ‘all’</p></li>
+<li><p>a dictionary, mapping specific subscriptions to callables or
 lists of callables; valid keys are {‘all’, ‘start’, ‘stop’,
-‘event’, ‘descriptor’}</li>
+‘event’, ‘descriptor’}</p></li>
 </ul>
 </dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>uids</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">list of uids (i.e. RunStart Document uids) of run(s)</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>uids</strong><span class="classifier">list</span></dt><dd><p>list of uids (i.e. RunStart Document uids) of run(s)</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <p>The RunEngine maintains a callback registry of functions that receive any
@@ -391,71 +350,57 @@ lists of callables; valid keys are {‘all’, ‘start’, ‘stop’,
 functions from that registry.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.subscribe">
-<code class="descname">subscribe</code><span class="sig-paren">(</span><em>self</em>, <em>func</em>, <em>name='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.subscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.subscribe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">subscribe</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">func</em>, <em class="sig-param">name='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.subscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.subscribe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register a callback function to consume documents.</p>
 <div class="versionchanged">
-<p><span class="versionmodified">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal"><span class="pre">name</span></code>
-argument has been given a default value, <code class="docutils literal"><span class="pre">'all'</span></code>. Because the
+<p><span class="versionmodified changed">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal notranslate"><span class="pre">name</span></code>
+argument has been given a default value, <code class="docutils literal notranslate"><span class="pre">'all'</span></code>. Because the
 meaning of the arguments is unambiguous (they must be a callable
 and a string, respectively) the old order will be supported
 indefinitely, with a warning.</p>
 </div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>func: callable</strong></dt>
-<dd><p class="first last">expecting signature like <code class="docutils literal"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>func: callable</strong></dt><dd><p>expecting signature like <code class="docutils literal notranslate"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
 where name is a string and document is a dict</p>
 </dd>
-<dt><strong>name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">{‘all’, ‘start’, ‘descriptor’, ‘event’, ‘stop’}, optional</span></dt>
-<dd><p class="first last">the type of document this function should receive (‘all’ by
+<dt><strong>name</strong><span class="classifier">{‘all’, ‘start’, ‘descriptor’, ‘event’, ‘stop’}, optional</span></dt><dd><p>the type of document this function should receive (‘all’ by
 default)</p>
 </dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">an integer ID that can be used to unsubscribe</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>token</strong><span class="classifier">int</span></dt><dd><p>an integer ID that can be used to unsubscribe</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unsubscribe" title="bluesky.run_engine.RunEngine.unsubscribe"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.unsubscribe()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unsubscribe" title="bluesky.run_engine.RunEngine.unsubscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.unsubscribe()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.unsubscribe">
-<code class="descname">unsubscribe</code><span class="sig-paren">(</span><em>self</em>, <em>token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.unsubscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.unsubscribe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unsubscribe</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.unsubscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.unsubscribe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unregister a callback function its integer ID.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">the integer ID issued by <a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.subscribe()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>token</strong><span class="classifier">int</span></dt><dd><p>the integer ID issued by <a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.subscribe()</span></code></a></p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.subscribe()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.subscribe()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
@@ -464,64 +409,53 @@ default)</p>
 <a class="reference internal" href="state-machine.html#interactive-pause-summary"><span class="std std-ref">various ways</span></a> using these methods:</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.resume">
-<code class="descname">resume</code><span class="sig-paren">(</span><em>self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.resume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.resume" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">resume</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.resume"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.resume" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resume a paused plan from the last checkpoint.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>uids</strong> <span class="classifier-delimiter">:</span> <span class="classifier">list</span></dt>
-<dd><p class="first last">list of Header uids (a.k.a RunStart uids) of run(s)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>uids</strong><span class="classifier">list</span></dt><dd><p>list of Header uids (a.k.a RunStart uids) of run(s)</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.abort">
-<code class="descname">abort</code><span class="sig-paren">(</span><em>self</em>, <em>reason=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.abort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.abort" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">abort</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">reason=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.abort"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.abort" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stop a running or paused plan and mark it as aborted.</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.halt" title="bluesky.run_engine.RunEngine.halt"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.halt()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.stop" title="bluesky.run_engine.RunEngine.stop"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.stop()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.halt" title="bluesky.run_engine.RunEngine.halt"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.halt()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.stop" title="bluesky.run_engine.RunEngine.stop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.stop()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.stop">
-<code class="descname">stop</code><span class="sig-paren">(</span><em>self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.stop" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">stop</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.stop"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stop a running or paused plan, but mark it as successful (not aborted).</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.abort" title="bluesky.run_engine.RunEngine.abort"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.abort()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.halt" title="bluesky.run_engine.RunEngine.halt"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.halt()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.abort" title="bluesky.run_engine.RunEngine.abort"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.abort()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.halt" title="bluesky.run_engine.RunEngine.halt"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.halt()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.halt">
-<code class="descname">halt</code><span class="sig-paren">(</span><em>self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.halt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.halt" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">halt</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.halt"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.halt" title="Permalink to this definition">¶</a></dt>
 <dd><p>Stop the running plan and do not allow the plan a chance to clean up.</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.abort" title="bluesky.run_engine.RunEngine.abort"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.abort()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.stop" title="bluesky.run_engine.RunEngine.stop"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.stop()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.abort" title="bluesky.run_engine.RunEngine.abort"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.abort()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.stop" title="bluesky.run_engine.RunEngine.stop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.stop()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
@@ -530,69 +464,53 @@ default)</p>
 changes. See <a class="reference internal" href="state-machine.html#suspenders"><span class="std std-ref">Automated Suspension</span></a>.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.install_suspender">
-<code class="descname">install_suspender</code><span class="sig-paren">(</span><em>self</em>, <em>suspender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.install_suspender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.install_suspender" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">install_suspender</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">suspender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.install_suspender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.install_suspender" title="Permalink to this definition">¶</a></dt>
 <dd><p>Install a ‘suspender’, which can suspend and resume execution.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>suspender</strong> <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bluesky.suspenders.SuspenderBase</cite></span></dt>
-<dd></dd>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>suspender</strong><span class="classifier"><cite>bluesky.suspenders.SuspenderBase</cite></span></dt><dd></dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.remove_suspender" title="bluesky.run_engine.RunEngine.remove_suspender"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.remove_suspender()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="bluesky.run_engine.RunEngine.clear_suspenders"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.clear_suspenders()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.remove_suspender" title="bluesky.run_engine.RunEngine.remove_suspender"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.remove_suspender()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="bluesky.run_engine.RunEngine.clear_suspenders"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.clear_suspenders()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.remove_suspender">
-<code class="descname">remove_suspender</code><span class="sig-paren">(</span><em>self</em>, <em>suspender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.remove_suspender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.remove_suspender" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">remove_suspender</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">suspender</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.remove_suspender"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.remove_suspender" title="Permalink to this definition">¶</a></dt>
 <dd><p>Uninstall a suspender.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>suspender</strong> <span class="classifier-delimiter">:</span> <span class="classifier"><cite>bluesky.suspenders.SuspenderBase</cite></span></dt>
-<dd></dd>
+<dl class="field-list">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl>
+<dt><strong>suspender</strong><span class="classifier"><cite>bluesky.suspenders.SuspenderBase</cite></span></dt><dd></dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.install_suspender" title="bluesky.run_engine.RunEngine.install_suspender"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.install_suspender()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="bluesky.run_engine.RunEngine.clear_suspenders"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.clear_suspenders()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.install_suspender" title="bluesky.run_engine.RunEngine.install_suspender"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.install_suspender()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="bluesky.run_engine.RunEngine.clear_suspenders"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.clear_suspenders()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.clear_suspenders">
-<code class="descname">clear_suspenders</code><span class="sig-paren">(</span><em>self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.clear_suspenders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">clear_suspenders</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.clear_suspenders"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.clear_suspenders" title="Permalink to this definition">¶</a></dt>
 <dd><p>Uninstall all suspenders.</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.install_suspender" title="bluesky.run_engine.RunEngine.install_suspender"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.install_suspender()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.remove_suspender" title="bluesky.run_engine.RunEngine.remove_suspender"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.remove_suspender()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.install_suspender" title="bluesky.run_engine.RunEngine.install_suspender"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.install_suspender()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.remove_suspender" title="bluesky.run_engine.RunEngine.remove_suspender"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.remove_suspender()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
@@ -603,121 +521,91 @@ suspenders, respectively. For special applicaitons, they can be called
 directly.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.request_pause">
-<code class="descname">request_pause</code><span class="sig-paren">(</span><em>self</em>, <em>defer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.request_pause"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.request_pause" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">request_pause</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">defer=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.request_pause"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.request_pause" title="Permalink to this definition">¶</a></dt>
 <dd><p>Command the Run Engine to pause.</p>
 <p>This function is called by ‘pause’ Messages. It can also be called
 by other threads. It cannot be called on the main thread during a run,
 but it is called by SIGINT (i.e., Ctrl+C).</p>
 <p>If there current run has no checkpoint (via the ‘clear_checkpoint’
 message), this will cause the run to abort.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>defer</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
-<dd><p class="first last">If False, pause immediately before processing any new messages.
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>defer</strong><span class="classifier">bool, optional</span></dt><dd><p>If False, pause immediately before processing any new messages.
 If True, pause at the next checkpoint.
 False by default.</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.request_suspend">
-<code class="descname">request_suspend</code><span class="sig-paren">(</span><em>self</em>, <em>fut</em>, <em>*</em>, <em>pre_plan=None</em>, <em>post_plan=None</em>, <em>justification=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.request_suspend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.request_suspend" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">request_suspend</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">fut</em>, <em class="sig-param">*</em>, <em class="sig-param">pre_plan=None</em>, <em class="sig-param">post_plan=None</em>, <em class="sig-param">justification=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.request_suspend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.request_suspend" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request that the run suspend itself until the future is finished.</p>
 <p>The two plans will be run before and after waiting for the future.
 This enable doing things like opening and closing shutters and
 resetting cameras around a suspend.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>fut</strong> <span class="classifier-delimiter">:</span> <span class="classifier">asyncio.Future</span></dt>
-<dd></dd>
-<dt><strong>pre_plan</strong> <span class="classifier-delimiter">:</span> <span class="classifier">iterable or callable, optional</span></dt>
-<dd><p class="first last">Plan to execute just before suspending. If callable, must
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>fut</strong><span class="classifier">asyncio.Future</span></dt><dd></dd>
+<dt><strong>pre_plan</strong><span class="classifier">iterable or callable, optional</span></dt><dd><p>Plan to execute just before suspending. If callable, must
 take no arguments.</p>
 </dd>
-<dt><strong>post_plan</strong> <span class="classifier-delimiter">:</span> <span class="classifier">iterable or callable, optional</span></dt>
-<dd><p class="first last">Plan to execute just before resuming. If callable, must
+<dt><strong>post_plan</strong><span class="classifier">iterable or callable, optional</span></dt><dd><p>Plan to execute just before resuming. If callable, must
 take no arguments.</p>
 </dd>
-<dt><strong>justification</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str, optional</span></dt>
-<dd><p class="first last">explanation of why the suspension has been requested</p>
+<dt><strong>justification</strong><span class="classifier">str, optional</span></dt><dd><p>explanation of why the suspension has been requested</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <p>These methods may be used to register custom commands to supplement or
 replace the built-in commands recognized by the RunEngine.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.register_command">
-<code class="descname">register_command</code><span class="sig-paren">(</span><em>self</em>, <em>name</em>, <em>func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.register_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.register_command" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">register_command</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">name</em>, <em class="sig-param">func</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.register_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.register_command" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register a new Message command.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd></dd>
-<dt><strong>func</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable</span></dt>
-<dd><p class="first last">This can be a function or a method. The signature is <cite>f(msg)</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>name</strong><span class="classifier">str</span></dt><dd></dd>
+<dt><strong>func</strong><span class="classifier">callable</span></dt><dd><p>This can be a function or a method. The signature is <cite>f(msg)</cite>.</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.unregister_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal"><span class="pre">RunEngine.commands</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.unregister_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal notranslate"><span class="pre">RunEngine.commands</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.unregister_command">
-<code class="descname">unregister_command</code><span class="sig-paren">(</span><em>self</em>, <em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.unregister_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.unregister_command" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unregister_command</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.unregister_command"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.unregister_command" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unregister a Message command.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd></dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>name</strong><span class="classifier">str</span></dt><dd></dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.register_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal"><span class="pre">RunEngine.commands</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.register_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal notranslate"><span class="pre">RunEngine.commands</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
@@ -726,36 +614,27 @@ replace the built-in commands recognized by the RunEngine.</p>
 a summary as to what they do.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.RunEngine.print_command_registry">
-<code class="descname">print_command_registry</code><span class="sig-paren">(</span><em>self</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.print_command_registry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.print_command_registry" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">print_command_registry</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#RunEngine.print_command_registry"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.RunEngine.print_command_registry" title="Permalink to this definition">¶</a></dt>
 <dd><p>This conveniently prints the command registry of available
 commands.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>Verbose</strong> <span class="classifier-delimiter">:</span> <span class="classifier">bool, optional</span></dt>
-<dd></dd>
-<dt><strong>verbose print. Default is False</strong></dt>
-<dd></dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>Verbose</strong><span class="classifier">bool, optional</span></dt><dd></dd>
+<dt><strong>verbose print. Default is False</strong></dt><dd></dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.register_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.unregister_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal"><span class="pre">RunEngine.commands</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.register_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.unregister_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.commands" title="bluesky.run_engine.RunEngine.commands"><code class="xref py py-attr docutils literal notranslate"><span class="pre">RunEngine.commands</span></code></a></dt><dd></dd>
 </dl>
 </div>
 <p class="rubric">Examples</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bluesky</span> <span class="kn">import</span> <span class="n">RunEngine</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bluesky</span> <span class="kn">import</span> <span class="n">RunEngine</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span> <span class="o">=</span> <span class="n">RunEngine</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># Print a very verbose list of currently registered commands</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span><span class="o">.</span><span class="n">print_command_registry</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -765,21 +644,18 @@ commands.</p>
 
 <dl class="attribute">
 <dt id="bluesky.run_engine.RunEngine.commands">
-<code class="descname">commands</code><a class="headerlink" href="#bluesky.run_engine.RunEngine.commands" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">commands</code><a class="headerlink" href="#bluesky.run_engine.RunEngine.commands" title="Permalink to this definition">¶</a></dt>
 <dd><p>The list of commands available to Msg.</p>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.register_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.unregister_command()</span></code></a></dt>
-<dd></dd>
-<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.register_command" title="bluesky.run_engine.RunEngine.register_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.register_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.unregister_command" title="bluesky.run_engine.RunEngine.unregister_command"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.unregister_command()</span></code></a></dt><dd></dd>
+<dt><a class="reference internal" href="#bluesky.run_engine.RunEngine.print_command_registry" title="bluesky.run_engine.RunEngine.print_command_registry"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.print_command_registry()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 <p class="rubric">Examples</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bluesky</span> <span class="kn">import</span> <span class="n">RunEngine</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bluesky</span> <span class="kn">import</span> <span class="n">RunEngine</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span> <span class="o">=</span> <span class="n">RunEngine</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># to list commands</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">RE</span><span class="o">.</span><span class="n">commands</span>
@@ -789,116 +665,97 @@ commands.</p>
 
 </dd></dl>
 
-<p>A RunEngine encapsulates a <a class="reference internal" href="#bluesky.run_engine.Dispatcher" title="bluesky.run_engine.Dispatcher"><code class="xref py py-class docutils literal"><span class="pre">Dispatcher</span></code></a> for emitting any
+<p>A RunEngine encapsulates a <a class="reference internal" href="#bluesky.run_engine.Dispatcher" title="bluesky.run_engine.Dispatcher"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dispatcher</span></code></a> for emitting any
 <a class="reference internal" href="documents.html"><span class="doc">Documents</span></a> generated by plan execution. The methods
-<a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.subscribe()</span></code></a> and <a class="reference internal" href="#bluesky.run_engine.RunEngine.unsubscribe" title="bluesky.run_engine.RunEngine.unsubscribe"><code class="xref py py-meth docutils literal"><span class="pre">RunEngine.unsubscribe()</span></code></a>, documented
+<a class="reference internal" href="#bluesky.run_engine.RunEngine.subscribe" title="bluesky.run_engine.RunEngine.subscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.subscribe()</span></code></a> and <a class="reference internal" href="#bluesky.run_engine.RunEngine.unsubscribe" title="bluesky.run_engine.RunEngine.unsubscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">RunEngine.unsubscribe()</span></code></a>, documented
 above, are aliases to the corresponding methods on the RunEngine’s Dispatcher.</p>
 <dl class="class">
 <dt id="bluesky.run_engine.Dispatcher">
-<em class="property">class </em><code class="descclassname">bluesky.run_engine.</code><code class="descname">Dispatcher</code><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">bluesky.run_engine.</code><code class="sig-name descname">Dispatcher</code><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher" title="Permalink to this definition">¶</a></dt>
 <dd><p>Dispatch documents to user-defined consumers on the main thread.</p>
 <dl class="method">
 <dt id="bluesky.run_engine.Dispatcher.subscribe">
-<code class="descname">subscribe</code><span class="sig-paren">(</span><em>self</em>, <em>func</em>, <em>name='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.subscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.subscribe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">subscribe</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">func</em>, <em class="sig-param">name='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.subscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.subscribe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register a callback function to consume documents.</p>
 <div class="versionchanged">
-<p><span class="versionmodified">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal"><span class="pre">name</span></code>
-argument has been given a default value, <code class="docutils literal"><span class="pre">'all'</span></code>. Because the
+<p><span class="versionmodified changed">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal notranslate"><span class="pre">name</span></code>
+argument has been given a default value, <code class="docutils literal notranslate"><span class="pre">'all'</span></code>. Because the
 meaning of the arguments is unambiguous (they must be a callable
 and a string, respectively) the old order will be supported
 indefinitely, with a warning.</p>
 </div>
 <div class="versionchanged">
-<p><span class="versionmodified">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal"><span class="pre">name</span></code>
-argument has been given a default value, <code class="docutils literal"><span class="pre">'all'</span></code>. Because the
+<p><span class="versionmodified changed">Changed in version 0.10.0: </span>The order of the arguments was swapped and the <code class="docutils literal notranslate"><span class="pre">name</span></code>
+argument has been given a default value, <code class="docutils literal notranslate"><span class="pre">'all'</span></code>. Because the
 meaning of the arguments is unambiguous (they must be a callable
 and a string, respectively) the old order will be supported
 indefinitely, with a warning.</p>
 </div>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
-<dt><strong>func: callable</strong></dt>
-<dd><p class="first last">expecting signature like <code class="docutils literal"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>func: callable</strong></dt><dd><p>expecting signature like <code class="docutils literal notranslate"><span class="pre">f(name,</span> <span class="pre">document)</span></code>
 where name is a string and document is a dict</p>
 </dd>
-<dt><strong>name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">{‘all’, ‘start’, ‘descriptor’, ‘event’, ‘stop’}, optional</span></dt>
-<dd><p class="first last">the type of document this function should receive (‘all’ by
+<dt><strong>name</strong><span class="classifier">{‘all’, ‘start’, ‘descriptor’, ‘event’, ‘stop’}, optional</span></dt><dd><p>the type of document this function should receive (‘all’ by
 default).</p>
 </dd>
 </dl>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">an integer ID that can be used to unsubscribe</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>token</strong><span class="classifier">int</span></dt><dd><p>an integer ID that can be used to unsubscribe</p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="bluesky.run_engine.Dispatcher.unsubscribe"><code class="xref py py-meth docutils literal"><span class="pre">Dispatcher.unsubscribe()</span></code></a></dt>
-<dd>an integer token that can be used to unsubscribe</dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="bluesky.run_engine.Dispatcher.unsubscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Dispatcher.unsubscribe()</span></code></a></dt><dd><p>an integer token that can be used to unsubscribe</p>
+</dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.Dispatcher.unsubscribe">
-<code class="descname">unsubscribe</code><span class="sig-paren">(</span><em>self</em>, <em>token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.unsubscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unsubscribe</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">token</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.unsubscribe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unregister a callback function using its integer ID.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd><p class="first last">the integer ID issued by <a class="reference internal" href="#bluesky.run_engine.Dispatcher.subscribe" title="bluesky.run_engine.Dispatcher.subscribe"><code class="xref py py-meth docutils literal"><span class="pre">Dispatcher.subscribe()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>token</strong><span class="classifier">int</span></dt><dd><p>the integer ID issued by <a class="reference internal" href="#bluesky.run_engine.Dispatcher.subscribe" title="bluesky.run_engine.Dispatcher.subscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Dispatcher.subscribe()</span></code></a></p>
 </dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 <div class="admonition seealso">
-<p class="first admonition-title">See also</p>
-<dl class="last docutils">
-<dt><a class="reference internal" href="#bluesky.run_engine.Dispatcher.subscribe" title="bluesky.run_engine.Dispatcher.subscribe"><code class="xref py py-meth docutils literal"><span class="pre">Dispatcher.subscribe()</span></code></a></dt>
-<dd></dd>
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="#bluesky.run_engine.Dispatcher.subscribe" title="bluesky.run_engine.Dispatcher.subscribe"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Dispatcher.subscribe()</span></code></a></dt><dd></dd>
 </dl>
 </div>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.Dispatcher.unsubscribe_all">
-<code class="descname">unsubscribe_all</code><span class="sig-paren">(</span><em>self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.unsubscribe_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe_all" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">unsubscribe_all</code><span class="sig-paren">(</span><em class="sig-param">self</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.unsubscribe_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.unsubscribe_all" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unregister all callbacks from the dispatcher</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="bluesky.run_engine.Dispatcher.process">
-<code class="descname">process</code><span class="sig-paren">(</span><em>self</em>, <em>name</em>, <em>doc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.process" title="Permalink to this definition">¶</a></dt>
-<dd><p>Dispatch document <code class="docutils literal"><span class="pre">doc</span></code> of type <code class="docutils literal"><span class="pre">name</span></code> to the callback registry.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first last docutils">
-<dt><strong>name</strong> <span class="classifier-delimiter">:</span> <span class="classifier">{‘start’, ‘descriptor’, ‘event’, ‘stop’}</span></dt>
-<dd></dd>
-<dt><strong>doc</strong> <span class="classifier-delimiter">:</span> <span class="classifier">dict</span></dt>
-<dd></dd>
+<code class="sig-name descname">process</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">name</em>, <em class="sig-param">doc</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bluesky/run_engine.html#Dispatcher.process"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bluesky.run_engine.Dispatcher.process" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dispatch document <code class="docutils literal notranslate"><span class="pre">doc</span></code> of type <code class="docutils literal notranslate"><span class="pre">name</span></code> to the callback registry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>name</strong><span class="classifier">{‘start’, ‘descriptor’, ‘event’, ‘stop’}</span></dt><dd></dd>
+<dt><strong>doc</strong><span class="classifier">dict</span></dt><dd></dd>
 </dl>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
