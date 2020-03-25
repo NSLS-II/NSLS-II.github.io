@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.5.0a1+28.gf14e030.dirty documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.5.0a1+35.g2750d31.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.0a1+28.gf14e030.dirty
+                0.5.0a1+35.g2750d31.dirty
               </div>
             
           
@@ -712,10 +712,18 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Detected native data_type </span><span class="si">%r</span><span class="s2">.&quot;</span><span class="p">,</span> <span class="n">chan</span><span class="o">.</span><span class="n">native_data_type</span><span class="p">)</span>
     <span class="c1"># abundance of caution</span>
     <span class="n">ntype</span> <span class="o">=</span> <span class="n">field_types</span><span class="p">[</span><span class="s1">&#39;native&#39;</span><span class="p">][</span><span class="n">chan</span><span class="o">.</span><span class="n">native_data_type</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">data_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="c1"># Handle ENUM: If data is INT, carry on. If data is STRING,</span>
-        <span class="c1"># write it specifically as STRING data_Type.</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">ntype</span> <span class="ow">is</span> <span class="n">ChannelType</span><span class="o">.</span><span class="n">ENUM</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">bytes</span><span class="p">):</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">data_type</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">ntype</span> <span class="ow">is</span> <span class="n">ChannelType</span><span class="o">.</span><span class="n">ENUM</span><span class="p">):</span>
+        <span class="c1"># Change data_type to STRING if data contains string-like data, or</span>
+        <span class="c1"># iterable of string-like data</span>
+        <span class="n">stringy_data</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)):</span>
+            <span class="n">stringy_data</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="s1">&#39;__getitem__&#39;</span><span class="p">)</span> \
+                <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> \
+                <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">)):</span>
+            <span class="n">stringy_data</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">stringy_data</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Will write to ENUM as data_type STRING.&quot;</span><span class="p">)</span>
             <span class="n">data_type</span> <span class="o">=</span> <span class="n">ChannelType</span><span class="o">.</span><span class="n">STRING</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Writing.&quot;</span><span class="p">)</span>
@@ -767,7 +775,7 @@
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : str</span>
 <span class="sd">        The PV name to write to</span>
-<span class="sd">    data : str, int, or float or any Iterable of these</span>
+<span class="sd">    data : str, bytes, int, or float or any Iterable of these</span>
 <span class="sd">        Value(s) to write.</span>
 <span class="sd">    notify : boolean, optional</span>
 <span class="sd">        Request notification of completion and wait for it. False by default.</span>
@@ -850,7 +858,7 @@
 <span class="sd">    ----------</span>
 <span class="sd">    pv_name : str</span>
 <span class="sd">        The PV name to write/read/write</span>
-<span class="sd">    data : str, int, or float or a list of these</span>
+<span class="sd">    data : str, bytes, int, or float or any Iterable of these</span>
 <span class="sd">        Value to write.</span>
 <span class="sd">    notify : boolean, optional</span>
 <span class="sd">        Request notification of completion and wait for it. False by default.</span>
