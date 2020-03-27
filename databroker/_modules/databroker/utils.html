@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.utils &mdash; databroker 1.0.0.post19+ga3e9d64 documentation</title>
+  <title>databroker.utils &mdash; databroker 1.0.0.post22+g2f7c390 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0.post19+ga3e9d64
+                1.0.0.post22+g2f7c390
               </div>
             
           
@@ -547,14 +547,18 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">user_data_dir</span><span class="p">(),</span> <span class="n">global_data_dir</span><span class="p">())</span></div>
 
 
+<span class="c1"># This object should never be directly instantiated by external code.</span>
+<span class="c1"># It is defined at module scope only so that it is pickleable, but it is for</span>
+<span class="c1"># the internal use of LazyMap only.</span>
+<span class="n">_LazyMapWrapper</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;_LazyMapWrapper&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;func&#39;</span><span class="p">,</span> <span class="p">))</span>
+
+
 <span class="k">class</span> <span class="nc">LazyMap</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;__mapping&#39;</span><span class="p">,</span> <span class="s1">&#39;__lock&#39;</span><span class="p">)</span>
 
-    <span class="n">__Wrapper</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;__Wrapper&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;func&#39;</span><span class="p">,</span> <span class="p">))</span>
-
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">dictionary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">wrap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__Wrapper</span>
+        <span class="n">wrap</span> <span class="o">=</span> <span class="n">_LazyMapWrapper</span>
         <span class="c1"># TODO should be recursive lock?</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">__lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
         <span class="c1"># TODO type validation?</span>
@@ -564,7 +568,7 @@
         <span class="c1"># TODO per-key locking?</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lock</span><span class="p">:</span>
             <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__Wrapper</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">_LazyMapWrapper</span><span class="p">):</span>
                 <span class="c1"># TODO handle exceptions?</span>
                 <span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span><span class="o">.</span><span class="n">func</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">v</span>
@@ -581,7 +585,7 @@
 
     <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">dictionary</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">wrap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__Wrapper</span>
+        <span class="n">wrap</span> <span class="o">=</span> <span class="n">_LazyMapWrapper</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">__lock</span><span class="p">:</span>
             <span class="n">intersection</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dictionary</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">intersection</span><span class="p">:</span>
@@ -589,6 +593,13 @@
                                 <span class="sa">f</span><span class="s2">&quot;keys in a LazyMap. &quot;</span>
                                 <span class="sa">f</span><span class="s2">&quot;keys: </span><span class="si">{</span><span class="n">intersection</span><span class="si">}</span><span class="s2"> already exists.&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">wrap</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">dictionary</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mapping</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__mapping</span> <span class="o">=</span> <span class="n">mapping</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
 </pre></div>
 
            </div>
