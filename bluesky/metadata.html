@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Recording Metadata &mdash; bluesky 1.6.0.post54+gbdf2cdd documentation</title>
+  <title>Recording Metadata &mdash; bluesky 1.6.0.post61+g8ed6a7f documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                1.6.0.post54+gbdf2cdd
+                1.6.0.post61+g8ed6a7f
               </div>
             
           
@@ -90,15 +90,18 @@
 <li class="toctree-l1"><a class="reference internal" href="plans.html">Plans</a></li>
 <li class="toctree-l1"><a class="reference internal" href="documents.html">Documents</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Recording Metadata</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#interactively-for-one-use">1. Interactively, for One Use</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#through-a-plan">2. Through a plan</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#automatically">3. Automatically</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#interactively-for-repeated-use">4. Interactively, for Repeated Use</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#persistence-between-sessions">Persistence Between Sessions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#allowed-data-types">Allowed Data Types</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#special-fields">Special Fields</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#required-fields">Required Fields</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#metadata-validator">Metadata Validator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-to-the-start-document">Adding to the Start Document</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#interactively-for-one-use">1. Interactively, for One Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#through-a-plan">2. Through a plan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#automatically">3. Automatically</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interactively-for-repeated-use">4. Interactively, for Repeated Use</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#persistence-between-sessions">Persistence Between Sessions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#allowed-data-types">Allowed Data Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#required-fields">Required Fields</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#special-fields">Special Fields</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#validation">Validation</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="callbacks.html">Live Visualization and Processing</a></li>
@@ -205,20 +208,67 @@
   <div class="section" id="recording-metadata">
 <h1>Recording Metadata<a class="headerlink" href="#recording-metadata" title="Permalink to this headline">¶</a></h1>
 <p>Capturing useful metadata is the main objective of bluesky. The more
-information you can provide about what you are doing and why you are doing it,
-the more useful bluesky and downstream data search and analysis tools can be.</p>
-<p>When the RunEngine executes a plan, it attaches metadata to the data it
-collects. It captures metadata that has been:</p>
+information you can provide about what you are doing and why you are
+doing it, the more useful bluesky and downstream data search and
+analysis tools can be.</p>
+<p>The term “metadata” can be a controversial term, one scientist’s
+“data” is another’s “metadata” and classification is context- dependent.
+The same exact information can be “data” in one
+experiment, but “metadata” in a different experiment done on the exact
+same hardware.
+The <a class="reference external" href="https://blueskyproject.io/event-model/data-model.html">Document Model</a> provides a framework
+for deciding _where_ to record a particular piece of information.</p>
+<p>There are some things that we know <em>a priori</em> before doing an experiment;
+where are we? who is the user? what sample are we looking at? what did
+the user just ask us to do?  These are all things that we can, in
+principle, know independent of the control system.  These are the
+prime candidates for inclusion in the <a class="reference external" href="https://blueskyproject.io/event-model/data-model.html#run-start-document">Start Document</a>.
+Downstream DataBroker provides tools to do rich searches on this data.
+The more information you can include the better.</p>
+<p>There is some information that we need that is nominally independent of
+any particular device but we need to consult the controls system
+about.  For example the location of important, but un-scanned motors
+or the configuration of beam attenuators.  If the values <em>should</em> be fixed over
+the course of the experiment then this it is a good candidate for
+being a “baseline device” either via the <a class="reference external" href="https://blueskyproject.io/bluesky/tutorial.html#baseline-readings-and-other-supplemental-data">Supplemental pre-processor</a>
+or explicitly in custom plans.  This will put the readings in a separate stream
+(which is a peer to the “primary” data).  In principle, these values <em>could</em> be
+read from the control system once and put into the Start document along with
+the <em>a priori</em> information, however that has several draw backs:</p>
+<ol class="arabic simple">
+<li><p>There is only ever 1 reading of the values so if they do drift during
+data acquisition, you will never know.</p></li>
+<li><p>We cannot automatically capture information about the device like
+we do for data in Events.  This includes things like the datatype,
+units, and shape of the value and any configuration information about the
+hardware it is being read from.</p></li>
+</ol>
+<p>A third class of information that can be called “metadata” is
+configuration information of pieces of hardware.  These are things
+like the velocity of a motor or the integration time of a detector.
+These readings are embedded in the <a class="reference external" href="https://blueskyproject.io/event-model/data-model.html#event-descriptor">Descriptor</a>
+and are extracted from the hardware via the <a class="reference external" href="https://blueskyproject.io/bluesky/hardware.html#ReadableDevice.read_configuration">read_configuration</a>
+method of the hardware.  We expect that these values will not change over
+the course of the experiment so only read them once.</p>
+<p>Information that does not fall into one of these categories, because
+you expect it to change during the experiment,
+should be treated as “data”, either as an explicit part of the
+experimental plan or via <a class="reference internal" href="async.html#async-monitoring"><span class="std std-ref">Monitoring</span></a>.</p>
+<div class="section" id="adding-to-the-start-document">
+<h2>Adding to the Start Document<a class="headerlink" href="#adding-to-the-start-document" title="Permalink to this headline">¶</a></h2>
+<p>When the RunEngine mints a Start document it includes structured data.  That
+information can be injected in via several mechanisms:</p>
 <ol class="arabic simple">
 <li><p>entered interactively by the user at execution time</p></li>
 <li><p>provided in the code of the <em>plan</em></p></li>
 <li><p>automatically inferred</p></li>
 <li><p>entered by user once and stashed for reuse on all future plans</p></li>
 </ol>
-<p>If there is a conflict between these sources, the first entry in this list
-wins.</p>
+<p>If there is a conflict between these sources, the higher entry in this
+list wins.  The “closer” to a user the information originated the
+higher priority it has.</p>
 <div class="section" id="interactively-for-one-use">
-<h2>1. Interactively, for One Use<a class="headerlink" href="#interactively-for-one-use" title="Permalink to this headline">¶</a></h2>
+<h3>1. Interactively, for One Use<a class="headerlink" href="#interactively-for-one-use" title="Permalink to this headline">¶</a></h3>
 <p>Suppose we are executing some custom plan called <code class="docutils literal notranslate"><span class="pre">plan</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">plan</span><span class="p">())</span>
 </pre></div>
@@ -255,7 +305,7 @@ For example, this plan generates three different runs.</p>
 <p>each run will get a copy of the sample_id, purpose and operator metadata.</p>
 </div>
 <div class="section" id="through-a-plan">
-<h2>2. Through a plan<a class="headerlink" href="#through-a-plan" title="Permalink to this headline">¶</a></h2>
+<h3>2. Through a plan<a class="headerlink" href="#through-a-plan" title="Permalink to this headline">¶</a></h3>
 <p>Revisiting the previous example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">plan</span><span class="p">():</span>
     <span class="k">yield from</span> <span class="n">count</span><span class="p">([</span><span class="n">det</span><span class="p">])</span>
@@ -306,6 +356,21 @@ plan. Thus, calling</p>
 </div>
 <p>would override the individual ‘purpose’ metadata from the plan, marking all
 three as purpose=test.</p>
+<p>If you define your own plans, it is best practice have them take a keyword only
+argument <code class="docutils literal notranslate"><span class="pre">md=None</span></code>.  This allows the hard-coded meta-data to be over-ridden
+later:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">plan</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">md</span> <span class="o">=</span> <span class="n">md</span> <span class="ow">or</span> <span class="p">{}</span>  <span class="c1"># handle the default case</span>
+    <span class="c1"># putting unpacking **md at the end means it &quot;wins&quot;</span>
+    <span class="c1"># and if the user calls</span>
+    <span class="c1">#    yield from plan(md={&#39;purpose&#39;: bob})</span>
+    <span class="c1"># it will over-ride these values</span>
+    <span class="k">yield from</span> <span class="n">count</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">md</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;purpose&#39;</span><span class="p">:</span> <span class="s1">&#39;calibration&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">md</span><span class="p">})</span>
+    <span class="k">yield from</span> <span class="n">scan</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">motor</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;purpose&#39;</span><span class="p">:</span> <span class="s1">&#39;good data&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">md</span><span class="p">})</span>
+    <span class="k">yield from</span> <span class="n">count</span><span class="p">([</span><span class="n">det</span><span class="p">],</span> <span class="n">md</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;purpose&#39;</span><span class="p">:</span> <span class="s1">&#39;sanity check&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">md</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>This is consistent with all of the <a class="reference internal" href="plans.html#preassembled-plans"><span class="std std-ref">Pre-assembled Plans</span></a>.</p>
 <p>For more on injecting metadata via plans, refer to
 <a class="reference internal" href="tutorial.html#tutorial-plan-metadata"><span class="std std-ref">this section</span></a> of the tutorial.</p>
 <div class="admonition note">
@@ -345,7 +410,7 @@ here is the pattern-related metadata for <a class="reference internal" href="gen
 </div>
 </div>
 <div class="section" id="automatically">
-<h2>3. Automatically<a class="headerlink" href="#automatically" title="Permalink to this headline">¶</a></h2>
+<h3>3. Automatically<a class="headerlink" href="#automatically" title="Permalink to this headline">¶</a></h3>
 <p>For each run, the RunEngine automatically records:</p>
 <ul class="simple">
 <li><p>‘time’ — In this context, the start time. (Other times are also recorded.)</p></li>
@@ -369,7 +434,7 @@ itself and the user do not provide it.</p>
 </div>
 </div>
 <div class="section" id="interactively-for-repeated-use">
-<h2>4. Interactively, for Repeated Use<a class="headerlink" href="#interactively-for-repeated-use" title="Permalink to this headline">¶</a></h2>
+<h3>4. Interactively, for Repeated Use<a class="headerlink" href="#interactively-for-repeated-use" title="Permalink to this headline">¶</a></h3>
 <p>Each time a plan is executed, the current contents of <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> are copied into
 the metadata for all runs generated by the plan.  To enter metadata once to
 reuse on all plans, add it to <code class="docutils literal notranslate"><span class="pre">RE.md</span></code>.</p>
@@ -388,6 +453,18 @@ reuse on all plans, add it to <code class="docutils literal notranslate"><span c
 </div>
 <p>or use any of the standard methods that apply to
 <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#typesmapping">dictionaries in Python</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>In general we recommend against putting device readings in the Start
+document. (The Start document is for who/what/why/when, things you
+know before you start communicating with hardware.) It is <em>especially</em>
+critical that you do not put device readings in the <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> dictionary.
+The value will remain until you change it and not track the state of the
+hardware.  This will result in recording out-of-date, incorrect data!</p>
+<p>This can be particularly dangerous if <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> is backed by a
+persistent data store (see next section) because out-of-date readings will
+last across sessions.</p>
+</div>
 <p>The <code class="docutils literal notranslate"><span class="pre">scan_id</span></code>, an integer that the RunEngine automatically increments at the
 beginning of each scan, is stored in <code class="docutils literal notranslate"><span class="pre">RE.md['scan_id']</span></code>.</p>
 <div class="admonition warning">
@@ -410,7 +487,7 @@ unique forever.</p>
 </div>
 </div>
 <div class="section" id="persistence-between-sessions">
-<span id="md-persistence"></span><h2>Persistence Between Sessions<a class="headerlink" href="#persistence-between-sessions" title="Permalink to this headline">¶</a></h2>
+<span id="md-persistence"></span><h3>Persistence Between Sessions<a class="headerlink" href="#persistence-between-sessions" title="Permalink to this headline">¶</a></h3>
 <p>We provide a way to save the contents of the metadata stash <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> between
 sessions (e.g., exiting and re-opening IPython).</p>
 <p>In general, the <code class="docutils literal notranslate"><span class="pre">RE.md</span></code> attribute may be anything that supports the
@@ -463,7 +540,7 @@ result in data loss! If you aren’t sure, it’s safer to use <code class="docu
 </div>
 </div>
 <div class="section" id="allowed-data-types">
-<h2>Allowed Data Types<a class="headerlink" href="#allowed-data-types" title="Permalink to this headline">¶</a></h2>
+<h3>Allowed Data Types<a class="headerlink" href="#allowed-data-types" title="Permalink to this headline">¶</a></h3>
 <p>Custom metadata keywords can be mapped to:</p>
 <ul class="simple">
 <li><p>strings — e.g., <code class="docutils literal notranslate"><span class="pre">task='calibration'</span></code></p></li>
@@ -472,8 +549,21 @@ result in data loss! If you aren’t sure, it’s safer to use <code class="docu
 <li><p>(nested) dictionaries — e.g., <code class="docutils literal notranslate"><span class="pre">dimensions={'width':</span> <span class="pre">1,</span> <span class="pre">'height':</span> <span class="pre">3}</span></code></p></li>
 </ul>
 </div>
+<div class="section" id="required-fields">
+<h3>Required Fields<a class="headerlink" href="#required-fields" title="Permalink to this headline">¶</a></h3>
+<p>The fields:</p>
+<ul class="simple">
+<li><p><strong>uid</strong></p></li>
+<li><p><strong>time</strong></p></li>
+</ul>
+<p>are reserved by the document model and cannot be set by the user.</p>
+<p>In current versions of bluesky, <strong>no fields are universally required by bluesky
+itself</strong>. It is possible specify your own required fields in local
+configuration. See <a class="reference internal" href="#md-validator"><span class="std std-ref">Validation</span></a>. (At NSLS-II, there are facility-wide
+requirements coming soon.)</p>
+</div>
 <div class="section" id="special-fields">
-<h2>Special Fields<a class="headerlink" href="#special-fields" title="Permalink to this headline">¶</a></h2>
+<h3>Special Fields<a class="headerlink" href="#special-fields" title="Permalink to this headline">¶</a></h3>
 <p>Arbitrary custom fields are allowed — you can invent any names that are
 useful to you.</p>
 <p>But certain fields are given special significance by bluesky’s document model,
@@ -492,22 +582,9 @@ string or a dictionary.</p>
 <p>The <strong>scan_id</strong> field is expected to be an integer, and it is automatically
 incremented between runs. If a scan_id is not provided by the user or stashed
 in the persistent metadata from the previous run, it defaults to 1.</p>
-<p>The fields:</p>
-<ul class="simple">
-<li><p><strong>uid</strong></p></li>
-<li><p><strong>time</strong></p></li>
-</ul>
-<p>are reserved by the document model and cannot be set by the user.</p>
 </div>
-<div class="section" id="required-fields">
-<h2>Required Fields<a class="headerlink" href="#required-fields" title="Permalink to this headline">¶</a></h2>
-<p>In current versions of bluesky, <strong>no fields are universally required by bluesky
-itself</strong>. It is possible specify your own required fields in local
-configuration. See <a class="reference internal" href="#md-validator"><span class="std std-ref">Metadata Validator</span></a>. (At NSLS-II, there are facility-wide
-requirements coming soon.)</p>
-</div>
-<div class="section" id="metadata-validator">
-<span id="md-validator"></span><h2>Metadata Validator<a class="headerlink" href="#metadata-validator" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="validation">
+<span id="md-validator"></span><h3>Validation<a class="headerlink" href="#validation" title="Permalink to this headline">¶</a></h3>
 <p>Additional, customized metadata validation can be added to the RunEngine.
 For example, to ensure that a run will not be executed unless the parameter
 ‘sample_number’ is specified, define a function that accepts a dictionary
@@ -522,6 +599,7 @@ argument and raises if ‘sample_number’ is not found.</p>
 </pre></div>
 </div>
 <p>The function will be executed immediately before each new run in opened.</p>
+</div>
 </div>
 </div>
 
