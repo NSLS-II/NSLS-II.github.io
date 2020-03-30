@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Synchronous Client &mdash; caproto 0.5.0a1+37.g8f86dec.dirty documentation</title>
+  <title>Synchronous Client &mdash; caproto 0.5.0a1+40.ga7391a2.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.5.0a1+37.g8f86dec.dirty
+                0.5.0a1+40.ga7391a2.dirty
               </div>
             
           
@@ -211,19 +211,19 @@ PVs: <span class="o">[</span><span class="s1">&#39;random_walk:dt&#39;</span>, <
 <span class="gp">In [2]: </span><span class="n">res</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s1">&#39;random_walk:dt&#39;</span><span class="p">)</span>
 
 <span class="gp">In [3]: </span><span class="n">res</span>
-<span class="gh">Out[3]: </span><span class="go">ReadNotifyResponse(data=array([1.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0, metadata=None)</span>
+<span class="gh">Out[3]: </span><span class="go">ReadNotifyResponse(data=array([3.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0, metadata=None)</span>
 </pre></div>
 </div>
 <p>This object is a human-friendly representation of the server’s response. The
 raw bytes of that response are:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [4]: </span><span class="nb">bytes</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
-<span class="gh">Out[4]: </span><span class="go">b&#39;\x00\x0f\x00\x08\x00\x06\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00?\xf0\x00\x00\x00\x00\x00\x00&#39;</span>
+<span class="gh">Out[4]: </span><span class="go">b&#39;\x00\x0f\x00\x08\x00\x06\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00@\x08\x00\x00\x00\x00\x00\x00&#39;</span>
 </pre></div>
 </div>
 <p>Access particular fields in the response using attribute (“dot”) access on
 <code class="docutils literal notranslate"><span class="pre">res</span></code>.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [5]: </span><span class="n">res</span><span class="o">.</span><span class="n">data</span>
-<span class="gh">Out[5]: </span><span class="go">array([1.])</span>
+<span class="gh">Out[5]: </span><span class="go">array([3.])</span>
 </pre></div>
 </div>
 <p>By default, the client does not request any metadata</p>
@@ -235,13 +235,13 @@ raw bytes of that response are:</p>
 In [7]: richer_res = read('random_walk:dt', data_type='time')
 
 In [8]: richer_res.metadata
-Out[8]: DBR_TIME_DOUBLE(status=&lt;AlarmStatus.NO_ALARM: 0&gt;, severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;, timestamp=1585582308.646821)
+Out[8]: DBR_TIME_DOUBLE(status=&lt;AlarmStatus.NO_ALARM: 0&gt;, severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;, timestamp=1585591212.471578)
 
 In [9]: richer_res.metadata.timestamp
-Out[9]: 1585582308.646821
+Out[9]: 1585591212.471578
 
 In [10]: richer_res.metadata.stamp.as_datetime()  # a convenience method
-Out[10]: datetime.datetime(2020, 3, 30, 15, 31, 48, 646821)
+Out[10]: datetime.datetime(2020, 3, 30, 18, 0, 12, 471578)
 </pre>
 <p>See <a class="reference internal" href="#caproto.sync.client.read" title="caproto.sync.client.read"><code class="xref py py-func docutils literal notranslate"><span class="pre">read()</span></code></a> for more information on the values accepted by the
 <code class="docutils literal notranslate"><span class="pre">data_type</span></code> parameter.</p>
@@ -255,7 +255,7 @@ In [11]: res.header  # a ctypes.BigEndianStructure
 Out[11]: MessageHeader(command=15, payload_size=8, data_type=6, data_count=1, parameter1=1, parameter2=0)
 
 In [12]: res.buffers  # a collection of one or more buffers
-Out[12]: (b'', &lt;memory at 0x7f2d5820b288&gt;)
+Out[12]: (b'', &lt;memory at 0x7f27582ca348&gt;)
 </pre>
 <p class="last">They were received directly from the socket into these structure with no
 intermediate copies. Accessing the <code class="docutils literal notranslate"><span class="pre">res.data</span></code> — which returns a
@@ -298,10 +298,13 @@ First, we define a <a class="reference internal" href="#caproto.sync.client.Subs
 the server sends an update. It must accept one positional argument.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [19]: </span><span class="n">responses</span> <span class="o">=</span> <span class="p">[]</span>
 
-<span class="gp">In [20]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
-<span class="gp">   ....: </span>    <span class="s2">&quot;On each update, print the data and cache the full response in a list.&quot;</span>
+<span class="gp">In [20]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+<span class="gp">   ....: </span>    <span class="sd">&quot;&quot;&quot;</span>
+<span class="gp">   ....: </span><span class="sd">    On each update, print the PV name and data</span>
+<span class="gp">   ....: </span><span class="sd">    Cache the full response in a list.</span>
+<span class="gp">   ....: </span><span class="sd">    &quot;&quot;&quot;</span>
 <span class="gp">   ....: </span>    <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-<span class="gp">   ....: </span>    <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">   ....: </span>    <span class="nb">print</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">pv_name</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="gp">   ....: </span>
 </pre></div>
 </div>
@@ -316,10 +319,10 @@ operation,. (See the <a class="reference internal" href="threading-client.html">
 separate, background thread.) To activate the subscription, call
 <code class="docutils literal notranslate"><span class="pre">sub.block()</span></code>.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [22]: </span><span class="n">sub</span><span class="o">.</span><span class="n">block</span><span class="p">()</span>
-<span class="go">[14.14272394]</span>
-<span class="go">[14.94322537]</span>
-<span class="go">[15.35695388]</span>
-<span class="go">[15.74301991]</span>
+<span class="go">random_walk:x [14.14272394]</span>
+<span class="go">random_walk:x [14.94322537]</span>
+<span class="go">random_walk:x [15.35695388]</span>
+<span class="go">random_walk:x [15.74301991]</span>
 <span class="go">^C</span>
 </pre></div>
 </div>
@@ -361,12 +364,19 @@ another thread).</p>
 <span class="gh">Out[30]: </span><span class="go">0</span>
 
 <span class="gp">In [31]: </span><span class="n">block</span><span class="p">(</span><span class="n">sub_x</span><span class="p">,</span> <span class="n">sub_dt</span><span class="p">)</span>
-<span class="go">[63.34866867]</span>
-<span class="go">[1.]</span>
-<span class="go">[63.53448681]</span>
-<span class="go">[64.30532391]</span>
+<span class="go">random_walk:x [63.34866867]</span>
+<span class="go">random_walk:dt [1.]</span>
+<span class="go">random_walk:x [63.53448681]</span>
+<span class="go">random_walk:x [64.30532391]</span>
 <span class="go">^C</span>
 </pre></div>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 0.5.0: </span>The expected signature of the callback function was changed from
+<code class="docutils literal notranslate"><span class="pre">f(response)</span></code> to <code class="docutils literal notranslate"><span class="pre">f(sub,</span> <span class="pre">response)</span></code>. For backward compatibility,
+functions with signature <code class="docutils literal notranslate"><span class="pre">f(response)</span></code> are still accepted, but caproto
+will issue a warning that a future release may require the new signature,
+<code class="docutils literal notranslate"><span class="pre">f(sub,</span> <span class="pre">response)</span></code>.</p>
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
@@ -374,13 +384,13 @@ another thread).</p>
 to the user callback functions. If there are no other references to the
 function, it will be silently garbage collected and removed. Therefore,
 constructions like this do not work:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>The lambda function will be promptly garbage collected by Python and
 removed from <code class="docutils literal notranslate"><span class="pre">sub</span></code> by caproto. To avoid that, make a reference before
 passing the function to <a class="reference internal" href="#caproto.sync.client.Subscription.add_callback" title="caproto.sync.client.Subscription.add_callback"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Subscription.add_callback()</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cb</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cb</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -611,7 +621,7 @@ count, which can be checked in the Channel’s attribute
 </pre></div>
 </div>
 <p>Add one or more user-defined callbacks to process responses.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">response</span><span class="p">):</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">repsonse</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
 <span class="gp">...</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sub</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -775,16 +785,23 @@ clients should do this.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>func</strong> <span class="classifier-delimiter">:</span> <span class="classifier">callable</span></dt>
-<dd><p class="first last">Expected signature: <code class="docutils literal notranslate"><span class="pre">func(response)</span></code></p>
+<dd><p class="first">Expected signature: <code class="docutils literal notranslate"><span class="pre">func(sub,</span> <span class="pre">response)</span></code>.</p>
+<p class="last">The signature <code class="docutils literal notranslate"><span class="pre">func(response)</span></code> is also supported for
+backward-compatibility but will issue warnings. Support will be
+removed in a future release of caproto.</p>
 </dd>
 </dl>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first last docutils">
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><dl class="first docutils">
 <dt><strong>token</strong> <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
 <dd><p class="first last">Integer token that can be passed to <a class="reference internal" href="#caproto.sync.client.Subscription.remove_callback" title="caproto.sync.client.Subscription.remove_callback"><code class="xref py py-meth docutils literal notranslate"><span class="pre">remove_callback()</span></code></a>.</p>
 </dd>
 </dl>
+<div class="last versionchanged">
+<p><span class="versionmodified">Changed in version 0.5.0: </span>Changed the expected signature of <code class="docutils literal notranslate"><span class="pre">func</span></code> from <code class="docutils literal notranslate"><span class="pre">func(response)</span></code>
+to <code class="docutils literal notranslate"><span class="pre">func(sub,</span> <span class="pre">response)</span></code>.</p>
+</div>
 </td>
 </tr>
 </tbody>

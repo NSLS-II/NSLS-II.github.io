@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.5.0a1+37.g8f86dec.dirty documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.5.0a1+40.ga7391a2.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.0a1+37.g8f86dec.dirty
+                0.5.0a1+40.ga7391a2.dirty
               </div>
             
           
@@ -183,7 +183,8 @@
 
 <span class="kn">import</span> <span class="nn">caproto</span> <span class="k">as</span> <span class="nn">ca</span>
 <span class="kn">from</span> <span class="nn">.._dbr</span> <span class="kn">import</span> <span class="p">(</span><span class="n">field_types</span><span class="p">,</span> <span class="n">ChannelType</span><span class="p">,</span> <span class="n">native_type</span><span class="p">,</span> <span class="n">SubscriptionType</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">ErrorResponseReceived</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
+<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">adapt_old_callback_signature</span><span class="p">,</span>
+                      <span class="n">ErrorResponseReceived</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
                       <span class="n">get_environment_variables</span><span class="p">,</span> <span class="n">safe_getsockname</span><span class="p">)</span>
 <span class="kn">from</span> <span class="nn">.repeater</span> <span class="kn">import</span> <span class="n">spawn_repeater</span>
 
@@ -546,7 +547,7 @@
 
 <span class="sd">    Add one or more user-defined callbacks to process responses.</span>
 
-<span class="sd">    &gt;&gt;&gt; def f(response):</span>
+<span class="sd">    &gt;&gt;&gt; def f(sub, response):</span>
 <span class="sd">    ...     print(repsonse.data)</span>
 <span class="sd">    ...</span>
 <span class="sd">    &gt;&gt;&gt; sub.add_callback(f)</span>
@@ -948,6 +949,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_callback_id</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_callback_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
 
+        <span class="c1"># This is related to back-compat for user callbacks that have the old</span>
+        <span class="c1"># signature, f(response).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__wrapper_weakrefs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
 <div class="viewcode-block" id="Subscription.block"><a class="viewcode-back" href="../../../sync-client.html#caproto.sync.client.Subscription.block">[docs]</a>    <span class="k">def</span> <span class="nf">block</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
               <span class="n">force_int_enums</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
               <span class="n">repeater</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
@@ -997,13 +1002,24 @@
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        func : callable</span>
-<span class="sd">            Expected signature: ``func(response)``</span>
+<span class="sd">            Expected signature: ``func(sub, response)``.</span>
+
+<span class="sd">            The signature ``func(response)`` is also supported for</span>
+<span class="sd">            backward-compatibility but will issue warnings. Support will be</span>
+<span class="sd">            removed in a future release of caproto.</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        token : int</span>
 <span class="sd">            Integer token that can be passed to :meth:`remove_callback`.</span>
+
+<span class="sd">        .. versionchanged:: 0.5.0</span>
+
+<span class="sd">           Changed the expected signature of ``func`` from ``func(response)``</span>
+<span class="sd">           to ``func(sub, response)``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">adapt_old_callback_signature</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__wrapper_weakrefs</span><span class="p">)</span>
+
         <span class="k">def</span> <span class="nf">removed</span><span class="p">(</span><span class="n">_</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">remove_callback</span><span class="p">(</span><span class="n">cb_id</span><span class="p">)</span>
 
@@ -1043,7 +1059,7 @@
                 <span class="n">to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb_id</span><span class="p">)</span>
                 <span class="k">continue</span>
 
-            <span class="n">callback</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="n">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">)</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_callback_lock</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">remove_id</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">:</span>

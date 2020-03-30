@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.threading.client &mdash; caproto 0.5.0a1+37.g8f86dec.dirty documentation</title>
+  <title>caproto.threading.client &mdash; caproto 0.5.0a1+40.ga7391a2.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.0a1+37.g8f86dec.dirty
+                0.5.0a1+40.ga7391a2.dirty
               </div>
             
           
@@ -193,7 +193,6 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span>
-<span class="kn">import</span> <span class="nn">warnings</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
 
 <span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Empty</span>
@@ -202,7 +201,8 @@
 <span class="kn">import</span> <span class="nn">caproto</span> <span class="k">as</span> <span class="nn">ca</span>
 <span class="kn">from</span> <span class="nn">.._constants</span> <span class="kn">import</span> <span class="p">(</span><span class="n">MAX_ID</span><span class="p">,</span> <span class="n">STALE_SEARCH_EXPIRATION</span><span class="p">,</span>
                           <span class="n">SEARCH_MAX_DATAGRAM_BYTES</span><span class="p">,</span> <span class="n">RESPONSIVENESS_TIMEOUT</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">batch_requests</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">,</span>
+<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">adapt_old_callback_signature</span><span class="p">,</span>
+                      <span class="n">batch_requests</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">,</span>
                       <span class="n">socket_bytes_available</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
                       <span class="n">CaprotoTypeError</span><span class="p">,</span> <span class="n">CaprotoRuntimeError</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span>
                       <span class="n">CaprotoKeyError</span><span class="p">,</span> <span class="n">CaprotoNetworkError</span><span class="p">,</span> <span class="n">safe_getsockname</span><span class="p">)</span>
@@ -2349,6 +2349,7 @@
 <span class="sd">        ----------</span>
 <span class="sd">        func : callable</span>
 <span class="sd">            Expected signature: ``func(sub, response)``.</span>
+
 <span class="sd">            The signature ``func(response)`` is also supported for</span>
 <span class="sd">            backward-compatibility but will issue warnings. Support will be</span>
 <span class="sd">            removed in a future release of caproto.</span>
@@ -2363,40 +2364,8 @@
 <span class="sd">           Changed the expected signature of ``func`` from ``func(response)``</span>
 <span class="sd">           to ``func(sub, response)``.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># Handle func with signature func(respons) for back-compat.</span>
-        <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="c1"># Does this function accept two positional arguments?</span>
-            <span class="n">sig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
-            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                <span class="s2">&quot;The signature of a subscription callback is now expected to &quot;</span>
-                <span class="s2">&quot;be func(sub, response). The signature func(response) is &quot;</span>
-                <span class="s2">&quot;supported, but support will be removed in a future release &quot;</span>
-                <span class="s2">&quot;of caproto.&quot;</span><span class="p">)</span>
-            <span class="n">raw_func</span> <span class="o">=</span> <span class="n">func</span>
-            <span class="n">raw_func_weakref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">raw_func</span><span class="p">)</span>
-
-            <span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">sub</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
-                <span class="c1"># Avoid closing over raw_func itself here or it will never be</span>
-                <span class="c1"># garbage collected.</span>
-                <span class="n">raw_func</span> <span class="o">=</span> <span class="n">raw_func_weakref</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">raw_func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="c1"># Do nothing with sub because the user-provided func cannot</span>
-                    <span class="c1"># accept it.</span>
-                    <span class="n">raw_func</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
-
-            <span class="c1"># Ensure func does not get garbage collected until raw_func does.</span>
-            <span class="k">def</span> <span class="nf">called_when_raw_func_is_released</span><span class="p">(</span><span class="n">w</span><span class="p">):</span>
-                <span class="c1"># The point of this function is to hold one hard ref to func</span>
-                <span class="c1"># until raw_func is garbage collected.</span>
-                <span class="n">func</span>
-                <span class="c1"># Clean up after ourselves.</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">__wrapper_weakrefs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
-
-            <span class="n">w</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">raw_func</span><span class="p">,</span> <span class="n">called_when_raw_func_is_released</span><span class="p">)</span>
-            <span class="c1"># Hold a hard reference to w. Its callback removes it from this set.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">__wrapper_weakrefs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+        <span class="c1"># Handle func with signature func(response) for back-compat.</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">adapt_old_callback_signature</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__wrapper_weakrefs</span><span class="p">)</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">callback_lock</span><span class="p">:</span>
             <span class="n">was_empty</span> <span class="o">=</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span>
