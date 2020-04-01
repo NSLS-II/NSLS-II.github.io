@@ -73,13 +73,13 @@ Simple Export
 
       from itertools import tee
       import suitcase.csv
-      import suitcase.tiff
+      import suitcase.tiff_series
       import suitcase.json_metadata
 
       def my_exporter(docs, directory, file_prefix):
           docs1, docs2, docs3 = tee(docs, 3)
           suitcase.csv.export(docs1, directory, file_prefix)
-          suitcase.tiff.export(docs2, directory, file_prefix)
+          suitcase.tiff_series.export(docs2, directory, file_prefix)
           suitcase.json_metadata.export(docs3, directory, file_prefix)
 
       my_exporter(docs)
@@ -170,7 +170,7 @@ for exporting images.
 .. code-block:: python
 
    from event_model import RunRouter, Filler
-   import suitcase.tiff
+   import suitcase.tiff_series
    
    def factory(name, start_doc):
    
