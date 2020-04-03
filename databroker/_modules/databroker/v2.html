@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.v2 &mdash; databroker 1.0.0.post27+gdec4195 documentation</title>
+  <title>databroker.v2 &mdash; databroker 1.0.0.post42+gfc030be documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.0.post27+gdec4195
+                1.0.0.post42+gfc030be
               </div>
             
           
@@ -242,6 +242,20 @@
                                    <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># The values in the root_map are allowed to be relative to the catalog</span>
+        <span class="c1"># file in order to facilitate portable archives. Not all catalogs comes</span>
+        <span class="c1"># from catalog files, so relative paths are only allowed in root_map if</span>
+        <span class="c1"># the the root_map originates from an actual file. If not, we raise.</span>
+        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">Path</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+                <span class="n">catalog_dir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;catalog_dir&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">catalog_dir</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="s2">&quot;Found relative path </span><span class="si">{v}</span><span class="s2"> in root_map. &quot;</span>
+                        <span class="s2">&quot;Relative paths are only allowed when the catalog &quot;</span>
+                        <span class="s2">&quot;is backed by a YAML file, so that paths can be &quot;</span>
+                        <span class="s2">&quot;interpreted relative to the location of that file.&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">catalog_dir</span><span class="p">,</span> <span class="n">v</span><span class="p">))</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">root_map</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
