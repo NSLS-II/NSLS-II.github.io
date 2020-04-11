@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.threading.client &mdash; caproto 0.5.0a1+189.g73cf46f.dirty documentation</title>
+  <title>caproto.threading.client &mdash; caproto 0.5.0a1+192.g1db2c5b.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.0a1+189.g73cf46f.dirty
+                0.5.0a1+192.g1db2c5b.dirty
               </div>
             
           
@@ -190,7 +190,6 @@
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">selectors</span>
 <span class="kn">import</span> <span class="nn">socket</span>
-<span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
@@ -341,19 +340,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">selectors</span><span class="o">.</span><span class="n">DefaultSelector</span><span class="p">()</span>
 
-        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span> <span class="ow">in</span> <span class="p">{</span><span class="s1">&#39;win32&#39;</span><span class="p">,</span> <span class="s1">&#39;darwin&#39;</span><span class="p">}:</span>
-            <span class="c1"># Empty select() list is problematic for windows and OSX</span>
-            <span class="n">dummy_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">dummy_socket</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span><span class="p">)</span>
-
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_socket_map_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objects</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakValueDictionary</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">id_to_socket</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">socket_to_id</span> <span class="o">=</span> <span class="p">{}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_register_sockets</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># {socket: object_id}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_socket_count</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Stop the selector if the parent goes out of scope</span>
@@ -366,6 +361,9 @@
 
     <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_close_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+        <span class="c1"># In case we&#39;re waiting for the first socket to be added:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_register_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
@@ -384,12 +382,10 @@
             <span class="c1"># assumption: only one sock per object</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_obj</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">id_to_socket</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">sock</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">socket_to_id</span><span class="p">[</span><span class="n">sock</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span>
-            <span class="n">weakref</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">target_obj</span><span class="p">,</span>
-                             <span class="k">lambda</span> <span class="n">obj_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span><span class="p">:</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">_object_removed</span><span class="p">(</span><span class="n">obj_id</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_register_sockets</span><span class="p">[</span><span class="n">sock</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_object_id</span>
+            <span class="n">weakref</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">target_obj</span><span class="p">,</span>
+                             <span class="k">lambda</span> <span class="n">sock</span><span class="o">=</span><span class="n">sock</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_socket</span><span class="p">(</span><span class="n">sock</span><span class="p">))</span>
             <span class="c1"># self.log.debug(&#39;Socket %s was added (obj %s)&#39;, sock, target_obj)</span>
 
     <span class="k">def</span> <span class="nf">remove_socket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sock</span><span class="p">):</span>
@@ -397,7 +393,6 @@
             <span class="k">if</span> <span class="n">sock</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_to_id</span><span class="p">:</span>
                 <span class="k">return</span>
             <span class="n">obj_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_to_id</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
-            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_to_socket</span><span class="p">[</span><span class="n">obj_id</span><span class="p">]</span>
             <span class="n">obj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">obj_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">obj</span><span class="o">.</span><span class="n">received</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
@@ -412,28 +407,26 @@
                 <span class="c1">#              &#39;(obj = %s)&#39;, sock, obj)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_object_removed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj_id</span><span class="p">):</span>
-        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_map_lock</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_to_socket</span><span class="p">:</span>
-                <span class="n">sock</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_to_socket</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">obj_id</span><span class="p">)</span>
-                <span class="c1"># self.log.debug(&#39;Object ID %s was destroyed: removing %s&#39;, obj_id,</span>
-                <span class="c1">#              sock)</span>
-                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">socket_to_id</span><span class="p">[</span><span class="n">sock</span><span class="p">]</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
-
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&#39;&#39;&#39;Selector poll loop&#39;&#39;&#39;</span>
         <span class="n">avail_buf</span> <span class="o">=</span> <span class="n">array</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_close_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">running</span><span class="p">:</span>
             <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_map_lock</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">sock</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">unregister</span><span class="p">(</span><span class="n">sock</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_socket_count</span> <span class="o">-=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_unregister_sockets</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
                 <span class="k">for</span> <span class="n">sock</span><span class="p">,</span> <span class="n">obj_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_sockets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">sock</span><span class="p">,</span> <span class="n">selectors</span><span class="o">.</span><span class="n">EVENT_READ</span><span class="p">,</span>
                                            <span class="n">data</span><span class="o">=</span><span class="n">obj_id</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_socket_count</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_register_sockets</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_register_sockets</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_register_event</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_register_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+                <span class="k">continue</span>
 
             <span class="n">events</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
             <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_socket_map_lock</span><span class="p">:</span>
