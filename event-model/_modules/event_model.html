@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.14.1 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.14.1.post11+gd5643e7 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.14.1
+                1.14.1.post11+gd5643e7
               </div>
             
           
@@ -337,6 +337,105 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">datum_page</span><span class="p">(</span><span class="n">bulk_datum_to_datum_page</span><span class="p">(</span><span class="n">doc</span><span class="p">))</span></div></div>
 
 
+<div class="viewcode-block" id="SingleRunDocumentRouter"><a class="viewcode-back" href="../api.html#event_model.SingleRunDocumentRouter">[docs]</a><span class="k">class</span> <span class="nc">SingleRunDocumentRouter</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A DocumentRouter intended to process events from exactly one run.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process a document.</span>
+
+<span class="sd">        Also, track of the start document and descriptor documents</span>
+<span class="sd">        passed to this SingleRunDocumentRouter in caches.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : string</span>
+<span class="sd">        doc : dict</span>
+<span class="sd">        validate : boolean</span>
+<span class="sd">            Apply jsonschema validation to the documents coming *out*. This is</span>
+<span class="sd">            False by default.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        name, output_doc : string, dict</span>
+<span class="sd">            The same name as what was passed in, and a doc that may be the same</span>
+<span class="sd">            instance as doc, a copy of doc, or a different dict altogether.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="o">=</span> <span class="n">doc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;SingleRunDocumentRouter associated with start document </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s2">&quot;uid&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1"> &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;received a second start document with uid </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;uid&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;descriptor&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;SingleRunDocumentRouter associated with start document </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span><span class="p">[</span><span class="s2">&quot;uid&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1"> &#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;received a descriptor </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;uid&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1"> associated with start document </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;run_start&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="p">)</span>
+        <span class="c1"># Defer to superclass for dispatch/processing.</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SingleRunDocumentRouter.get_start"><a class="viewcode-back" href="../api.html#event_model.SingleRunDocumentRouter.get_start">[docs]</a>    <span class="k">def</span> <span class="nf">get_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convenience method returning the start document for the associated run.</span>
+
+<span class="sd">        If no start document has been processed EventModelError will be raised.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        start document : dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EventModelError</span><span class="p">(</span><span class="s1">&#39;SingleRunDocumentRouter has not processed a start document yet&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_doc</span></div>
+
+<div class="viewcode-block" id="SingleRunDocumentRouter.get_descriptor"><a class="viewcode-back" href="../api.html#event_model.SingleRunDocumentRouter.get_descriptor">[docs]</a>    <span class="k">def</span> <span class="nf">get_descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convenience method returning the descriptor associated with the specified document.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        doc : dict</span>
+<span class="sd">            event-model document</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        descriptor document : dict</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s1">&#39;descriptor&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;document is not associated with a descriptor:</span><span class="se">\n</span><span class="si">{</span><span class="n">doc</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;SingleRunDocumentRouter has not processed a descriptor with uid </span><span class="si">{</span><span class="n">doc</span><span class="p">[</span><span class="s2">&quot;descriptor&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;descriptor&#39;</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="SingleRunDocumentRouter.get_stream_name"><a class="viewcode-back" href="../api.html#event_model.SingleRunDocumentRouter.get_stream_name">[docs]</a>    <span class="k">def</span> <span class="nf">get_stream_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Convenience method returning the name of the stream for the specified document.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        doc : dict</span>
+<span class="sd">            event-model document</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        stream name : str</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_descriptor</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span></div></div>
+
+
 <span class="k">class</span> <span class="nc">HandlerRegistryView</span><span class="p">(</span><span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">handler_registry</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span> <span class="o">=</span> <span class="n">handler_registry</span>
@@ -543,7 +642,6 @@
                  <span class="n">descriptor_cache</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">retry_intervals</span><span class="o">=</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.002</span><span class="p">,</span> <span class="mf">0.004</span><span class="p">,</span> <span class="mf">0.008</span><span class="p">,</span> <span class="mf">0.016</span><span class="p">,</span> <span class="mf">0.032</span><span class="p">,</span>
                                   <span class="mf">0.064</span><span class="p">,</span> <span class="mf">0.128</span><span class="p">,</span> <span class="mf">0.256</span><span class="p">,</span> <span class="mf">0.512</span><span class="p">,</span> <span class="mf">1.024</span><span class="p">)):</span>
-
         <span class="k">if</span> <span class="n">inplace</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_inplace</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
@@ -1242,6 +1340,7 @@
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
+                    <span class="k">raise</span> <span class="n">err</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subfactories</span><span class="p">)</span></div>
 
@@ -1266,12 +1365,14 @@
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
+                    <span class="k">raise</span> <span class="n">err</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
+                    <span class="k">raise</span> <span class="n">err</span>
         <span class="c1"># Keep track of the RunStart UID -&gt; [EventDescriptor UIDs] mapping for</span>
         <span class="c1"># purposes of cleanup in stop().</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
