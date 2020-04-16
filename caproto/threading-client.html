@@ -244,18 +244,18 @@ state:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [6]: </span><span class="n">res</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 
 <span class="gp">In [7]: </span><span class="n">res</span>
-<span class="gh">Out[7]: </span><span class="go">ReadNotifyResponse(data=array([3.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0, metadata=None)</span>
+<span class="gh">Out[7]: </span><span class="go">ReadNotifyResponse(data=array([1.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=0, metadata=None)</span>
 </pre></div>
 </div>
 <p>This object is a human-friendly representation of the server’s response. The
 raw bytes of that response are:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [8]: </span><span class="nb">bytes</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
-<span class="gh">Out[8]: </span><span class="go">b&#39;\x00\x0f\x00\x08\x00\x06\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00@\x08\x00\x00\x00\x00\x00\x00&#39;</span>
+<span class="gh">Out[8]: </span><span class="go">b&#39;\x00\x0f\x00\x08\x00\x06\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00?\xf0\x00\x00\x00\x00\x00\x00&#39;</span>
 </pre></div>
 </div>
 <p>Access particular fields in the response using attribute (“dot”) access on <code class="docutils literal notranslate"><span class="pre">res</span></code>.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [9]: </span><span class="n">res</span><span class="o">.</span><span class="n">data</span>
-<span class="gh">Out[9]: </span><span class="go">array([3.])</span>
+<span class="gh">Out[9]: </span><span class="go">array([1.])</span>
 </pre></div>
 </div>
 <p>By default, the client does not request any metadata</p>
@@ -266,13 +266,13 @@ raw bytes of that response are:</p>
 <pre class="literal-block">In [11]: richer_res = dt.read(data_type='time')
 
 In [12]: richer_res.metadata
-Out[12]: DBR_TIME_DOUBLE(status=&lt;AlarmStatus.NO_ALARM: 0&gt;, severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;, timestamp=1586965448.445892)
+Out[12]: DBR_TIME_DOUBLE(status=&lt;AlarmStatus.NO_ALARM: 0&gt;, severity=&lt;AlarmSeverity.NO_ALARM: 0&gt;, timestamp=1587051882.332281)
 
 In [13]: richer_res.metadata.timestamp
-Out[13]: 1586965448.445892
+Out[13]: 1587051882.332281
 
 In [14]: richer_res.metadata.stamp.as_datetime()  # a convenience method
-Out[14]: datetime.datetime(2020, 4, 15, 15, 44, 8, 445892)</pre>
+Out[14]: datetime.datetime(2020, 4, 16, 15, 44, 42, 332281)</pre>
 <p>See <a class="reference internal" href="#caproto.threading.client.PV.read" title="caproto.threading.client.PV.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">PV.read()</span></code></a> for more information on the values accepted by the
 <code class="docutils literal notranslate"><span class="pre">data_type</span></code> parameter.</p>
 <div class="admonition note">
@@ -284,7 +284,7 @@ data structures.</p>
 Out[15]: MessageHeader(command=15, payload_size=8, data_type=6, data_count=1, parameter1=1, parameter2=0)
 
 In [16]: res.buffers  # a collection of one or more buffers
-Out[16]: (b'', &lt;memory at 0x7f4c50f1fdc8&gt;)</pre>
+Out[16]: (b'', &lt;memory at 0x7fc389178c48&gt;)</pre>
 <p>They were received directly from the socket into these structure with no
 intermediate copies. Accessing the <code class="docutils literal notranslate"><span class="pre">res.data</span></code> — which returns a
 <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> or <code class="docutils literal notranslate"><span class="pre">array.array</span></code> — provides a view onto that same
@@ -377,14 +377,16 @@ define a second callback:</p>
 </div>
 <p>After some time has passed, we will have accumulated some responses.</p>
 <pre class="literal-block">In [25]: len(responses)
-Out[25]: 4
+Out[25]: 6
 
 In [26]: values
 Out[26]: 
-[-0.5101932424526134,
- 0.212728157329936,
- 0.28395225223466736,
- -0.6208450163879633]</pre>
+[3.8523221004250976,
+ 4.138115577862304,
+ 5.125651669468623,
+ 5.374985470420711,
+ 5.970197878796068,
+ 5.9053274350178615]</pre>
 <p>At any point we can remove a specific callback function:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [27]: </span><span class="n">sub</span><span class="o">.</span><span class="n">remove_callback</span><span class="p">(</span><span class="n">token</span><span class="p">)</span>
 </pre></div>
@@ -461,7 +463,7 @@ upon exiting the <code class="docutils literal notranslate"><span class="pre">wi
 background thread. As the responses come in, the <code class="docutils literal notranslate"><span class="pre">results</span></code> dictionary will be
 updated.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [35]: </span><span class="n">results</span>
-<span class="gh">Out[35]: </span><span class="go">{&#39;random_walk:x&#39;: array([-0.62084502]), &#39;random_walk:dt&#39;: array([1.])}</span>
+<span class="gh">Out[35]: </span><span class="go">{&#39;random_walk:x&#39;: array([5.60584408]), &#39;random_walk:dt&#39;: array([1.])}</span>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="#caproto.threading.client.Batch" title="caproto.threading.client.Batch"><code class="xref py py-class docutils literal notranslate"><span class="pre">Batch</span></code></a> for more.</p>
@@ -474,7 +476,7 @@ requested. In order to reduce the load on the network, a PV can be temporarily
 made “idle” (disconnected). It will silently, automatically reconnect the next
 time it is used.</p>
 <pre class="literal-block">In [36]: x
-Out[36]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 64042), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
+Out[36]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 65043), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
 
 In [37]: x.go_idle()
 
@@ -482,10 +484,10 @@ In [38]: x
 Out[38]: &lt;PV name='random_walk:x' priority=0 (idle)&gt;
 
 In [39]: x.read()
-Out[39]: ReadNotifyResponse(data=array([-0.23906438]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name='ECA_NORMAL', code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description='Normal successful completion'), ioid=5, metadata=None)
+Out[39]: ReadNotifyResponse(data=array([5.60584408]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name='ECA_NORMAL', code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description='Normal successful completion'), ioid=5, metadata=None)
 
 In [40]: x
-Out[40]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 64042), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;</pre>
+Out[40]: &lt;PV name='random_walk:x' priority=0 address=('127.0.0.1', 65043), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;</pre>
 <p>Notice that when the PV was read it automatically reconnected, requiring no
 action from the user.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">go_idle()</span></code> method is merely a <em>request</em> and is not guaranteed to have
@@ -580,7 +582,7 @@ value from 1.</p>
 </dl>
 <dl class="py method">
 <dt id="caproto.threading.client.Context.get_pvs">
-<code class="sig-name descname">get_pvs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*names</em>, <em class="sig-param">priority=0</em>, <em class="sig-param">connection_state_callback=None</em>, <em class="sig-param">access_rights_callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3fa0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#Context.get_pvs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.Context.get_pvs" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">get_pvs</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*names</em>, <em class="sig-param">priority=0</em>, <em class="sig-param">connection_state_callback=None</em>, <em class="sig-param">access_rights_callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebfa0&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#Context.get_pvs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.Context.get_pvs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a list of PV objects.</p>
 <p>These objects may not be connected at first. Channel creation occurs on
 a background thread.</p>
@@ -640,7 +642,7 @@ request will be processed when they are complete.</p>
 
 <dl class="py method">
 <dt id="caproto.threading.client.PV.read">
-<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">wait=True</em>, <em class="sig-param">callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3f80&gt;</em>, <em class="sig-param">data_type=None</em>, <em class="sig-param">data_count=None</em>, <em class="sig-param">notify=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.read" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">wait=True</em>, <em class="sig-param">callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebf80&gt;</em>, <em class="sig-param">data_type=None</em>, <em class="sig-param">data_count=None</em>, <em class="sig-param">notify=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Request a fresh reading.</p>
 <p>Can do one or both of:
 - Block while waiting for the response, and return it.
@@ -718,7 +720,7 @@ is added.</p>
 
 <dl class="py method">
 <dt id="caproto.threading.client.PV.time_since_last_heard">
-<code class="sig-name descname">time_since_last_heard</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3f80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.time_since_last_heard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.time_since_last_heard" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">time_since_last_heard</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebf80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.time_since_last_heard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.time_since_last_heard" title="Permalink to this definition">¶</a></dt>
 <dd><p>Seconds since last message from the server that provides this channel.</p>
 <p>The time is reset to 0 whenever we receive a TCP message related to
 user activity <em>or</em> a Beacon. Servers are expected to send Beacons at
@@ -761,7 +763,7 @@ set. If None, never timeout.</p>
 
 <dl class="py method">
 <dt id="caproto.threading.client.PV.wait_for_connection">
-<code class="sig-name descname">wait_for_connection</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3f80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_connection" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">wait_for_connection</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebf80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_connection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_connection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for this PV to be connected.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -777,7 +779,7 @@ set. If None, never timeout.</p>
 
 <dl class="py method">
 <dt id="caproto.threading.client.PV.wait_for_search">
-<code class="sig-name descname">wait_for_search</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3f80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_search" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">wait_for_search</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">\*</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebf80&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.wait_for_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.wait_for_search" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for this PV to be found.</p>
 <p>This does not wait for the PV’s Channel to be created; it merely waits
 for an address (and a VirtualCircuit) to be assigned.</p>
@@ -795,7 +797,7 @@ None, never timeout.</p>
 
 <dl class="py method">
 <dt id="caproto.threading.client.PV.write">
-<code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">data</em>, <em class="sig-param">\*</em>, <em class="sig-param">wait=True</em>, <em class="sig-param">callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7f4c7d9e3f80&gt;</em>, <em class="sig-param">notify=None</em>, <em class="sig-param">data_type=None</em>, <em class="sig-param">data_count=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.write" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param">self</em>, <em class="sig-param">data</em>, <em class="sig-param">\*</em>, <em class="sig-param">wait=True</em>, <em class="sig-param">callback=None</em>, <em class="sig-param">timeout=&lt;object object at 0x7fc3b9bebf80&gt;</em>, <em class="sig-param">notify=None</em>, <em class="sig-param">data_type=None</em>, <em class="sig-param">data_count=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/caproto/threading/client.html#PV.write"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#caproto.threading.client.PV.write" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write a new value. Optionally, request confirmation from the server.</p>
 <p>Can do one or both of:
 - Block while waiting for the response, and return it.
