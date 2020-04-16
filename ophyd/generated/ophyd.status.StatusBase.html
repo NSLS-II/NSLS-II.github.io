@@ -70,7 +70,7 @@
             
             
               <div class="version">
-                1.4.1.post9+g19237e3
+                1.4.1.post40+ga1fb4e2
               </div>
             
           
@@ -211,7 +211,7 @@
 <h1>ophyd.status.StatusBase<a class="headerlink" href="#ophyd-status-statusbase" title="Permalink to this headline">¶</a></h1>
 <dl class="class">
 <dt id="ophyd.status.StatusBase">
-<em class="property">class </em><code class="descclassname">ophyd.status.</code><code class="descname">StatusBase</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em>, <em>settle_time=None</em>, <em>done=False</em>, <em>success=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.status.StatusBase" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">ophyd.status.</code><code class="descname">StatusBase</code><span class="sig-paren">(</span><em>*</em>, <em>timeout=None</em>, <em>settle_time=0</em>, <em>done=False</em>, <em>success=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.status.StatusBase" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is a base class that provides a single-slot callback for when the
 specific operation has finished.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -227,6 +227,37 @@ to wait to mark the operation as failed</p>
 <dd><p class="first last">The amount of time to wait between the caller specifying that the
 status has completed to running callbacks</p>
 </dd>
+<dt><strong>.. note::</strong></dt>
+<dd><p class="first">Theory of operation:</p>
+<p>This employs two <code class="docutils literal"><span class="pre">threading.Event</span></code> objects, one thread the runs for
+(timeout + settle_time) seconds, and one thread that runs for
+settle_time seconds (if settle_time is nonzero).</p>
+<p>At __init__ time, a <em>timeout</em> and <em>settle_time</em> are specified. A thread
+is started, on which user callbacks, registered after __init__ time via
+<code class="xref py py-meth docutils literal"><span class="pre">add_callback()</span></code>, will eventually be run. The thread waits on an
+Event be set or (timeout + settle_time) seconds to pass, whichever
+happens first.</p>
+<p>If (timeout + settle_time) expires and the Event has not
+been set, an internal Exception is set to <code class="docutils literal"><span class="pre">StatusTimeoutError</span></code>, and a
+second Event is set, marking the Status as done and failed. The
+callbacks are run.</p>
+<p>If a callback is registered after the Status is done, it will be run
+immediately.</p>
+<p>If the first Event is set before (timeout + settle_time) expires,
+then the second Event is set and no internal Exception is set, marking
+the Status as done and successful. The callbacks are run.</p>
+<p class="last">There are two methods that directly set the first Event. One,
+:meth:set_exception, sets it directly after setting the internal
+Exception.  The other, <code class="xref py py-meth docutils literal"><span class="pre">set_finished()</span></code>, starts a
+<code class="docutils literal"><span class="pre">threading.Timer</span></code> that will set it after a delay (the settle_time).
+One of these methods may be called, and at most once. If one is called
+twice or if both are called, <code class="docutils literal"><span class="pre">InvalidState</span></code> is raised. If they are
+called too late to prevent a <code class="docutils literal"><span class="pre">StatusTimeoutError</span></code>, they are ignored
+but one call is still allowed. Thus, an external callback, e.g. pyepics,
+may reports success or failure after the Status object has expired, but
+to no effect because the callbacks have already been called and the
+program has moved on.</p>
+</dd>
 </dl>
 </td>
 </tr>
@@ -234,7 +265,7 @@ status has completed to running callbacks</p>
 </table>
 <dl class="method">
 <dt id="ophyd.status.StatusBase.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=None</em>, <em>settle_time=None</em>, <em>done=False</em>, <em>success=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.status.StatusBase.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>self</em>, <em>*</em>, <em>timeout=None</em>, <em>settle_time=0</em>, <em>done=False</em>, <em>success=False</em><span class="sig-paren">)</span><a class="headerlink" href="#ophyd.status.StatusBase.__init__" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -249,6 +280,18 @@ status has completed to running callbacks</p>
 </tr>
 <tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">add_callback</span></code>(self,&nbsp;callback)</td>
 <td>Register a callback to be called once when the Status finishes.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">exception</span></code>(self[,&nbsp;timeout])</td>
+<td>Return the exception raised by the action.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">set_exception</span></code>(self,&nbsp;exc)</td>
+<td>Mark as finished but failed with the given Exception.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">set_finished</span></code>(self)</td>
+<td>Mark as finished successfully.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">wait</span></code>(self[,&nbsp;timeout])</td>
+<td>Block until the action completes.</td>
 </tr>
 </tbody>
 </table>
