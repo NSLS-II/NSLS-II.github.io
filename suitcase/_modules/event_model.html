@@ -1298,9 +1298,13 @@
         <span class="c1"># keyed on the RunStart UID referenced by that EventDescriptor.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
 
+        <span class="c1"># Map RunStart UID to RunStart document. This is used to send</span>
+        <span class="c1"># RunStart documents to subfactory callbacks.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_start_doc</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+
         <span class="c1"># Map RunStart UID to the list EventDescriptor. This is used to</span>
         <span class="c1"># facilitate efficient cleanup of the caches above.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_descriptors</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
 
         <span class="c1"># Map EventDescriptor UID to RunStart UID. This is used for looking up</span>
         <span class="c1"># Fillers.</span>
@@ -1320,8 +1324,9 @@
                 <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">factory</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">)</span> <span class="o">+</span>
                 <span class="sa">f</span><span class="s2">&quot;])&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">):</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="n">start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_start_doc</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_doc</span>
         <span class="n">filler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">filler_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span>
                                    <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_map</span><span class="p">,</span>
                                    <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -1329,10 +1334,10 @@
         <span class="c1"># No need to pass the document to filler</span>
         <span class="c1"># because Fillers do nothing with &#39;start&#39;.</span>
         <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">:</span>
-            <span class="n">callbacks</span><span class="p">,</span> <span class="n">subfactories</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="n">callbacks</span><span class="p">,</span> <span class="n">subfactories</span> <span class="o">=</span> <span class="n">factory</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
@@ -1341,30 +1346,31 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">subfactories</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
-        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">descriptor</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">descriptor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">descriptor_doc</span><span class="p">):</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="n">descriptor_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
+        <span class="n">start_uid</span> <span class="o">=</span> <span class="n">descriptor_doc</span><span class="p">[</span><span class="s1">&#39;run_start&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">descriptor</span><span class="p">(</span><span class="n">descriptor_doc</span><span class="p">)</span>
         <span class="c1"># Apply all factory cbs for this run to this descriptor, and run them.</span>
         <span class="n">factory_cbs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">factory_cbs</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">factory_cbs</span><span class="p">:</span>
-            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
-        <span class="c1"># Let all the subfactories add any relavant callbacks.</span>
+            <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor_doc</span><span class="p">)</span>
+        <span class="c1"># Let all the subfactories add any relevant callbacks.</span>
         <span class="k">for</span> <span class="n">subfactory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]:</span>
-            <span class="n">callbacks</span> <span class="o">=</span> <span class="n">subfactory</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+            <span class="n">callbacks</span> <span class="o">=</span> <span class="n">subfactory</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor_doc</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="n">start_doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_start_doc</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
                             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="n">err</span><span class="p">))</span>
                     <span class="k">raise</span> <span class="n">err</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span>
+                    <span class="n">callback</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor_doc</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
                     <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
                         <span class="n">DOCS_PASSED_IN_1_14_0_WARNING</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
@@ -1372,7 +1378,7 @@
                     <span class="k">raise</span> <span class="n">err</span>
         <span class="c1"># Keep track of the RunStart UID -&gt; [EventDescriptor UIDs] mapping for</span>
         <span class="c1"># purposes of cleanup in stop().</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_descriptors</span><span class="p">[</span><span class="n">start_uid</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
         <span class="c1"># Keep track of the EventDescriptor UID -&gt; RunStartUID for filling</span>
         <span class="c1"># purposes.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_uid</span>
@@ -1456,11 +1462,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_subfactories</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">descriptor_uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="p">()):</span>
+        <span class="k">for</span> <span class="n">descriptor_uid</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_descriptors</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="p">()):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_descriptor_to_start</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_factory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_subfactory_cbs_by_descriptor</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">descriptor_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_resources</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_to_start_doc</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">start_uid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">EventModelError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
