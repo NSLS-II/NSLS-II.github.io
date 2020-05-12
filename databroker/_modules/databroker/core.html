@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.2 documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.2.post7+g62e5e66 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.2
+                1.0.2.post7+g62e5e66
               </div>
             
           
@@ -1670,6 +1670,134 @@
 
     <span class="k">def</span> <span class="nf">resource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">resources</span><span class="p">[</span><span class="n">doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">doc</span>
+
+
+<span class="k">class</span> <span class="nc">SingleRunCache</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Collect the document from one Run and, when complete, provide a BlueskyRun.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    handler_registry: dict, optional</span>
+<span class="sd">        This is passed to the Filler or whatever class is given in the</span>
+<span class="sd">        filler_class parameter below.</span>
+
+<span class="sd">        Maps each &#39;spec&#39; (a string identifying a given type or external</span>
+<span class="sd">        resource) to a handler class.</span>
+
+<span class="sd">        A &#39;handler class&#39; may be any callable with the signature::</span>
+
+<span class="sd">            handler_class(resource_path, root, **resource_kwargs)</span>
+
+<span class="sd">        It is expected to return an object, a &#39;handler instance&#39;, which is also</span>
+<span class="sd">        callable and has the following signature::</span>
+
+<span class="sd">            handler_instance(**datum_kwargs)</span>
+
+<span class="sd">        As the names &#39;handler class&#39; and &#39;handler instance&#39; suggest, this is</span>
+<span class="sd">        typically implemented using a class that implements ``__init__`` and</span>
+<span class="sd">        ``__call__``, with the respective signatures. But in general it may be</span>
+<span class="sd">        any callable-that-returns-a-callable.</span>
+<span class="sd">    root_map: dict, optional</span>
+<span class="sd">        This is passed to Filler or whatever class is given in the filler_class</span>
+<span class="sd">        parameter below.</span>
+
+<span class="sd">        str -&gt; str mapping to account for temporarily moved/copied/remounted</span>
+<span class="sd">        files.  Any resources which have a ``root`` in ``root_map`` will be</span>
+<span class="sd">        loaded using the mapped ``root``.</span>
+<span class="sd">    filler_class: type</span>
+<span class="sd">        This is Filler by default. It can be a Filler subclass,</span>
+<span class="sd">        ``functools.partial(Filler, ...)``, or any class that provides the same</span>
+<span class="sd">        methods as ``DocumentRouter``.</span>
+<span class="sd">    transforms: dict</span>
+<span class="sd">        A dict that maps any subset of the keys {start, stop, resource, descriptor}</span>
+<span class="sd">        to a function that accepts a document of the corresponding type and</span>
+<span class="sd">        returns it, potentially modified. This feature is for patching up</span>
+<span class="sd">        erroneous metadata. It is intended for quick, temporary fixes that</span>
+<span class="sd">        may later be applied permanently to the data at rest</span>
+<span class="sd">        (e.g., via a database migration).</span>
+<span class="sd">    **kwargs:</span>
+<span class="sd">        Additional keyword arguments are passed through to the base class,</span>
+<span class="sd">        Catalog.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Subscribe to a document stream from within a plan.</span>
+<span class="sd">    &gt;&gt;&gt; def plan():</span>
+<span class="sd">    ...     src = SingleRunCache()</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     @bluesky.preprocessors.subs_decorator(src.callback)</span>
+<span class="sd">    ...     def inner_plan():</span>
+<span class="sd">    ...         yield from bluesky.plans.rel_scan(...)</span>
+<span class="sd">    ...         run = src.retrieve()</span>
+<span class="sd">    ...         table = run.primary.read().to_dataframe()</span>
+<span class="sd">    ...         ...</span>
+<span class="sd">    ...</span>
+<span class="sd">    ...     yield from inner_plan()</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">filler_class</span><span class="o">=</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span> <span class="o">=</span> <span class="n">root_map</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span> <span class="o">=</span> <span class="n">filler_class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span> <span class="o">=</span> <span class="n">parse_transforms</span><span class="p">(</span><span class="n">transforms</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">handler_registry</span> <span class="o">=</span> <span class="n">discover_handlers</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span> <span class="o">=</span> <span class="n">parse_handler_registry</span><span class="p">(</span><span class="n">handler_registry</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span> <span class="o">=</span> <span class="n">event_model</span><span class="o">.</span><span class="n">HandlerRegistryView</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_filler</span> <span class="o">=</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span><span class="p">,</span>
+            <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">handler_registry</span><span class="p">,</span>
+            <span class="n">root_map</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span><span class="p">,</span>
+            <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_collector</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>  <span class="c1"># will contain (name, doc) pairs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_complete</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># set to Run Start uid when stop doc is received</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Cache BlueskyRun instance here.</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Subscribe to a document stream.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_complete</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Already received &#39;stop&#39; document. Expected one Run only.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;stop&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_complete</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;run_start&quot;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_collector</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">retrieve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a BlueskyRun. If one is not ready, return None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_complete</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+
+            <span class="k">def</span> <span class="nf">gen_func</span><span class="p">():</span>
+                <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collector</span>
+
+            <span class="c1"># TODO in a future PR:</span>
+            <span class="c1"># We have to mock up an Entry.</span>
+            <span class="c1"># Can we avoid this after the Entry refactor?</span>
+            <span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">SimpleNamespace</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">start_doc</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_collector</span><span class="p">))</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">SimpleNamespace</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">start_doc</span><span class="p">[</span><span class="s2">&quot;uid&quot;</span><span class="p">])</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run</span> <span class="o">=</span> <span class="n">BlueskyRunFromGenerator</span><span class="p">(</span>
+                <span class="n">gen_func</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{},</span> <span class="n">get_filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_filler</span><span class="p">,</span>
+                <span class="n">transforms</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span><span class="p">,</span> <span class="n">entry</span><span class="o">=</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Either &lt;SingleRunCache in progress&gt;</span>
+        <span class="c1"># or &lt;SingleRunCache uid=&quot;...&quot;&gt;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_complete</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;SingleRunCache uid=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_complete</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;&lt;SingleRunCache in progress&gt;&quot;</span>
 
 
 <span class="k">class</span> <span class="nc">BlueskyRunFromGenerator</span><span class="p">(</span><span class="n">BlueskyRun</span><span class="p">):</span>
