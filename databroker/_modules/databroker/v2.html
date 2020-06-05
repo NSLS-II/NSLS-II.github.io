@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.v2 &mdash; databroker 1.0.5.post2+gfbe3d9c documentation</title>
+  <title>databroker.v2 &mdash; databroker 1.0.5.post5+g44464fd documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.5.post2+gfbe3d9c
+                1.0.5.post5+g44464fd
               </div>
             
           
@@ -164,6 +164,7 @@
             
   <h1>Source code for databroker.v2</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">event_model</span>
+<span class="kn">import</span> <span class="nn">importlib</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 
 <span class="kn">from</span> <span class="nn">.core</span> <span class="kn">import</span> <span class="n">parse_handler_registry</span><span class="p">,</span> <span class="n">discover_handlers</span><span class="p">,</span> <span class="n">parse_transforms</span>
@@ -227,8 +228,12 @@
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">handler_registry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">root_map</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">filler_class</span><span class="o">=</span><span class="n">event_model</span><span class="o">.</span><span class="n">Filler</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">filler_class</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">class_name</span> <span class="o">=</span> <span class="n">filler_class</span><span class="o">.</span><span class="n">rpartition</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">class_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span> <span class="o">=</span> <span class="n">filler_class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_root_map</span> <span class="o">=</span> <span class="n">root_map</span> <span class="ow">or</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_filler_class</span> <span class="o">=</span> <span class="n">filler_class</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_transforms</span> <span class="o">=</span> <span class="n">parse_transforms</span><span class="p">(</span><span class="n">transforms</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">handler_registry</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">handler_registry</span> <span class="o">=</span> <span class="n">discover_handlers</span><span class="p">()</span>
