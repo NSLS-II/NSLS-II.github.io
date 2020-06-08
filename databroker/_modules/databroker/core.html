@@ -9,7 +9,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.0.5.post5+g44464fd documentation</title>
+  <title>databroker.core &mdash; databroker 1.0.5.post16+g2c063ff documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.0.5.post5+g44464fd
+                1.0.5.post16+g2c063ff
               </div>
             
           
@@ -801,8 +801,10 @@
             <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
 
     <span class="c1"># Collect a Dataset for each descriptor. Merge at the end.</span>
-    <span class="n">dim_counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
     <span class="n">datasets</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">dim_counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+    <span class="n">event_dim_labels</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">config_dim_labels</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptor_docs</span><span class="p">:</span>
         <span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_flatten_event_page_gen</span><span class="p">(</span><span class="n">get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])))</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">events</span><span class="p">:</span>
@@ -838,7 +840,12 @@
                 <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span>
-                <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+                <span class="c1"># Reuse dim labels.</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">dims</span> <span class="o">=</span> <span class="n">event_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+                    <span class="n">event_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dims</span>
             <span class="n">data_arrays</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
                 <span class="n">data</span><span class="o">=</span><span class="n">data_table</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
                 <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">dims</span><span class="p">,</span>
@@ -862,7 +869,6 @@
                 <span class="n">keys</span> <span class="o">=</span> <span class="n">scoped_data_keys</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">scoped_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                 <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
                 <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span>
                 <span class="c1"># if the EventDescriptor doesn&#39;t provide names for the</span>
                 <span class="c1"># dimensions (it&#39;s optional) use the same default dimension</span>
@@ -870,7 +876,11 @@
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
                 <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">dims</span> <span class="o">=</span> <span class="n">config_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                        <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+                        <span class="n">config_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dims</span>
                 <span class="n">data_arrays</span><span class="p">[</span><span class="n">scoped_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
                     <span class="c1"># TODO Once we know we have one Event Descriptor</span>
                     <span class="c1"># per stream we can be more efficient about this.</span>
