@@ -154,6 +154,7 @@
   <h1>Source code for event_model</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span><span class="p">,</span> <span class="n">namedtuple</span>
 <span class="kn">import</span> <span class="nn">collections.abc</span>
+<span class="kn">from</span> <span class="nn">distutils.version</span> <span class="kn">import</span> <span class="n">LooseVersion</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
@@ -163,6 +164,7 @@
 <span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="kn">import</span> <span class="n">resource_filename</span> <span class="k">as</span> <span class="n">rs_fn</span>
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span> <span class="k">as</span> <span class="nn">ttime</span>
+<span class="kn">import</span> <span class="nn">types</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
 
@@ -500,6 +502,8 @@
             <span class="n">raw_result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
             <span class="n">result_as_array</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">raw_result</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">result_as_array</span>
+    <span class="n">Subclass</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Subclassed</span><span class="si">{</span><span class="n">handler_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">Subclass</span><span class="o">.</span><span class="vm">__qualname__</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Subclassed</span><span class="si">{</span><span class="n">handler_class</span><span class="o">.</span><span class="vm">__qualname__</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">return</span> <span class="n">Subclass</span>
 
 
@@ -1320,9 +1324,9 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_fillers</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RunRouter([</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span>
-                <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">factory</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">)</span> <span class="o">+</span>
-                <span class="sa">f</span><span class="s2">&quot;])&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s2">&quot;RunRouter([</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    </span><span class="si">{</span><span class="n">factory</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">factory</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">factories</span><span class="p">)</span> <span class="o">+</span>
+                <span class="s2">&quot;])&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">):</span>
         <span class="n">uid</span> <span class="o">=</span> <span class="n">start_doc</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span>
@@ -1560,23 +1564,32 @@
         <span class="n">schemas</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">fin</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_is_array</span><span class="p">(</span><span class="n">checker</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
-    <span class="k">return</span> <span class="p">(</span>
-        <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">or</span>
-        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">is_type</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s1">&#39;array&#39;</span><span class="p">)</span> <span class="ow">or</span>
-        <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
-    <span class="p">)</span>
+<span class="c1"># We pin jsonschema &gt;=3.0.0 in requirements.txt but due to pip&#39;s dependency</span>
+<span class="c1"># resolution it is easy to end up with an environment where that pin is not</span>
+<span class="c1"># respected. Thus, we maintain best-effort support for 2.x.</span>
+<span class="k">if</span> <span class="n">LooseVersion</span><span class="p">(</span><span class="n">jsonschema</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">LooseVersion</span><span class="p">(</span><span class="s2">&quot;3.0.0&quot;</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_is_array</span><span class="p">(</span><span class="n">checker</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">is_type</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="s1">&#39;array&#39;</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">instance</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
+        <span class="p">)</span>
 
+    <span class="n">_array_type_checker</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">redefine</span><span class="p">(</span><span class="s1">&#39;array&#39;</span><span class="p">,</span> <span class="n">_is_array</span><span class="p">)</span>
 
-<span class="n">_array_type_checker</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="o">.</span><span class="n">TYPE_CHECKER</span><span class="o">.</span><span class="n">redefine</span><span class="p">(</span><span class="s1">&#39;array&#39;</span><span class="p">,</span> <span class="n">_is_array</span><span class="p">)</span>
+    <span class="n">_Validator</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+        <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="p">,</span>
+        <span class="n">type_checker</span><span class="o">=</span><span class="n">_array_type_checker</span><span class="p">)</span>
 
-
-<span class="n">_Validator</span> <span class="o">=</span> <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
-    <span class="n">jsonschema</span><span class="o">.</span><span class="n">validators</span><span class="o">.</span><span class="n">Draft7Validator</span><span class="p">,</span>
-    <span class="n">type_checker</span><span class="o">=</span><span class="n">_array_type_checker</span><span class="p">)</span>
-
-
-<span class="n">schema_validators</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">_Validator</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="n">schema_validators</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">_Validator</span><span class="p">(</span><span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Make objects that mock the one method on the jsonschema 3.x</span>
+    <span class="c1"># Draft7Validator API that we need.</span>
+    <span class="n">schema_validators</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">types</span><span class="o">.</span><span class="n">SimpleNamespace</span><span class="p">(</span>
+            <span class="n">validate</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">jsonschema</span><span class="o">.</span><span class="n">validate</span><span class="p">,</span> <span class="n">schema</span><span class="o">=</span><span class="n">schema</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;array&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)}))</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">schema</span> <span class="ow">in</span> <span class="n">schemas</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
 
 
 <span class="n">__version__</span> <span class="o">=</span> <span class="n">get_versions</span><span class="p">()[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
@@ -1782,6 +1795,10 @@
 <span class="sd">        Additional metadata include the document</span>
 <span class="sd">    validate : boolean, optional</span>
 <span class="sd">        Validate this document conforms to the schema.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    ComposeRunBundle</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">uid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">uid</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
