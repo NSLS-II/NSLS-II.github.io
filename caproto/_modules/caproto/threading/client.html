@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.threading.client &mdash; caproto 0.5.1+0.gec5a5c6.dirty documentation</title>
+  <title>caproto.threading.client &mdash; caproto 0.5.1+2.ga1d253a.dirty documentation</title>
   
 
   
@@ -58,7 +58,7 @@
             
             
               <div class="version">
-                0.5.1+0.gec5a5c6.dirty
+                0.5.1+2.ga1d253a.dirty
               </div>
             
           
@@ -2276,15 +2276,23 @@
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;&lt;Subscription to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2">, id=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">subscriptionid</span><span class="si">}</span><span class="s2">&gt;&quot;</span>
 
-    <span class="nd">@ensure_connected</span>
     <span class="k">def</span> <span class="nf">_subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">PV_DEFAULT_TIMEOUT</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;This is called automatically after the first callback is added.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">circuit_manager</span>
-        <span class="n">ctx</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">context</span>
-        <span class="k">with</span> <span class="n">ctx</span><span class="o">.</span><span class="n">subscriptions_lock</span><span class="p">:</span>
-            <span class="n">ctx</span><span class="o">.</span><span class="n">subscriptions_to_activate</span><span class="p">[</span><span class="n">cm</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
-        <span class="n">ctx</span><span class="o">.</span><span class="n">activate_subscriptions_now</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># We are currently disconnected (perhaps have not yet connected).</span>
+            <span class="c1"># When the PV connects, this subscription will be added.</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">callback_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">needs_reactivation</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># We are (or very recently were) connected. In the rare event</span>
+            <span class="c1"># where cm goes dead in the interim, subscription will be retried</span>
+            <span class="c1"># by the activation loop.</span>
+            <span class="n">ctx</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">context</span>
+            <span class="k">with</span> <span class="n">ctx</span><span class="o">.</span><span class="n">subscriptions_lock</span><span class="p">:</span>
+                <span class="n">ctx</span><span class="o">.</span><span class="n">subscriptions_to_activate</span><span class="p">[</span><span class="n">cm</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">activate_subscriptions_now</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
     <span class="nd">@ensure_connected</span>
     <span class="k">def</span> <span class="nf">compose_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">PV_DEFAULT_TIMEOUT</span><span class="p">):</span>
