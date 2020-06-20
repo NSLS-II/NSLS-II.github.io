@@ -354,17 +354,39 @@ broadcast (UDP datagram), so we pass them to <a class="reference internal" href=
 In [24]: commands = b.recv(bytes_received, recv_address)
 
 In [25]: version_response, search_response = commands
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+&lt;ipython-input-25-c576c8d86dfd&gt; in &lt;module&gt;()
+----&gt; 1 version_response, search_response = commands
+
+ValueError: not enough values to unpack (expected 2, got 1)
 
 In [26]: version_response
-Out[26]: VersionResponse(version=13)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-26-5d2ab03e1abb&gt; in &lt;module&gt;()
+----&gt; 1 version_response
+
+NameError: name 'version_response' is not defined
 
 In [27]: search_response
-Out[27]: SearchResponse(port=50183, ip='255.255.255.255', cid=0, version=13)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-27-3cc3b8fad4a5&gt; in &lt;module&gt;()
+----&gt; 1 search_response
+
+NameError: name 'search_response' is not defined
 
 In [28]: address = caproto.extract_address(search_response)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-28-5e0965377917&gt; in &lt;module&gt;()
+----&gt; 1 address = caproto.extract_address(search_response)
+
+NameError: name 'search_response' is not defined
 
 In [29]: address
-Out[29]: ('127.0.0.1', 50183)</pre>
+Out[29]: ('127.0.0.1', 5065)</pre>
 <p>Now we have the address of a server that has the channel we’re interested in.
 Next, we’ll set aside the broadcaster and initiate TCP communication with this
 particular server.</p>
@@ -375,6 +397,26 @@ particular server.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [30]: </span><span class="kn">import</span> <span class="nn">socket</span>
 
 <span class="gp">In [31]: </span><span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+<span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">ConnectionRefusedError</span><span class="g g-Whitespace">                    </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-31-158d8fb0d4c9&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="n">sock</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+
+<span class="nn">/opt/python/3.6.7/lib/python3.6/socket.py</span> in <span class="ni">create_connection</span><span class="nt">(address, timeout, source_address)</span>
+<span class="g g-Whitespace">    </span><span class="mi">722</span> 
+<span class="g g-Whitespace">    </span><span class="mi">723</span>     <span class="k">if</span> <span class="n">err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="ne">--&gt; </span><span class="mi">724</span>         <span class="k">raise</span> <span class="n">err</span>
+<span class="g g-Whitespace">    </span><span class="mi">725</span>     <span class="k">else</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">726</span>         <span class="k">raise</span> <span class="n">error</span><span class="p">(</span><span class="s2">&quot;getaddrinfo returns an empty list&quot;</span><span class="p">)</span>
+
+<span class="nn">/opt/python/3.6.7/lib/python3.6/socket.py</span> in <span class="ni">create_connection</span><span class="nt">(address, timeout, source_address)</span>
+<span class="g g-Whitespace">    </span><span class="mi">711</span>             <span class="k">if</span> <span class="n">source_address</span><span class="p">:</span>
+<span class="g g-Whitespace">    </span><span class="mi">712</span>                 <span class="n">sock</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">source_address</span><span class="p">)</span>
+<span class="ne">--&gt; </span><span class="mi">713</span>             <span class="n">sock</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">sa</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">714</span>             <span class="c1"># Break explicitly a reference cycle</span>
+<span class="g g-Whitespace">    </span><span class="mi">715</span>             <span class="n">err</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="ne">ConnectionRefusedError</span>: [Errno 111] Connection refused
 </pre></div>
 </div>
 <p>A <a class="reference internal" href="api.html#caproto.VirtualCircuit" title="caproto.VirtualCircuit"><code class="xref py py-class docutils literal notranslate"><span class="pre">VirtualCircuit</span></code></a> plays the same role for a TCP connection as
@@ -405,35 +447,116 @@ by the protocol.</p>
 </pre></div>
 </div>
 <p>We initialize the circuit by specifying our protocol version.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [35]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">VersionRequest</span><span class="p">(</span><span class="n">priority</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="mi">13</span><span class="p">))</span>
+<pre class="literal-block">In [35]: send(caproto.VersionRequest(priority=0, version=13))
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-35-60bc4956dd6e&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.VersionRequest(priority=0, version=13))
 
-<span class="gp">In [36]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[36]: </span><span class="go">deque([VersionResponse(version=13)])</span>
-</pre></div>
-</div>
+&lt;ipython-input-33-2faf949ce37a&gt; in send(command)
+      2     &quot;Process a command in the VirtualCircuit and then transmit its bytes.&quot;
+      3     buffers_to_send = circuit.send(command)
+----&gt; 4     sock.sendmsg(buffers_to_send)
+
+NameError: name 'sock' is not defined
+
+In [36]: recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-36-8364dbe477c9&gt; in &lt;module&gt;()
+----&gt; 1 recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined</pre>
 <p>Optionally provide the host name and “client” name, which the server may use
 to determine our read/write permissions on channels. (There is no
 authentication in Channel Access; security has to be provided at the network
 level.)</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [37]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">HostNameRequest</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">))</span>
+<pre class="literal-block">In [37]: send(caproto.HostNameRequest('localhost'))
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-37-39efec23edb4&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.HostNameRequest('localhost'))
 
-<span class="gp">In [38]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">ClientNameRequest</span><span class="p">(</span><span class="s1">&#39;user&#39;</span><span class="p">))</span>
-</pre></div>
-</div>
+&lt;ipython-input-33-2faf949ce37a&gt; in send(command)
+      2     &quot;Process a command in the VirtualCircuit and then transmit its bytes.&quot;
+      3     buffers_to_send = circuit.send(command)
+----&gt; 4     sock.sendmsg(buffers_to_send)
+
+NameError: name 'sock' is not defined
+
+In [38]: send(caproto.ClientNameRequest('user'))
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-38-7fb7dbbcfe31&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.ClientNameRequest('user'))
+
+&lt;ipython-input-33-2faf949ce37a&gt; in send(command)
+      2     &quot;Process a command in the VirtualCircuit and then transmit its bytes.&quot;
+      3     buffers_to_send = circuit.send(command)
+----&gt; 4     sock.sendmsg(buffers_to_send)
+
+NameError: name 'sock' is not defined</pre>
 <p>Finally, create the channel and look at the responses.</p>
 <pre class="literal-block">In [39]: cid = 1  # a client-specified unique ID for this Channel
 
 In [40]: send(caproto.CreateChanRequest(name=name, cid=cid, version=13))
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-40-2954818c8b1d&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.CreateChanRequest(name=name, cid=cid, version=13))
+
+&lt;ipython-input-33-2faf949ce37a&gt; in send(command)
+      2     &quot;Process a command in the VirtualCircuit and then transmit its bytes.&quot;
+      3     buffers_to_send = circuit.send(command)
+----&gt; 4     sock.sendmsg(buffers_to_send)
+
+NameError: name 'sock' is not defined
 
 In [41]: commands = recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-41-dc8410d7ac71&gt; in &lt;module&gt;()
+----&gt; 1 commands = recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined
 
 In [42]: access_response, create_chan_response = commands
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+&lt;ipython-input-42-b69a646cfaee&gt; in &lt;module&gt;()
+----&gt; 1 access_response, create_chan_response = commands
+
+ValueError: not enough values to unpack (expected 2, got 1)
 
 In [43]: access_response
-Out[43]: AccessRightsResponse(cid=1, access_rights=&lt;AccessRights.WRITE|READ: 3&gt;)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-43-91c02a8f3534&gt; in &lt;module&gt;()
+----&gt; 1 access_response
+
+NameError: name 'access_response' is not defined
 
 In [44]: create_chan_response
-Out[44]: CreateChanResponse(data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, cid=1, sid=0)</pre>
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-44-3ff4e0966815&gt; in &lt;module&gt;()
+----&gt; 1 create_chan_response
+
+NameError: name 'create_chan_response' is not defined</pre>
 <p>Success! We now have a connection to the <code class="docutils literal notranslate"><span class="pre">random_walk:dt</span></code> channel. Next we’ll
 read and write values.</p>
 <p>Incidentally, we can reuse this same <code class="docutils literal notranslate"><span class="pre">circuit</span></code> and <code class="docutils literal notranslate"><span class="pre">sock</span></code> to connect to
@@ -442,6 +565,12 @@ integer IDs <code class="docutils literal notranslate"><span class="pre">cid</sp
 <code class="docutils literal notranslate"><span class="pre">sid</span></code> (specified by the server in its <code class="xref py py-class docutils literal notranslate"><span class="pre">CreateChanResponse</span></code>) to specify
 which channel we mean.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [45]: </span><span class="n">sid</span> <span class="o">=</span> <span class="n">create_chan_response</span><span class="o">.</span><span class="n">sid</span>
+<span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-45-3d0651bf15c3&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="n">sid</span> <span class="o">=</span> <span class="n">create_chan_response</span><span class="o">.</span><span class="n">sid</span>
+
+<span class="ne">NameError</span>: name &#39;create_chan_response&#39; is not defined
 </pre></div>
 </div>
 <p>In the event of high traffic clogging the network, we can open up <em>multiple</em>
@@ -453,31 +582,70 @@ there can be multiple VirtualCircuits between peers.</p>
 <div class="section" id="reading-and-writing-values">
 <h3>Reading and Writing Values<a class="headerlink" href="#reading-and-writing-values" title="Permalink to this headline">¶</a></h3>
 <p>Read:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [46]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">ReadNotifyRequest</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span>
-<span class="gp">   ....: </span>                               <span class="n">data_count</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_count</span><span class="p">,</span>
-<span class="gp">   ....: </span>                               <span class="n">sid</span><span class="o">=</span><span class="n">sid</span><span class="p">,</span>
-<span class="gp">   ....: </span>                               <span class="n">ioid</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
-<span class="gp">   ....: </span>
+<pre class="literal-block">In [46]: send(caproto.ReadNotifyRequest(data_type=create_chan_response.data_type,
+   ....:                                data_count=create_chan_response.data_count,
+   ....:                                sid=sid,
+   ....:                                ioid=1))
+   ....: 
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-46-4e836665088d&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.ReadNotifyRequest(data_type=create_chan_response.data_type,
+      2                                data_count=create_chan_response.data_count,
+      3                                sid=sid,
+      4                                ioid=1))
 
-<span class="gp">In [47]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[47]: </span><span class="go">deque([ReadNotifyResponse(data=array([3.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=1, metadata=None)])</span>
-</pre></div>
-</div>
+NameError: name 'create_chan_response' is not defined
+
+In [47]: recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-47-8364dbe477c9&gt; in &lt;module&gt;()
+----&gt; 1 recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined</pre>
 <p>We may request a particular data type and element count; in the case we just
 asked for the “native” data type and count that the server reported in its
 <code class="xref py py-class docutils literal notranslate"><span class="pre">CreateChanResponse</span></code> above.</p>
 <p>Write:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [48]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">WriteNotifyRequest</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,),</span>
-<span class="gp">   ....: </span>                                <span class="n">data_type</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span>
-<span class="gp">   ....: </span>                                <span class="n">data_count</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_count</span><span class="p">,</span>
-<span class="gp">   ....: </span>                                <span class="n">sid</span><span class="o">=</span><span class="n">sid</span><span class="p">,</span>
-<span class="gp">   ....: </span>                                <span class="n">ioid</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
-<span class="gp">   ....: </span>
+<pre class="literal-block">In [48]: send(caproto.WriteNotifyRequest(data=(4,),
+   ....:                                 data_type=create_chan_response.data_type,
+   ....:                                 data_count=create_chan_response.data_count,
+   ....:                                 sid=sid,
+   ....:                                 ioid=2))
+   ....: 
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-48-dfe7b247c240&gt; in &lt;module&gt;()
+      1 send(caproto.WriteNotifyRequest(data=(4,),
+----&gt; 2                                 data_type=create_chan_response.data_type,
+      3                                 data_count=create_chan_response.data_count,
+      4                                 sid=sid,
+      5                                 ioid=2))
 
-<span class="gp">In [49]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[49]: </span><span class="go">deque([WriteNotifyResponse(data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), ioid=2)])</span>
-</pre></div>
-</div>
+NameError: name 'create_chan_response' is not defined
+
+In [49]: recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-49-8364dbe477c9&gt; in &lt;module&gt;()
+----&gt; 1 recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined</pre>
 <p>The <code class="docutils literal notranslate"><span class="pre">data</span></code> may be given as one of the following types:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">tuple</span></code></p></li>
@@ -493,47 +661,113 @@ metadata. See <a class="reference internal" href="api.html#payload-data-types"><
 <p>Ask the server to send responses every time the value of the Channel changes.
 As with reading, above, we have the option of requesting a specific data type
 or element count, but we’ll use the “native” parameters.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [50]: </span><span class="n">req</span> <span class="o">=</span> <span class="n">caproto</span><span class="o">.</span><span class="n">EventAddRequest</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span>
-<span class="gp">   ....: </span>                              <span class="n">data_count</span><span class="o">=</span><span class="n">create_chan_response</span><span class="o">.</span><span class="n">data_count</span><span class="p">,</span>
-<span class="gp">   ....: </span>                              <span class="n">sid</span><span class="o">=</span><span class="n">sid</span><span class="p">,</span>
-<span class="gp">   ....: </span>                              <span class="n">subscriptionid</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-<span class="gp">   ....: </span>                              <span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="gp">   ....: </span>
+<pre class="literal-block">In [50]: req = caproto.EventAddRequest(data_type=create_chan_response.data_type,
+   ....:                               data_count=create_chan_response.data_count,
+   ....:                               sid=sid,
+   ....:                               subscriptionid=0,
+   ....:                               low=0, high=0, to=0, mask=1)
+   ....: 
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-50-9b01251724a1&gt; in &lt;module&gt;()
+----&gt; 1 req = caproto.EventAddRequest(data_type=create_chan_response.data_type,
+      2                               data_count=create_chan_response.data_count,
+      3                               sid=sid,
+      4                               subscriptionid=0,
+      5                               low=0, high=0, to=0, mask=1)
 
-<span class="gp">In [51]: </span><span class="n">send</span><span class="p">(</span><span class="n">req</span><span class="p">)</span>
-</pre></div>
-</div>
+NameError: name 'create_chan_response' is not defined
+
+In [51]: send(req)
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-51-d2e85fcb6a62&gt; in &lt;module&gt;()
+----&gt; 1 send(req)
+
+NameError: name 'req' is not defined</pre>
 <p>The server always sends at least one response with the current value at
 subscription time.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [52]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[52]: </span><span class="go">deque([EventAddResponse(data=array([4.]), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=CAStatusCode(name=&#39;ECA_NORMAL&#39;, code=0, code_with_severity=1, severity=&lt;CASeverity.SUCCESS: 1&gt;, success=1, defunct=False, description=&#39;Normal successful completion&#39;), subscriptionid=0, metadata=None)])</span>
+<span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-52-8364dbe477c9&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="n">recv</span><span class="p">()</span>
+
+<span class="nn">&lt;ipython-input-34-3d5bf4766950&gt;</span> in <span class="ni">recv</span><span class="nt">()</span>
+<span class="g g-Whitespace">      </span><span class="mi">1</span> <span class="k">def</span> <span class="nf">recv</span><span class="p">():</span>
+<span class="g g-Whitespace">      </span><span class="mi">2</span>     <span class="s2">&quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;</span>
+<span class="ne">----&gt; </span><span class="mi">3</span>     <span class="n">bytes_received</span> <span class="o">=</span> <span class="n">sock</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">4096</span><span class="p">)</span>
+<span class="g g-Whitespace">      </span><span class="mi">4</span>     <span class="n">commands</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">circuit</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="n">bytes_received</span><span class="p">)</span>
+<span class="g g-Whitespace">      </span><span class="mi">5</span>     <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
+
+<span class="ne">NameError</span>: name &#39;sock&#39; is not defined
 </pre></div>
 </div>
 <p>If the value changes, additional responses will come in. If multiple
 subscriptions are in play at once over this circuit, we can use the
 <code class="docutils literal notranslate"><span class="pre">subscriptionid</span></code> to match them to the right channel. We also use it to end
 the subscription:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [53]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">EventCancelRequest</span><span class="p">(</span><span class="n">data_type</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span>
-<span class="gp">   ....: </span>                                <span class="n">sid</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">sid</span><span class="p">,</span>
-<span class="gp">   ....: </span>                                <span class="n">subscriptionid</span><span class="o">=</span><span class="n">req</span><span class="o">.</span><span class="n">subscriptionid</span><span class="p">))</span>
-<span class="gp">   ....: </span>
+<pre class="literal-block">In [53]: send(caproto.EventCancelRequest(data_type=req.data_type,
+   ....:                                 sid=req.sid,
+   ....:                                 subscriptionid=req.subscriptionid))
+   ....: 
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-53-434c8428b80c&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.EventCancelRequest(data_type=req.data_type,
+      2                                 sid=req.sid,
+      3                                 subscriptionid=req.subscriptionid))
 
-<span class="gp">In [54]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[54]: </span><span class="go">deque([EventAddResponse(data=(repr: tuple index out of range), data_type=&lt;ChannelType.DOUBLE: 6&gt;, data_count=1, status=(repr: 0), subscriptionid=0, metadata=(repr: tuple index out of range))])</span>
-</pre></div>
-</div>
+NameError: name 'req' is not defined
+
+In [54]: recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-54-8364dbe477c9&gt; in &lt;module&gt;()
+----&gt; 1 recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined</pre>
 </div>
 <div class="section" id="closing-the-channel">
 <h3>Closing the Channel<a class="headerlink" href="#closing-the-channel" title="Permalink to this headline">¶</a></h3>
 <p>To clean up, close the Channel.</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [55]: </span><span class="n">send</span><span class="p">(</span><span class="n">caproto</span><span class="o">.</span><span class="n">ClearChannelRequest</span><span class="p">(</span><span class="n">sid</span><span class="p">,</span> <span class="n">cid</span><span class="p">))</span>
+<pre class="literal-block">In [55]: send(caproto.ClearChannelRequest(sid, cid))
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-55-4bad7ef26b1b&gt; in &lt;module&gt;()
+----&gt; 1 send(caproto.ClearChannelRequest(sid, cid))
 
-<span class="gp">In [56]: </span><span class="n">recv</span><span class="p">()</span>
-<span class="gh">Out[56]: </span><span class="go">deque([ClearChannelResponse(sid=0, cid=1)])</span>
-</pre></div>
-</div>
+NameError: name 'sid' is not defined
+
+In [56]: recv()
+---------------------------------------------------------------------------
+NameError                                 Traceback (most recent call last)
+&lt;ipython-input-56-8364dbe477c9&gt; in &lt;module&gt;()
+----&gt; 1 recv()
+
+&lt;ipython-input-34-3d5bf4766950&gt; in recv()
+      1 def recv():
+      2     &quot;Receive bytes; parse commands; process them in the VirtualCircuit.&quot;
+----&gt; 3     bytes_received = sock.recv(4096)
+      4     commands, _ = circuit.recv(bytes_received)
+      5     for command in commands:
+
+NameError: name 'sock' is not defined</pre>
 <p>If we are done with the circuit, close the socket too.</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [57]: </span><span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">NameError</span><span class="g g-Whitespace">                                 </span>Traceback (most recent call last)
+<span class="nn">&lt;ipython-input-57-a7ee8e982956&gt;</span> in <span class="ni">&lt;module&gt;</span><span class="nt">()</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="n">sock</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="ne">NameError</span>: name &#39;sock&#39; is not defined
 </pre></div>
 </div>
 </div>
