@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.15.2 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.15.2.post5+g842bdb8 documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                1.15.2
+                1.15.2.post5+g842bdb8
               </div>
             
           
@@ -165,6 +165,7 @@
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
 <span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">pkg_resources</span> <span class="kn">import</span> <span class="n">resource_filename</span> <span class="k">as</span> <span class="n">rs_fn</span>
 <span class="kn">import</span> <span class="nn">threading</span>
@@ -172,6 +173,7 @@
 <span class="kn">import</span> <span class="nn">types</span>
 <span class="kn">import</span> <span class="nn">uuid</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
 
 <span class="kn">import</span> <span class="nn">jsonschema</span>
 <span class="kn">import</span> <span class="nn">numpy</span>
@@ -213,7 +215,42 @@
 <span class="sd">    Finally, the call to ``router(name, doc)`` returns::</span>
 
 <span class="sd">        (name, getattr(router, name)(doc))</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    emit: callable, optional</span>
+<span class="sd">        Expected signature ``f(name, doc)``</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">emit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Put in some extra effort to validate `emit` carefully, because if</span>
+        <span class="c1"># this is used incorrectly the resultant errors can be confusing.</span>
+        <span class="k">if</span> <span class="n">emit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">callable</span><span class="p">(</span><span class="n">emit</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;emit must be a callable&quot;</span><span class="p">)</span>
+            <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">emit</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Does this function accept two positional arguments?</span>
+                <span class="n">sig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;emit must accept two positional arguments, name and doc&quot;</span><span class="p">)</span>
+            <span class="c1"># Stash a weak reference to `emit`.</span>
+            <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">ismethod</span><span class="p">(</span><span class="n">emit</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_emit_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">WeakMethod</span><span class="p">(</span><span class="n">emit</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_emit_ref</span> <span class="o">=</span> <span class="n">weakref</span><span class="o">.</span><span class="n">ref</span><span class="p">(</span><span class="n">emit</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_emit_ref</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="DocumentRouter.emit"><a class="viewcode-back" href="../api.html#event_model.DocumentRouter.emit">[docs]</a>    <span class="k">def</span> <span class="nf">emit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Emit to the callable provided an instantiation time, if any.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emit_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Call the weakref.</span>
+            <span class="n">emit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_emit_ref</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">emit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">emit</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">)</span></div>
+
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Process a document.</span>
