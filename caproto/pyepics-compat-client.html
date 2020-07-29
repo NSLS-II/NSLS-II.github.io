@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Pyepics-Compatible Client &mdash; caproto 0.5.2+13.gce8a146.dirty documentation</title>
+  <title>Pyepics-Compatible Client &mdash; caproto 0.5.2+56.g2074dbc.dirty documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.5.2+13.gce8a146.dirty
+                0.5.2+56.g2074dbc.dirty
               </div>
             
           
@@ -230,26 +230,184 @@ PVs: <span class="o">[</span><span class="s1">&#39;random_walk:dt&#39;</span>, <
 </div>
 <p>Now, in Python we will talk to it using caproto’s pyepics-compatible client.
 Get and put to <code class="docutils literal notranslate"><span class="pre">random_walk:dt</span></code>:</p>
-<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [1]: </span><span class="kn">import</span> <span class="nn">caproto.threading.pyepics_compat</span> <span class="k">as</span> <span class="nn">epics</span>
+<pre class="literal-block">In [1]: import caproto.threading.pyepics_compat as epics
 
-<span class="gp">In [2]: </span><span class="n">pv_name</span> <span class="o">=</span> <span class="s1">&#39;random_walk:dt&#39;</span>
+In [2]: pv_name = 'random_walk:dt'
 
-<span class="gp">In [3]: </span><span class="n">epics</span><span class="o">.</span><span class="n">caget</span><span class="p">(</span><span class="n">pv_name</span><span class="p">)</span>
-<span class="gh">Out[3]: </span><span class="go">3.0</span>
+In [3]: epics.caget(pv_name)
+---------------------------------------------------------------------------
+CaprotoTimeoutError                       Traceback (most recent call last)
+&lt;ipython-input-3-327845839f35&gt; in &lt;module&gt;()
+----&gt; 1 epics.caget(pv_name)
 
-<span class="gp">In [4]: </span><span class="n">epics</span><span class="o">.</span><span class="n">caput</span><span class="p">(</span><span class="n">pv_name</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in caget(pvname, as_string, count, as_numpy, use_monitor, timeout)
+    971     &quot;&quot;&quot;
+    972     start_time = time.time()
+--&gt; 973     thispv = get_pv(pvname, timeout=timeout, connect=True)
+    974     if thispv.connected:
+    975         if as_string:
 
-<span class="gp">In [5]: </span><span class="n">pv</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">get_pv</span><span class="p">(</span><span class="n">pv_name</span><span class="p">)</span>
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in get_pv(pvname, context, connect, timeout, *args, **kwargs)
+    939     pv = PV(pvname, *args, context=context, **kwargs)
+    940     if connect:
+--&gt; 941         pv.wait_for_connection(timeout=timeout)
+    942     return pv
+    943 
 
-<span class="gp">In [6]: </span><span class="n">pv</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-<span class="gh">Out[6]: </span><span class="go">2.0</span>
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in wait_for_connection(self, timeout)
+    261             self._connect_event.clear()
+    262 
+--&gt; 263         self._caproto_pv.wait_for_connection(timeout=timeout)
+    264 
+    265         # TODO shorten timeouts based on the above
 
-<span class="gp">In [7]: </span><span class="n">pv</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/client.py in inner(self, *args, **kwargs)
+    103                 if not ready:
+    104                     raise CaprotoTimeoutError(
+--&gt; 105                         f&quot;{pv} could not connect within &quot;
+    106                         f&quot;{float(raw_timeout):.3}-second timeout.&quot;)
+    107                 if timeout is not None:
 
-<span class="gp">In [8]: </span><span class="n">pv</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
-<span class="gh">Out[8]: </span><span class="go">1.0</span>
-</pre></div>
-</div>
+CaprotoTimeoutError: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt; could not connect within 5.0-second timeout.
+
+In [4]: epics.caput(pv_name, 2)
+---------------------------------------------------------------------------
+CaprotoTimeoutError                       Traceback (most recent call last)
+&lt;ipython-input-4-1dc2e853635d&gt; in &lt;module&gt;()
+----&gt; 1 epics.caput(pv_name, 2)
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in caput(pvname, value, wait, timeout)
+    951        &gt;&gt;&gt; caput('xx.VAL',3.0,wait=True)
+    952     &quot;&quot;&quot;
+--&gt; 953     thispv = get_pv(pvname, connect=True)
+    954     if thispv.connected:
+    955         return thispv.put(value, wait=wait, timeout=timeout)
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in get_pv(pvname, context, connect, timeout, *args, **kwargs)
+    939     pv = PV(pvname, *args, context=context, **kwargs)
+    940     if connect:
+--&gt; 941         pv.wait_for_connection(timeout=timeout)
+    942     return pv
+    943 
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in wait_for_connection(self, timeout)
+    261             self._connect_event.clear()
+    262 
+--&gt; 263         self._caproto_pv.wait_for_connection(timeout=timeout)
+    264 
+    265         # TODO shorten timeouts based on the above
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/client.py in inner(self, *args, **kwargs)
+    103                 if not ready:
+    104                     raise CaprotoTimeoutError(
+--&gt; 105                         f&quot;{pv} could not connect within &quot;
+    106                         f&quot;{float(raw_timeout):.3}-second timeout.&quot;)
+    107                 if timeout is not None:
+
+CaprotoTimeoutError: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt; could not connect within 5.0-second timeout.
+
+In [5]: pv = epics.get_pv(pv_name)
+
+In [6]: pv.get()
+---------------------------------------------------------------------------
+CaprotoTimeoutError                       Traceback (most recent call last)
+&lt;ipython-input-6-9247197ebb7e&gt; in &lt;module&gt;()
+----&gt; 1 pv.get()
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in get(self, count, as_string, as_numpy, timeout, with_ctrlvars, use_monitor)
+    489             count=count, as_string=as_string, as_numpy=as_numpy,
+    490             timeout=timeout, with_ctrlvars=with_ctrlvars,
+--&gt; 491             use_monitor=use_monitor, form=self.form, as_namespace=False)
+    492 
+    493         return (data['value']
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in inner(self, *args, **kwargs)
+     28     &#64;functools.wraps(func)
+     29     def inner(self, *args, **kwargs):
+---&gt; 30         self.wait_for_connection(timeout=kwargs.get('timeout', 5.0))
+     31         return func(self, *args, **kwargs)
+     32     return inner
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in wait_for_connection(self, timeout)
+    261             self._connect_event.clear()
+    262 
+--&gt; 263         self._caproto_pv.wait_for_connection(timeout=timeout)
+    264 
+    265         # TODO shorten timeouts based on the above
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/client.py in inner(self, *args, **kwargs)
+    103                 if not ready:
+    104                     raise CaprotoTimeoutError(
+--&gt; 105                         f&quot;{pv} could not connect within &quot;
+    106                         f&quot;{float(raw_timeout):.3}-second timeout.&quot;)
+    107                 if timeout is not None:
+
+CaprotoTimeoutError: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt; could not connect within 1.0-second timeout.
+
+In [7]: pv.put(1)
+---------------------------------------------------------------------------
+CaprotoTimeoutError                       Traceback (most recent call last)
+&lt;ipython-input-7-f1908b1d8032&gt; in &lt;module&gt;()
+----&gt; 1 pv.put(1)
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in inner(self, *args, **kwargs)
+     28     &#64;functools.wraps(func)
+     29     def inner(self, *args, **kwargs):
+---&gt; 30         self.wait_for_connection(timeout=kwargs.get('timeout', 5.0))
+     31         return func(self, *args, **kwargs)
+     32     return inner
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in wait_for_connection(self, timeout)
+    261             self._connect_event.clear()
+    262 
+--&gt; 263         self._caproto_pv.wait_for_connection(timeout=timeout)
+    264 
+    265         # TODO shorten timeouts based on the above
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/client.py in inner(self, *args, **kwargs)
+    103                 if not ready:
+    104                     raise CaprotoTimeoutError(
+--&gt; 105                         f&quot;{pv} could not connect within &quot;
+    106                         f&quot;{float(raw_timeout):.3}-second timeout.&quot;)
+    107                 if timeout is not None:
+
+CaprotoTimeoutError: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt; could not connect within 5.0-second timeout.
+
+In [8]: pv.get()
+---------------------------------------------------------------------------
+CaprotoTimeoutError                       Traceback (most recent call last)
+&lt;ipython-input-8-9247197ebb7e&gt; in &lt;module&gt;()
+----&gt; 1 pv.get()
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in get(self, count, as_string, as_numpy, timeout, with_ctrlvars, use_monitor)
+    489             count=count, as_string=as_string, as_numpy=as_numpy,
+    490             timeout=timeout, with_ctrlvars=with_ctrlvars,
+--&gt; 491             use_monitor=use_monitor, form=self.form, as_namespace=False)
+    492 
+    493         return (data['value']
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in inner(self, *args, **kwargs)
+     28     &#64;functools.wraps(func)
+     29     def inner(self, *args, **kwargs):
+---&gt; 30         self.wait_for_connection(timeout=kwargs.get('timeout', 5.0))
+     31         return func(self, *args, **kwargs)
+     32     return inner
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/pyepics_compat.py in wait_for_connection(self, timeout)
+    261             self._connect_event.clear()
+    262 
+--&gt; 263         self._caproto_pv.wait_for_connection(timeout=timeout)
+    264 
+    265         # TODO shorten timeouts based on the above
+
+~/virtualenv/python3.6.7/lib/python3.6/site-packages/caproto/threading/client.py in inner(self, *args, **kwargs)
+    103                 if not ready:
+    104                     raise CaprotoTimeoutError(
+--&gt; 105                         f&quot;{pv} could not connect within &quot;
+    106                         f&quot;{float(raw_timeout):.3}-second timeout.&quot;)
+    107                 if timeout is not None:
+
+CaprotoTimeoutError: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt; could not connect within 1.0-second timeout.</pre>
 <p>Subscribe a user-defined callback function to <code class="docutils literal notranslate"><span class="pre">random_walk:x</span></code>:</p>
 <div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [9]: </span><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="gp">   ...: </span>    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;received value&#39;</span> <span class="p">,</span> <span class="n">value</span><span class="p">)</span>
@@ -258,25 +416,23 @@ Get and put to <code class="docutils literal notranslate"><span class="pre">rand
 </div>
 <p>Note that pyepics recommends using <code class="docutils literal notranslate"><span class="pre">epics.get_pv(...)</span></code> instead of
 <code class="docutils literal notranslate"><span class="pre">epics.PV(...)</span></code> and so do we, but both usages are supported.</p>
-<pre class="literal-block">In [10]: x_pv = epics.PV('random_walk:x')
+<div class="highlight-ipython notranslate"><div class="highlight"><pre><span></span><span class="gp">In [10]: </span><span class="n">x_pv</span> <span class="o">=</span> <span class="n">epics</span><span class="o">.</span><span class="n">PV</span><span class="p">(</span><span class="s1">&#39;random_walk:x&#39;</span><span class="p">)</span>
 
-In [11]: x_pv.add_callback(f)
-Out[11]: 0
+<span class="gp">In [11]: </span><span class="n">x_pv</span><span class="o">.</span><span class="n">add_callback</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="gh">Out[11]: </span><span class="go">0</span>
 
-In [12]: import time; time.sleep(5)  # give some time for responses to come in
-received value 0.6357413097153997
-received value 0.8189212341910663
-received value 1.4482425706648518
-received value 2.321448029396257
+<span class="gp">In [12]: </span><span class="kn">import</span> <span class="nn">time</span><span class="p">;</span> <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># give some time for responses to come in</span>
 
-In [13]: x_pv.clear_callbacks()</pre>
+<span class="gp">In [13]: </span><span class="n">x_pv</span><span class="o">.</span><span class="n">clear_callbacks</span><span class="p">()</span>
+</pre></div>
+</div>
 <p>The underlying caproto PV and Context objects from caproto’s main
 <a class="reference internal" href="threading-client.html"><span class="doc">Threading Client</span></a>. are accessible:</p>
 <pre class="literal-block">In [14]: pv._caproto_pv
-Out[14]: &lt;PV name='random_walk:dt' priority=0 address=('127.0.0.1', 56745), circuit_state=States.CONNECTED, channel_state=States.CONNECTED&gt;
+Out[14]: &lt;PV name='random_walk:dt' priority=0 (searching....)&gt;
 
 In [15]: pv._caproto_pv.context
-Out[15]: &lt;Context searches_pending=0 circuits=1 pvs=2 idle=0&gt;</pre>
+Out[15]: &lt;Context searches_pending=2 circuits=0 pvs=2 idle=0&gt;</pre>
 <p>This brief demonstration has not exercised every aspect of the pyepics API, but
 caproto’s test suite is more comprehensive.</p>
 </div>

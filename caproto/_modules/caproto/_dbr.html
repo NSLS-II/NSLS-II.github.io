@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._dbr &mdash; caproto 0.5.2+13.gce8a146.dirty documentation</title>
+  <title>caproto._dbr &mdash; caproto 0.5.2+56.g2074dbc.dirty documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.5.2+13.gce8a146.dirty
+                0.5.2+56.g2074dbc.dirty
               </div>
             
           
@@ -182,6 +182,7 @@
 <span class="kn">import</span> <span class="nn">ctypes</span>
 <span class="kn">import</span> <span class="nn">datetime</span>
 <span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">IntEnum</span><span class="p">,</span> <span class="n">IntFlag</span>
 <span class="kn">from</span> <span class="nn">._constants</span> <span class="kn">import</span> <span class="p">(</span><span class="n">EPICS2UNIX_EPOCH</span><span class="p">,</span> <span class="n">EPICS_EPOCH</span><span class="p">,</span> <span class="n">MAX_STRING_SIZE</span><span class="p">,</span>
                          <span class="n">MAX_UNITS_SIZE</span><span class="p">,</span> <span class="n">MAX_ENUM_STRING_SIZE</span><span class="p">,</span> <span class="n">MAX_ENUM_STATES</span><span class="p">)</span>
@@ -195,6 +196,9 @@
            <span class="s1">&#39;char_types&#39;</span><span class="p">,</span> <span class="s1">&#39;string_types&#39;</span><span class="p">,</span> <span class="s1">&#39;int_types&#39;</span><span class="p">,</span> <span class="s1">&#39;float_types&#39;</span><span class="p">,</span>
            <span class="s1">&#39;enum_types&#39;</span><span class="p">,</span> <span class="s1">&#39;char_types&#39;</span><span class="p">,</span> <span class="s1">&#39;native_float_types&#39;</span><span class="p">,</span>
            <span class="s1">&#39;native_int_types&#39;</span><span class="p">)</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto&#39;</span><span class="p">)</span>
 
 
 <span class="k">class</span> <span class="nc">AccessRights</span><span class="p">(</span><span class="n">IntFlag</span><span class="p">):</span>
@@ -411,10 +415,21 @@
     <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">d</span> <span class="o">=</span> <span class="p">{</span><span class="n">field</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">)</span>
              <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">info_fields</span><span class="p">}</span>
+
         <span class="k">if</span> <span class="s1">&#39;status&#39;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
-            <span class="n">d</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AlarmStatus</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">d</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AlarmStatus</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Invalid alarm status: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+                <span class="n">d</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="s1">&#39;severity&#39;</span> <span class="ow">in</span> <span class="n">d</span><span class="p">:</span>
-            <span class="n">d</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AlarmSeverity</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">])</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">d</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">AlarmSeverity</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;Invalid alarm severity: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">])</span>
+                <span class="n">d</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;severity&#39;</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="n">d</span>
 
     <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
