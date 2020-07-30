@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bluesky.utils &mdash; bluesky 1.6.4.post3+gf80476c documentation</title>
+  <title>bluesky.utils &mdash; bluesky 1.6.4.post6+gf49fa59 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                1.6.4.post3+gf80476c
+                1.6.4.post6+gf49fa59
               </div>
             
           
@@ -478,6 +478,12 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">WeakKeyDictionary</span><span class="p">())</span>
         <span class="c1"># Note proxy not needed in python 3.</span>
         <span class="c1"># TODO rewrite this when support for python2.x gets dropped.</span>
+        <span class="c1"># Following discussion with TC: weakref.WeakMethod can not be used to</span>
+        <span class="c1">#   replace the custom &#39;BoundMethodProxy&#39;, because it does not accept</span>
+        <span class="c1">#   the &#39;destroy callback&#39; as a parameter. The &#39;destroy callback&#39; is</span>
+        <span class="c1">#   necessary to automatically unsubscribe CB registry from the callback</span>
+        <span class="c1">#   when the class object is destroyed and this is the main purpose of</span>
+        <span class="c1">#   BoundMethodProxy.</span>
         <span class="n">proxy</span> <span class="o">=</span> <span class="n">_BoundMethodProxy</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">proxy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">]:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">proxy</span><span class="p">]</span>
@@ -494,10 +500,14 @@
         <span class="c1"># need the list because `del self._func_cid_map[sig]` mutates the dict</span>
         <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">proxies</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
             <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Here we need to delete the last reference to proxy (in &#39;self.callbacks[sig]&#39;)</span>
+                <span class="c1">#   The respective entries in &#39;self._func_cid_map&#39; are deleted automatically,</span>
+                <span class="c1">#   since &#39;self._func_cid_map[sig]&#39; entries are WeakKeyDictionary objects.</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">][</span><span class="n">proxies</span><span class="p">[</span><span class="n">proxy</span><span class="p">]]</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="k">pass</span>
 
+            <span class="c1"># Remove dictionary items for signals with no assigned callbacks</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">[</span><span class="n">sig</span><span class="p">]</span>
                 <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="p">[</span><span class="n">sig</span><span class="p">]</span>
@@ -512,10 +522,12 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">eventname</span><span class="p">,</span> <span class="n">callbackd</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># This may or may not remove entries in &#39;self._func_cid_map&#39;.</span>
                 <span class="k">del</span> <span class="n">callbackd</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="k">continue</span>
             <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Look for cid in &#39;self._func_cid_map&#39; as well. It may still be there.</span>
                 <span class="k">for</span> <span class="n">sig</span><span class="p">,</span> <span class="n">functions</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_func_cid_map</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
                     <span class="k">for</span> <span class="n">function</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">functions</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
                         <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">cid</span><span class="p">:</span>
@@ -568,13 +580,21 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_hash</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_destroy_callbacks</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># This branch is successful if &#39;cb&#39; bound method and class method,</span>
+            <span class="c1">#   but destroy_callback mechanism works only for bound methods,</span>
+            <span class="c1">#   since cb.__self__ points to class instance only for</span>
+            <span class="c1">#   bound methods, not for class methods. Therefore destroy_callback</span>
+            <span class="c1">#   will not be called for class methods.</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="n">ref</span><span class="p">(</span><span class="n">cb</span><span class="o">.</span><span class="vm">__self__</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_destroy</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="vm">__func__</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">klass</span> <span class="o">=</span> <span class="n">cb</span><span class="o">.</span><span class="vm">__self__</span><span class="o">.</span><span class="vm">__class__</span>
+
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="c1"># &#39;cb&#39; is a function, callable object or static method.</span>
+            <span class="c1"># No weak reference is created, strong reference is stored instead.</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inst</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">func</span> <span class="o">=</span> <span class="n">cb</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">klass</span> <span class="o">=</span> <span class="kc">None</span>
