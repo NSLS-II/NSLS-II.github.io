@@ -141,7 +141,7 @@ function addVersionsMenu() {
   // We assume that we can load versions.json from
   // https://<username>.github.io/<project>/versions.json
   // That is, there's a <project> path between the hostname and versions.json
-  var json_file = "/" + window.location.pathname.split("/")[1] + "/versions.json";
+  var json_file = '/versions.json';
   $.getJSON(json_file, _addVersionsMenu);
 }
 
