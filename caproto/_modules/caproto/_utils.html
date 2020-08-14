@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._utils &mdash; caproto 0.6.0+7.ge72b87d.dirty documentation</title>
+  <title>caproto._utils &mdash; caproto 0.6.0+8.g6e25e1e.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.6.0+7.ge72b87d.dirty
+                0.6.0+8.g6e25e1e.dirty
               </div>
             
           
@@ -179,21 +179,22 @@
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">array</span>
 <span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">enum</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">socket</span>
 <span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">import</span> <span class="nn">enum</span>
-<span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">weakref</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span>
 <span class="kn">from</span> <span class="nn">warnings</span> <span class="kn">import</span> <span class="n">warn</span>
-<span class="kn">import</span> <span class="nn">weakref</span>
 
 <span class="kn">from</span> <span class="nn">._version</span> <span class="kn">import</span> <span class="n">get_versions</span>
+
 <span class="n">__version__</span> <span class="o">=</span> <span class="n">get_versions</span><span class="p">()[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
 
 <span class="k">try</span><span class="p">:</span>
@@ -231,6 +232,7 @@
     <span class="s1">&#39;parse_channel_filter&#39;</span><span class="p">,</span>
     <span class="s1">&#39;batch_requests&#39;</span><span class="p">,</span>
     <span class="s1">&#39;CaprotoError&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;Protocol&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ProtocolError&#39;</span><span class="p">,</span>
     <span class="s1">&#39;LocalProtocolError&#39;</span><span class="p">,</span>
     <span class="s1">&#39;RemoteProtocolError&#39;</span><span class="p">,</span>
@@ -305,9 +307,22 @@
     <span class="n">TO_WIRE</span> <span class="o">=</span> <span class="n">enum</span><span class="o">.</span><span class="n">auto</span><span class="p">()</span>
 
 
+<span class="k">class</span> <span class="nc">Protocol</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">_SimpleReprEnum</span><span class="p">):</span>
+    <span class="n">PVAccess</span> <span class="o">=</span> <span class="s1">&#39;PVA&#39;</span>
+    <span class="n">ChannelAccess</span> <span class="o">=</span> <span class="s1">&#39;CA&#39;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">server_env_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;The environment variable key used for server settings.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">:</span> <span class="s1">&#39;CAS&#39;</span><span class="p">,</span>
+            <span class="n">Protocol</span><span class="o">.</span><span class="n">PVAccess</span><span class="p">:</span> <span class="s1">&#39;PVAS&#39;</span><span class="p">,</span>
+        <span class="p">}[</span><span class="bp">self</span><span class="p">]</span>
+
+
 <span class="nb">globals</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
     <span class="p">{</span><span class="n">token</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">_enum</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
-     <span class="k">for</span> <span class="n">_enum</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Role</span><span class="p">,</span> <span class="n">Direction</span><span class="p">,</span> <span class="n">States</span><span class="p">]</span>
+     <span class="k">for</span> <span class="n">_enum</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Role</span><span class="p">,</span> <span class="n">Direction</span><span class="p">,</span> <span class="n">States</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">]</span>
      <span class="k">for</span> <span class="n">token</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">_enum</span><span class="p">)</span>
      <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
      <span class="p">})</span>
@@ -410,6 +425,27 @@
     <span class="n">EPICS_CAS_BEACON_PORT</span><span class="o">=</span><span class="mi">5065</span><span class="p">,</span>
     <span class="n">EPICS_CAS_INTF_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
     <span class="n">EPICS_CAS_IGNORE_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+
+    <span class="c1"># pvAccess</span>
+    <span class="n">EPICS_PVA_DEBUG</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_AUTO_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;YES&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_CONN_TMO</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_BEACON_PERIOD</span><span class="o">=</span><span class="mf">15.0</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_BROADCAST_PORT</span><span class="o">=</span><span class="mi">5076</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_MAX_ARRAY_BYTES</span><span class="o">=</span><span class="mi">16384</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_SERVER_PORT</span><span class="o">=</span><span class="mi">5075</span><span class="p">,</span>
+
+    <span class="c1"># pvAccess server</span>
+    <span class="n">EPICS_PVAS_BEACON_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_AUTO_BEACON_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;YES&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_BEACON_PERIOD</span><span class="o">=</span><span class="mf">15.0</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_SERVER_PORT</span><span class="o">=</span><span class="mi">5075</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_BROADCAST_PORT</span><span class="o">=</span><span class="mi">5076</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_MAX_ARRAY_BYTES</span><span class="o">=</span><span class="mi">16384</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_PROVIDER_NAMES</span><span class="o">=</span><span class="s1">&#39;local&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVAS_INTF_ADDR_LIST</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+    <span class="n">EPICS_PVA_PROVIDER_NAMES</span><span class="o">=</span><span class="s1">&#39;local&#39;</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -434,26 +470,33 @@
     <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">addr</span> <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addr_list</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">addr</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
 
 
-<span class="k">def</span> <span class="nf">get_manually_specified_beacon_addresses</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">get_manually_specified_beacon_addresses</span><span class="p">(</span>
+        <span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get a list of addresses, as configured by EPICS_CA_ADDR_LIST&#39;&#39;&#39;</span>
+    <span class="n">protocol_key</span> <span class="o">=</span> <span class="n">Protocol</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span><span class="o">.</span><span class="n">server_env_key</span>
+    <span class="k">return</span> <span class="n">_split_address_list</span><span class="p">(</span>
+        <span class="n">get_environment_variables</span><span class="p">()[</span><span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol_key</span><span class="si">}</span><span class="s1">_BEACON_ADDR_LIST&#39;</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">get_manually_specified_client_addresses</span><span class="p">(</span>
+        <span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Get a list of addresses, as configured by EPICS_CA_ADDR_LIST&#39;&#39;&#39;</span>
     <span class="k">return</span> <span class="n">_split_address_list</span><span class="p">(</span>
-        <span class="n">get_environment_variables</span><span class="p">()[</span><span class="s1">&#39;EPICS_CAS_BEACON_ADDR_LIST&#39;</span><span class="p">])</span>
+        <span class="n">get_environment_variables</span><span class="p">()[</span><span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s1">_ADDR_LIST&#39;</span><span class="p">])</span>
 
 
-<span class="k">def</span> <span class="nf">get_manually_specified_client_addresses</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Get a list of addresses, as configured by EPICS_CA_ADDR_LIST&#39;&#39;&#39;</span>
-    <span class="k">return</span> <span class="n">_split_address_list</span><span class="p">(</span>
-        <span class="n">get_environment_variables</span><span class="p">()[</span><span class="s1">&#39;EPICS_CA_ADDR_LIST&#39;</span><span class="p">])</span>
-
-
-<span class="k">def</span> <span class="nf">get_address_list</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Get channel access client address list based on environment variables</span>
+<span class="k">def</span> <span class="nf">get_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Get channel access client address list based on environment variables</span>
 
 <span class="sd">    If the address list is set to be automatic, the network interfaces will be</span>
 <span class="sd">    scanned and used to determine the broadcast addresses available.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="n">Protocol</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span>
+
     <span class="n">env</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()</span>
-    <span class="n">addresses</span> <span class="o">=</span> <span class="n">get_manually_specified_client_addresses</span><span class="p">()</span>
+    <span class="n">addresses</span> <span class="o">=</span> <span class="n">get_manually_specified_client_addresses</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">)</span>
+    <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s1">_AUTO_ADDR_LIST&#39;</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="n">addresses</span> <span class="ow">and</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CA_AUTO_ADDR_LIST&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
         <span class="c1"># Custom address list specified, and EPICS_CA_AUTO_ADDR_LIST=NO</span>
@@ -468,14 +511,17 @@
     <span class="k">return</span> <span class="n">addresses</span> <span class="o">+</span> <span class="n">auto_addr_list</span>
 
 
-<span class="k">def</span> <span class="nf">get_server_address_list</span><span class="p">():</span>
-    <span class="sd">&#39;&#39;&#39;Get the server interfaces based on environment variables</span>
+<span class="k">def</span> <span class="nf">get_server_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Get the server interface addresses based on environment variables</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    list of interfaces</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">intf_addrs</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()[</span><span class="s1">&#39;EPICS_CAS_INTF_ADDR_LIST&#39;</span><span class="p">]</span>
+    <span class="n">protocol_key</span> <span class="o">=</span> <span class="n">Protocol</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span><span class="o">.</span><span class="n">server_env_key</span>
+
+    <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol_key</span><span class="si">}</span><span class="s1">_INTF_ADDR_LIST&#39;</span>
+    <span class="n">intf_addrs</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()[</span><span class="n">key</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">intf_addrs</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">[</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">]</span>
@@ -489,7 +535,7 @@
     <span class="k">return</span> <span class="p">[</span><span class="n">strip_port</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span> <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">_split_address_list</span><span class="p">(</span><span class="n">intf_addrs</span><span class="p">)]</span>
 
 
-<span class="k">def</span> <span class="nf">get_beacon_address_list</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">get_beacon_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;Get channel access beacon address list based on environment variables</span>
 
 <span class="sd">    If the address list is set to be automatic, the network interfaces will be</span>
@@ -499,10 +545,15 @@
 <span class="sd">    -------</span>
 <span class="sd">    addr_list : list of (addr, beacon_port)</span>
 <span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">protocol_key</span> <span class="o">=</span> <span class="n">Protocol</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span><span class="o">.</span><span class="n">server_env_key</span>
+
     <span class="n">env</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()</span>
-    <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CAS_AUTO_BEACON_ADDR_LIST&#39;</span><span class="p">]</span>
-    <span class="n">addr_list</span> <span class="o">=</span> <span class="n">get_manually_specified_beacon_addresses</span><span class="p">()</span>
-    <span class="n">beacon_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CAS_BEACON_PORT&#39;</span><span class="p">]</span>
+    <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol_key</span><span class="si">}</span><span class="s1">_AUTO_BEACON_ADDR_LIST&#39;</span><span class="p">]</span>
+    <span class="n">addr_list</span> <span class="o">=</span> <span class="n">get_manually_specified_beacon_addresses</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">protocol</span> <span class="o">==</span> <span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">:</span>
+        <span class="n">beacon_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CAS_BEACON_PORT&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">beacon_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_PVAS_BROADCAST_PORT&#39;</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">get_addr_port</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
         <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">addr</span><span class="p">:</span>
