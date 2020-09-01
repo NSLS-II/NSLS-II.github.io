@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Servers &mdash; caproto 0.6.0+25.g9b4fa2b.dirty documentation</title>
+  <title>Servers &mdash; caproto 0.6.0+27.g7a80d8f.dirty documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                0.6.0+25.g9b4fa2b.dirty
+                0.6.0+27.g7a80d8f.dirty
               </div>
             
           
@@ -95,7 +95,10 @@
 <li class="toctree-l1"><a class="reference internal" href="clients.html">Clients</a></li>
 <li class="toctree-l1"><a class="reference internal" href="iocs.html">Input-Output Controllers (IOCs)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="records.html">Records</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Servers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Servers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-multiple-servers-on-one-host">Running multiple servers on one host</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="shark.html">Shark (pcap/tcpdump parsing)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="loggers.html">Logging</a></li>
 </ul>
@@ -201,6 +204,38 @@ low-level server API is still experimental and subject to change, and it is not
 yet documented here. We refer interested developers to the source code in
 <code class="docutils literal notranslate"><span class="pre">caproto.asyncio.server</span></code>, <code class="docutils literal notranslate"><span class="pre">caproto.curio.server</span></code>, and
 <code class="docutils literal notranslate"><span class="pre">caproto.trio.server</span></code>.</p>
+<div class="section" id="running-multiple-servers-on-one-host">
+<h2>Running multiple servers on one host<a class="headerlink" href="#running-multiple-servers-on-one-host" title="Permalink to this headline">¶</a></h2>
+<p>For service discovery EPICS primarily relies on UDP broadcast (rsrv
+also supports multicast, this is not (yet) supported by caproto).  To
+achieve this all of the servers processes on a host bind the canonical
+port (default 5064) with the <code class="docutils literal notranslate"><span class="pre">SO_REUSEADDR</span></code> and <code class="docutils literal notranslate"><span class="pre">SO_REUSEPORT</span></code>
+settings.  These settings allow multiple sockets (across different
+processes or threads) to bind the same interface and port, <a class="reference external" href="https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ">see this
+SO post</a>
+for more details.  When configured this way the UDP sockets:</p>
+<ul class="simple">
+<li><p>load balance between IOC processes for uni-cast messages (the exact
+method of load balancing changed with the 3.9 Linux kernel)</p></li>
+<li><p>sent to all IOC processes for broadcast messages</p></li>
+</ul>
+<p>Because you <a class="reference external" href="https://www.mail-archive.com/freebsd-net&#64;freebsd.org/msg07814.html">can not broadcast to 127.0.0.1</a>
+if you bind your IOCs to the localhost interface you will be able to
+talk to at most 1 of them from any given client.</p>
+<p>If you want to put non-broadcast IPs in <code class="docutils literal notranslate"><span class="pre">EPICS_CA_ADDR_LIST</span></code> then
+you can not run more than one IOC per host (because search requests will
+be load balanced).</p>
+<p>If you have a host with more than one interface and you want to bind
+your IOCs to a specific interface doing so by specifying the broadcast
+address will work, however in that case any uni-cast searches (ex a
+specific IP in tho <code class="docutils literal notranslate"><span class="pre">EPICS_CA_ADDR_LIST</span></code> will be ignored).  Binding
+to the specific interface using the ip adderesss will result in the
+messages to the broadcast address being ignored and uni-cast messages
+being load-balanced.</p>
+<p>The EPICS wiki <a class="reference external" href="https://wiki-ext.aps.anl.gov/epics/index.php/How_to_Make_Channel_Access_Reach_Multiple_Soft_IOCs_on_a_Linux_Host">has some additional details about how to set up
+iptables</a>
+to work around this issue.</p>
+</div>
 </div>
 
 
