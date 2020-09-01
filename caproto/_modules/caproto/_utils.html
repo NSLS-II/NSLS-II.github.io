@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._utils &mdash; caproto 0.6.0+17.g4f2d35c.dirty documentation</title>
+  <title>caproto._utils &mdash; caproto 0.6.0+25.g9b4fa2b.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.6.0+17.g4f2d35c.dirty
+                0.6.0+25.g9b4fa2b.dirty
               </div>
             
           
@@ -182,12 +182,16 @@
 <span class="kn">import</span> <span class="nn">enum</span>
 <span class="kn">import</span> <span class="nn">functools</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">ipaddress</span>
 <span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">random</span>
 <span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">struct</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">typing</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
 <span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span>
@@ -218,8 +222,10 @@
     <span class="s1">&#39;ChannelFilter&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_environment_variables&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_address_list&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;get_server_address_list&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_local_address&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_beacon_address_list&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_client_address_list&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;get_server_address_list&#39;</span><span class="p">,</span>
     <span class="s1">&#39;get_netifaces_addresses&#39;</span><span class="p">,</span>
     <span class="s1">&#39;ensure_bytes&#39;</span><span class="p">,</span>
     <span class="s1">&#39;random_ports&#39;</span><span class="p">,</span>
@@ -260,6 +266,9 @@
     <span class="s1">&#39;SEND_CREATE_CHAN_REQUEST&#39;</span><span class="p">,</span> <span class="s1">&#39;AWAIT_CREATE_CHAN_RESPONSE&#39;</span><span class="p">,</span>
     <span class="s1">&#39;SEND_CREATE_CHAN_RESPONSE&#39;</span><span class="p">,</span> <span class="s1">&#39;CONNECTED&#39;</span><span class="p">,</span> <span class="s1">&#39;MUST_CLOSE&#39;</span><span class="p">,</span>
     <span class="s1">&#39;CLOSED&#39;</span><span class="p">,</span> <span class="s1">&#39;IDLE&#39;</span><span class="p">,</span> <span class="s1">&#39;FAILED&#39;</span><span class="p">,</span> <span class="s1">&#39;DISCONNECTED&#39;</span><span class="p">)</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
 
 <span class="c1"># This module defines sentinels used in the state machine and elsewhere, such</span>
@@ -498,7 +507,7 @@
     <span class="n">addresses</span> <span class="o">=</span> <span class="n">get_manually_specified_client_addresses</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">)</span>
     <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;EPICS_</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s1">_AUTO_ADDR_LIST&#39;</span><span class="p">]</span>
 
-    <span class="k">if</span> <span class="n">addresses</span> <span class="ow">and</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CA_AUTO_ADDR_LIST&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">addresses</span> <span class="ow">and</span> <span class="n">auto_addr_list</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
         <span class="c1"># Custom address list specified, and EPICS_CA_AUTO_ADDR_LIST=NO</span>
         <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">else</span><span class="p">:</span>
@@ -508,7 +517,67 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">auto_addr_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;255.255.255.255&#39;</span><span class="p">]</span>
 
-    <span class="k">return</span> <span class="n">addresses</span> <span class="o">+</span> <span class="n">auto_addr_list</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">addresses</span> <span class="o">+</span> <span class="n">auto_addr_list</span><span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">get_client_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Get channel access client address list in the form of (host, port) based on</span>
+<span class="sd">    environment variables.</span>
+
+<span class="sd">    For CA, the default port is ``EPICS_CA_SERVER_PORT``.</span>
+<span class="sd">    For PVA, the default port is ``EPICS_PVA_BROADCAST_PORT``.</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    :func:`get_address_list`</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="n">Protocol</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">protocol</span> <span class="o">==</span> <span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">:</span>
+        <span class="n">default_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CA_SERVER_PORT&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">default_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_PVA_BROADCAST_PORT&#39;</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span>
+        <span class="n">get_address_and_port_from_string</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">default_port</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">get_address_list</span><span class="p">(</span><span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">)</span>
+    <span class="p">))</span>
+
+
+<span class="k">def</span> <span class="nf">get_address_and_port_from_string</span><span class="p">(</span>
+        <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return (address, port) tuple given an IP address of the form ``ip:port``</span>
+<span class="sd">    or ``ip``.</span>
+
+<span class="sd">    If no port is specified, the default port is used.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    address : str</span>
+<span class="sd">        The address.</span>
+
+<span class="sd">    default_port : int</span>
+<span class="sd">        The port to return if none is specified.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    host : str</span>
+<span class="sd">        The host IP address.</span>
+
+<span class="sd">    port : int</span>
+<span class="sd">        The specified or default port.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">if</span> <span class="n">address</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># May support [IPv6]:[port] in the future?</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;IPv6 or invalid address specified: </span><span class="si">{</span><span class="n">address</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">address</span><span class="p">:</span>
+        <span class="n">address</span><span class="p">,</span> <span class="n">specified_port</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">specified_port</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">default_port</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">get_server_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
@@ -532,7 +601,8 @@
             <span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Port specified in EPICS_CAS_INTF_ADDR_LIST was ignored.&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">addr</span>
 
-    <span class="k">return</span> <span class="p">[</span><span class="n">strip_port</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span> <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">_split_address_list</span><span class="p">(</span><span class="n">intf_addrs</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">strip_port</span><span class="p">(</span><span class="n">addr</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">_split_address_list</span><span class="p">(</span><span class="n">intf_addrs</span><span class="p">)))</span>
 
 
 <span class="k">def</span> <span class="nf">get_beacon_address_list</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">Protocol</span><span class="o">.</span><span class="n">ChannelAccess</span><span class="p">):</span>
@@ -555,20 +625,16 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">beacon_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_PVAS_BROADCAST_PORT&#39;</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="nf">get_addr_port</span><span class="p">(</span><span class="n">addr</span><span class="p">):</span>
-        <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">addr</span><span class="p">:</span>
-            <span class="n">addr</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">specified_port</span> <span class="o">=</span> <span class="n">addr</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">specified_port</span><span class="p">))</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">beacon_port</span><span class="p">)</span>
-
     <span class="k">if</span> <span class="n">addr_list</span> <span class="ow">and</span> <span class="n">auto_addr_list</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s1">&#39;yes&#39;</span><span class="p">:</span>
         <span class="c1"># Custom address list and EPICS_CAS_AUTO_BEACON_ADDR_LIST=NO</span>
         <span class="n">auto_list</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">auto_list</span> <span class="o">=</span> <span class="p">[(</span><span class="s1">&#39;255.255.255.255&#39;</span><span class="p">,</span> <span class="n">beacon_port</span><span class="p">)]</span>
+        <span class="n">auto_list</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;255.255.255.255&#39;</span><span class="p">]</span>
 
-    <span class="c1"># Custom address list and EPICS_CAS_AUTO_BEACON_ADDR_LIST=YES</span>
-    <span class="k">return</span> <span class="n">addr_list</span> <span class="o">+</span> <span class="n">auto_list</span>
+    <span class="k">return</span> <span class="p">[</span>
+        <span class="n">get_address_and_port_from_string</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">beacon_port</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">addr_list</span> <span class="o">+</span> <span class="n">auto_list</span>
+    <span class="p">]</span>
 
 
 <span class="k">def</span> <span class="nf">get_netifaces_addresses</span><span class="p">():</span>
@@ -595,6 +661,64 @@
                     <span class="k">yield</span> <span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
                 <span class="k">elif</span> <span class="n">peer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">yield</span> <span class="p">(</span><span class="n">peer</span><span class="p">,</span> <span class="n">peer</span><span class="p">)</span>
+
+
+<span class="nd">@functools</span><span class="o">.</span><span class="n">lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">get_local_address</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the local IPv4 address.</span>
+
+<span class="sd">    Falls back to 127.0.0.1 if netifaces is unavailable.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    local_addr : str</span>
+<span class="sd">        The local address.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The result from this function is cached by way of ``functools.lru_cache``</span>
+<span class="sd">    such that it is only checked once.  Changes to network topology will not be</span>
+<span class="sd">    accounted for after the first call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fallback_address</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">inet_ntoa</span><span class="p">(</span>
+        <span class="n">struct</span><span class="o">.</span><span class="n">pack</span><span class="p">(</span><span class="s2">&quot;!I&quot;</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">INADDR_LOOPBACK</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">netifaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Netifaces unavailable; using </span><span class="si">%s</span><span class="s1"> as local address&#39;</span><span class="p">,</span>
+                     <span class="n">fallback_address</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">fallback_address</span>
+
+    <span class="n">loopback_address</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">interface</span> <span class="ow">in</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">interfaces</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="n">netifaces</span><span class="o">.</span><span class="n">ifaddresses</span><span class="p">(</span><span class="n">interface</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">netifaces</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">ipv4</span> <span class="o">=</span> <span class="n">ipaddress</span><span class="o">.</span><span class="n">IPv4Address</span><span class="p">(</span><span class="n">addr</span><span class="p">[</span><span class="s1">&#39;addr&#39;</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ipv4</span><span class="o">.</span><span class="n">is_loopback</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Found the first local address </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">ipv4</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">ipv4</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">loopback_address</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">loopback_address</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ipv4</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">loopback_address</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s1">&#39;Netifaces failed to find any local address, falling back to &#39;</span>
+            <span class="s1">&#39;the loopback address </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">loopback_address</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">loopback_address</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+        <span class="s1">&#39;Netifaces failed to find any local address, including a loopback &#39;</span>
+        <span class="s1">&#39;address.  This is probably a caproto bug.  Falling back to: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span>
+        <span class="n">fallback_address</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">fallback_address</span>
 
 
 <span class="k">def</span> <span class="nf">ensure_bytes</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>

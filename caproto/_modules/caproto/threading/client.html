@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.threading.client &mdash; caproto 0.6.0+17.g4f2d35c.dirty documentation</title>
+  <title>caproto.threading.client &mdash; caproto 0.6.0+25.g9b4fa2b.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.6.0+17.g4f2d35c.dirty
+                0.6.0+25.g9b4fa2b.dirty
               </div>
             
           
@@ -198,19 +198,19 @@
 <span class="kn">import</span> <span class="nn">threading</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">weakref</span>
-
-<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Empty</span>
-<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
-<span class="kn">import</span> <span class="nn">caproto</span> <span class="k">as</span> <span class="nn">ca</span>
-<span class="kn">from</span> <span class="nn">.._constants</span> <span class="kn">import</span> <span class="p">(</span><span class="n">MAX_ID</span><span class="p">,</span> <span class="n">STALE_SEARCH_EXPIRATION</span><span class="p">,</span>
-                          <span class="n">SEARCH_MAX_DATAGRAM_BYTES</span><span class="p">,</span> <span class="n">RESPONSIVENESS_TIMEOUT</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">adapt_old_callback_signature</span><span class="p">,</span>
-                      <span class="n">batch_requests</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">,</span>
-                      <span class="n">socket_bytes_available</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
-                      <span class="n">CaprotoTypeError</span><span class="p">,</span> <span class="n">CaprotoRuntimeError</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span>
-                      <span class="n">CaprotoKeyError</span><span class="p">,</span> <span class="n">CaprotoNetworkError</span><span class="p">,</span> <span class="n">safe_getsockname</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">Parameter</span><span class="p">,</span> <span class="n">Signature</span>
+<span class="kn">from</span> <span class="nn">queue</span> <span class="kn">import</span> <span class="n">Empty</span><span class="p">,</span> <span class="n">Queue</span>
 
+<span class="kn">import</span> <span class="nn">caproto</span> <span class="k">as</span> <span class="nn">ca</span>
+
+<span class="kn">from</span> <span class="nn">.._constants</span> <span class="kn">import</span> <span class="p">(</span><span class="n">MAX_ID</span><span class="p">,</span> <span class="n">RESPONSIVENESS_TIMEOUT</span><span class="p">,</span>
+                          <span class="n">SEARCH_MAX_DATAGRAM_BYTES</span><span class="p">,</span> <span class="n">STALE_SEARCH_EXPIRATION</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CaprotoError</span><span class="p">,</span> <span class="n">CaprotoKeyError</span><span class="p">,</span> <span class="n">CaprotoNetworkError</span><span class="p">,</span>
+                      <span class="n">CaprotoRuntimeError</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
+                      <span class="n">CaprotoTypeError</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">,</span>
+                      <span class="n">adapt_old_callback_signature</span><span class="p">,</span> <span class="n">batch_requests</span><span class="p">,</span>
+                      <span class="n">safe_getsockname</span><span class="p">,</span> <span class="n">socket_bytes_available</span><span class="p">)</span>
 
 <span class="n">ch_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ch&#39;</span><span class="p">)</span>
 <span class="n">search_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.bcast.search&#39;</span><span class="p">)</span>
@@ -572,9 +572,24 @@
     <span class="k">def</span> <span class="nf">_register</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s1">&#39;Send a registration request to the repeater&#39;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_registration_last_sent</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
-        <span class="n">command</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">register</span><span class="p">()</span>
+        <span class="n">commands</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">register</span><span class="p">()]</span>
+        <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="o">*</span><span class="n">commands</span><span class="p">)</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="p">(</span><span class="n">ca</span><span class="o">.</span><span class="n">get_local_address</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;EPICS_CA_REPEATER_PORT&#39;</span><span class="p">])</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;CLIENT&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">client_address</span><span class="p">,</span>
+            <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;---&gt;&gt;&gt;&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;their_address&#39;</span><span class="p">:</span> <span class="n">addr</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> commands </span><span class="si">%d</span><span class="s1">B&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">),</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ca</span><span class="o">.</span><span class="n">EPICS_CA2_PORT</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="n">addr</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">host</span><span class="p">,</span> <span class="n">specified_port</span> <span class="o">=</span> <span class="n">addr</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> while sending </span><span class="si">%d</span><span class="s1"> bytes to </span><span class="si">%s</span><span class="s1">:</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">,</span>
+                               <span class="n">ex</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">),</span> <span class="n">host</span><span class="p">,</span> <span class="n">specified_port</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_searching_enabled</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">new_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -616,7 +631,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_retry_unanswered_searches_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
 
-<div class="viewcode-block" id="SharedBroadcaster.send"><a class="viewcode-back" href="../../../threading-client.html#caproto.threading.client.SharedBroadcaster.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="o">*</span><span class="n">commands</span><span class="p">):</span>
+<div class="viewcode-block" id="SharedBroadcaster.send"><a class="viewcode-back" href="../../../threading-client.html#caproto.threading.client.SharedBroadcaster.send">[docs]</a>    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">commands</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Process a command and transport it over the UDP socket.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
@@ -624,19 +639,15 @@
         <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="s1">&#39;CLIENT&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;our_address&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">client_address</span><span class="p">,</span>
                 <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;---&gt;&gt;&gt;&#39;</span><span class="p">}</span>
-        <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_address_list</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
-                <span class="n">host</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">port_as_str</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
-                <span class="n">specified_port</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">port_as_str</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">specified_port</span> <span class="o">=</span> <span class="n">port</span>
-            <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;their_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">specified_port</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">host_tuple</span> <span class="ow">in</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_client_address_list</span><span class="p">():</span>
+            <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;their_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">host_tuple</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">broadcaster</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> commands </span><span class="si">%d</span><span class="s1">B&#39;</span><span class="p">,</span>
                 <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">),</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">specified_port</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="n">host_tuple</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">host</span><span class="p">,</span> <span class="n">specified_port</span> <span class="o">=</span> <span class="n">host_tuple</span>
                 <span class="k">raise</span> <span class="n">CaprotoNetworkError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">ex</span><span class="si">}</span><span class="s1"> while sending </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">)</span><span class="si">}</span><span class="s1"> bytes to &#39;</span>
                     <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s1">:</span><span class="si">{</span><span class="n">specified_port</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">ex</span></div>
@@ -1057,9 +1068,7 @@
             <span class="n">version_req</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">VersionRequest</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">batch_requests</span><span class="p">(</span><span class="n">requests</span><span class="p">,</span>
                                         <span class="n">SEARCH_MAX_DATAGRAM_BYTES</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">version_req</span><span class="p">)):</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ca_server_port</span><span class="p">,</span>
-                          <span class="n">version_req</span><span class="p">,</span>
-                          <span class="o">*</span><span class="n">batch</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">version_req</span><span class="p">,</span> <span class="o">*</span><span class="n">batch</span><span class="p">)</span>
 
             <span class="n">wait_time</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">interval</span> <span class="o">-</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">t</span><span class="p">))</span>
             <span class="c1"># Double the interval for the next loop.</span>

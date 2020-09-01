@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.sync.client &mdash; caproto 0.6.0+17.g4f2d35c.dirty documentation</title>
+  <title>caproto.sync.client &mdash; caproto 0.6.0+25.g9b4fa2b.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.6.0+17.g4f2d35c.dirty
+                0.6.0+25.g9b4fa2b.dirty
               </div>
             
           
@@ -177,8 +177,8 @@
 <span class="c1"># as three top-level functions: read, write, subscribe. They are comparatively</span>
 <span class="c1"># simple and naive, with no caching or concurrency, and therefore less</span>
 <span class="c1"># performant but more robust.</span>
-<span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">getpass</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">selectors</span>
 <span class="kn">import</span> <span class="nn">socket</span>
@@ -187,18 +187,16 @@
 <span class="kn">import</span> <span class="nn">weakref</span>
 
 <span class="kn">import</span> <span class="nn">caproto</span> <span class="k">as</span> <span class="nn">ca</span>
-<span class="kn">from</span> <span class="nn">.._dbr</span> <span class="kn">import</span> <span class="p">(</span><span class="n">field_types</span><span class="p">,</span> <span class="n">ChannelType</span><span class="p">,</span> <span class="n">native_type</span><span class="p">,</span> <span class="n">SubscriptionType</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">adapt_old_callback_signature</span><span class="p">,</span>
-                      <span class="n">ErrorResponseReceived</span><span class="p">,</span> <span class="n">CaprotoError</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span>
-                      <span class="n">get_environment_variables</span><span class="p">,</span> <span class="n">safe_getsockname</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.repeater</span> <span class="kn">import</span> <span class="n">spawn_repeater</span>
 
+<span class="kn">from</span> <span class="nn">.._dbr</span> <span class="kn">import</span> <span class="n">ChannelType</span><span class="p">,</span> <span class="n">SubscriptionType</span><span class="p">,</span> <span class="n">field_types</span><span class="p">,</span> <span class="n">native_type</span>
+<span class="kn">from</span> <span class="nn">.._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CaprotoError</span><span class="p">,</span> <span class="n">CaprotoTimeoutError</span><span class="p">,</span> <span class="n">ErrorResponseReceived</span><span class="p">,</span>
+                      <span class="n">adapt_old_callback_signature</span><span class="p">,</span> <span class="n">get_environment_variables</span><span class="p">,</span>
+                      <span class="n">safe_getsockname</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.repeater</span> <span class="kn">import</span> <span class="n">spawn_repeater</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;read&#39;</span><span class="p">,</span> <span class="s1">&#39;write&#39;</span><span class="p">,</span> <span class="s1">&#39;subscribe&#39;</span><span class="p">,</span> <span class="s1">&#39;block&#39;</span><span class="p">,</span> <span class="s1">&#39;interrupt&#39;</span><span class="p">,</span>
            <span class="s1">&#39;read_write_read&#39;</span><span class="p">)</span>
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.ctx&#39;</span><span class="p">)</span>
-
-<span class="n">CA_SERVER_PORT</span> <span class="o">=</span> <span class="mi">5064</span>  <span class="c1"># just a default</span>
 
 <span class="c1"># Make a dict to hold our tcp sockets.</span>
 <span class="n">sockets</span> <span class="o">=</span> <span class="p">{}</span>
@@ -234,12 +232,17 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Registering with the Channel Access repeater.&#39;</span><span class="p">)</span>
     <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">ca</span><span class="o">.</span><span class="n">RepeaterRegisterRequest</span><span class="p">())</span>
 
-    <span class="n">repeater_port</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()[</span><span class="s1">&#39;EPICS_CA_REPEATER_PORT&#39;</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_address_list</span><span class="p">():</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">repeater_port</span><span class="p">))</span>
-        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">ca</span><span class="o">.</span><span class="n">CaprotoNetworkError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to send to </span><span class="si">{</span><span class="n">host</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">repeater_port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">get_environment_variables</span><span class="p">()</span>
+    <span class="n">repeater_port</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="s1">&#39;EPICS_CA_REPEATER_PORT&#39;</span><span class="p">]</span>
+
+    <span class="n">client_address_list</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_client_address_list</span><span class="p">()</span>
+    <span class="n">local_address</span> <span class="o">=</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_local_address</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">udp_sock</span><span class="o">.</span><span class="n">sendto</span><span class="p">(</span><span class="n">bytes_to_send</span><span class="p">,</span> <span class="p">(</span><span class="n">local_address</span><span class="p">,</span> <span class="n">repeater_port</span><span class="p">))</span>
+    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">ca</span><span class="o">.</span><span class="n">CaprotoNetworkError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Failed to send to </span><span class="si">{</span><span class="n">local_address</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">repeater_port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
 
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Searching for </span><span class="si">%r</span><span class="s2">....&quot;</span><span class="p">,</span> <span class="n">pv_name</span><span class="p">)</span>
     <span class="n">commands</span> <span class="o">=</span> <span class="p">(</span>
@@ -251,12 +254,7 @@
             <span class="s1">&#39;direction&#39;</span><span class="p">:</span> <span class="s1">&#39;---&gt;&gt;&gt;&#39;</span><span class="p">}</span>
 
     <span class="k">def</span> <span class="nf">send_search</span><span class="p">():</span>
-        <span class="k">for</span> <span class="n">host</span> <span class="ow">in</span> <span class="n">ca</span><span class="o">.</span><span class="n">get_address_list</span><span class="p">():</span>
-            <span class="k">if</span> <span class="s1">&#39;:&#39;</span> <span class="ow">in</span> <span class="n">host</span><span class="p">:</span>
-                <span class="n">host</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">specified_port</span> <span class="o">=</span> <span class="n">host</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
-                <span class="n">dest</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">specified_port</span><span class="p">))</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">dest</span> <span class="o">=</span> <span class="p">(</span><span class="n">host</span><span class="p">,</span> <span class="n">CA_SERVER_PORT</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dest</span> <span class="ow">in</span> <span class="n">client_address_list</span><span class="p">:</span>
             <span class="n">tags</span><span class="p">[</span><span class="s1">&#39;their_address&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dest</span>
             <span class="n">b</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
                 <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> commands </span><span class="si">%d</span><span class="s1">B&#39;</span><span class="p">,</span>
