@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>event_model &mdash; Bluesky Event Model 1.15.2.post35+g7f13828 documentation</title>
+  <title>event_model &mdash; Bluesky Event Model 1.15.2.post40+g28fe9d6 documentation</title>
   
 
   
@@ -62,7 +62,7 @@
             
             
               <div class="version">
-                1.15.2.post35+g7f13828
+                1.15.2.post40+g28fe9d6
               </div>
             
           
@@ -503,7 +503,7 @@
             <span class="s2">&quot;The handler registry cannot be edited directly. &quot;</span>
             <span class="s2">&quot;Instead, use the method Filler.deregister_handler.&quot;</span><span class="p">)</span>
 
-<span class="c1"># A &quot;coersion funcion&quot; is a hook that Filler can use to, for example, ensure</span>
+<span class="c1"># A &quot;coercion funcion&quot; is a hook that Filler can use to, for example, ensure</span>
 <span class="c1"># all the external data read in my handlers is an *actual* numpy array as</span>
 <span class="c1"># opposed to some other array-like such as h5py.Dataset or dask.array.Array,</span>
 <span class="c1"># or wrap every result is dask.array.from_array(...).</span>
@@ -515,8 +515,8 @@
 <span class="c1"># with the same API. See example below.</span>
 <span class="c1">#</span>
 <span class="c1"># The &quot;state provided by the Filler&quot;, mentioned above is passed into the</span>
-<span class="c1"># coersion functions below as ``filler_state``. It is a namespace containing</span>
-<span class="c1"># information that may be useful for the coersion functions.  Currently, it has</span>
+<span class="c1"># coercion functions below as ``filler_state``. It is a namespace containing</span>
+<span class="c1"># information that may be useful for the coercion functions.  Currently, it has</span>
 <span class="c1"># ``filler_state.descriptor`` and ``filler_state.key``. More may be added in</span>
 <span class="c1"># the future if the need arises. Ultimately, this is necessary because Resource</span>
 <span class="c1"># documents don&#39;t know the shape and dtype of the data that they reference.</span>
@@ -526,19 +526,19 @@
 <span class="c1"># As an implementation detail, the ``filler_state`` is a ``threading.local``</span>
 <span class="c1"># object to ensure that filling is thread-safe.</span>
 <span class="c1">#</span>
-<span class="c1"># Third-party libraries can register custom coersion options via the</span>
-<span class="c1"># register_coersion function below. For example, databroker uses this to</span>
+<span class="c1"># Third-party libraries can register custom coercion options via the</span>
+<span class="c1"># register_coercion function below. For example, databroker uses this to</span>
 <span class="c1"># register a &#39;delayed&#39; option. This avoids introducing dependency on a specific</span>
 <span class="c1"># delayed-computation framework (e.g. dask) in event-model itself.</span>
 
 
 <div class="viewcode-block" id="as_is"><a class="viewcode-back" href="../api.html#event_model.as_is">[docs]</a><span class="k">def</span> <span class="nf">as_is</span><span class="p">(</span><span class="n">handler_class</span><span class="p">,</span> <span class="n">filler_state</span><span class="p">):</span>
-    <span class="s2">&quot;A no-op coersion function that returns handler_class unchanged.&quot;</span>
+    <span class="s2">&quot;A no-op coercion function that returns handler_class unchanged.&quot;</span>
     <span class="k">return</span> <span class="n">handler_class</span></div>
 
 
 <div class="viewcode-block" id="force_numpy"><a class="viewcode-back" href="../api.html#event_model.force_numpy">[docs]</a><span class="k">def</span> <span class="nf">force_numpy</span><span class="p">(</span><span class="n">handler_class</span><span class="p">,</span> <span class="n">filler_state</span><span class="p">):</span>
-    <span class="s2">&quot;A coersion that makes handler_class.__call__ return actual numpy.ndarray.&quot;</span>
+    <span class="s2">&quot;A coercion that makes handler_class.__call__ return actual numpy.ndarray.&quot;</span>
     <span class="k">class</span> <span class="nc">Subclass</span><span class="p">(</span><span class="n">handler_class</span><span class="p">):</span>
         <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
             <span class="n">raw_result</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -549,12 +549,12 @@
     <span class="k">return</span> <span class="n">Subclass</span></div>
 
 
-<span class="c1"># maps coerce option to corresponding coersion function</span>
-<span class="n">_coersion_registry</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;as_is&#39;</span><span class="p">:</span> <span class="n">as_is</span><span class="p">,</span>
+<span class="c1"># maps coerce option to corresponding coercion function</span>
+<span class="n">_coercion_registry</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;as_is&#39;</span><span class="p">:</span> <span class="n">as_is</span><span class="p">,</span>
                       <span class="s1">&#39;force_numpy&#39;</span><span class="p">:</span> <span class="n">force_numpy</span><span class="p">}</span>
 
 
-<div class="viewcode-block" id="register_coersion"><a class="viewcode-back" href="../api.html#event_model.register_coersion">[docs]</a><span class="k">def</span> <span class="nf">register_coersion</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="register_coercion"><a class="viewcode-back" href="../api.html#event_model.register_coercion">[docs]</a><span class="k">def</span> <span class="nf">register_coercion</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Register a new option for :class:`Filler`&#39;s ``coerce`` argument.</span>
 
@@ -573,16 +573,19 @@
 <span class="sd">        unless this is set to ``True``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_coersion_registry</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overwrite</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_coercion_registry</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">overwrite</span><span class="p">:</span>
         <span class="c1"># If we are re-registering the same object, there is no problem.</span>
-        <span class="n">original</span> <span class="o">=</span> <span class="n">_coersion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">original</span> <span class="o">=</span> <span class="n">_coercion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">original</span> <span class="ow">is</span> <span class="n">func</span><span class="p">:</span>
             <span class="k">return</span>
         <span class="k">raise</span> <span class="n">EventModelValueError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;The coersion function </span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2"> could not be registered for the &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;name </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> because </span><span class="si">{</span><span class="n">_coersion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s2"> is already &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;The coercion function </span><span class="si">{</span><span class="n">func</span><span class="si">}</span><span class="s2"> could not be registered for the &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;name </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> because </span><span class="si">{</span><span class="n">_coercion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s2"> is already &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;registered. Use overwrite=True to force it.&quot;</span><span class="p">)</span>
-    <span class="n">_coersion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span></div>
+    <span class="n">_coercion_registry</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span></div>
+
+
+<span class="n">register_coersion</span> <span class="o">=</span> <span class="n">register_coercion</span>  <span class="c1"># back-compat for a spelling mistake</span>
 
 
 <div class="viewcode-block" id="Filler"><a class="viewcode-back" href="../api.html#event_model.Filler">[docs]</a><span class="k">class</span> <span class="nc">Filler</span><span class="p">(</span><span class="n">DocumentRouter</span><span class="p">):</span>
@@ -700,15 +703,15 @@
                 <span class="s2">&quot;incompatible. At least one must be left as the default, &quot;</span>
                 <span class="s2">&quot;None.&quot;</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_coersion_func</span> <span class="o">=</span> <span class="n">_coersion_registry</span><span class="p">[</span><span class="n">coerce</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_coercion_func</span> <span class="o">=</span> <span class="n">_coercion_registry</span><span class="p">[</span><span class="n">coerce</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">EventModelKeyError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;The option coerce=</span><span class="si">{</span><span class="n">coerce</span><span class="si">!r}</span><span class="s2"> was given to event_model.Filler. &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;The valid options are </span><span class="si">{</span><span class="nb">set</span><span class="p">(</span><span class="n">_coersion_registry</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                <span class="sa">f</span><span class="s2">&quot;The valid options are </span><span class="si">{</span><span class="nb">set</span><span class="p">(</span><span class="n">_coercion_registry</span><span class="p">)</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span> <span class="o">=</span> <span class="n">coerce</span>
 
         <span class="c1"># See comments on coerision functions above for the use of</span>
-        <span class="c1"># _current_state, which is passed to coersion functions&#39; `filler_state`</span>
+        <span class="c1"># _current_state, which is passed to coercion functions&#39; `filler_state`</span>
         <span class="c1"># parameter.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">local</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_unpatched_handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
@@ -762,7 +765,7 @@
     <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
             <span class="n">inplace</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_inplace</span><span class="p">,</span>
-            <span class="n">coersion_func</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span><span class="p">,</span>
+            <span class="n">coercion_func</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span><span class="p">,</span>
             <span class="n">handler_registry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_unpatched_handler_registry</span><span class="p">,</span>
             <span class="n">include</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span>
             <span class="n">exclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">,</span>
@@ -775,10 +778,10 @@
 
     <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_inplace</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;inplace&#39;</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;coersion_func&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_coerce</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;coercion_func&#39;</span><span class="p">]</span>
 
         <span class="c1"># See comments on coerision functions above for the use of</span>
-        <span class="c1"># _current_state, which is passed to coersion functions&#39; `filler_state`</span>
+        <span class="c1"># _current_state, which is passed to coercion functions&#39; `filler_state`</span>
         <span class="c1"># parameter.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">local</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_unpatched_handler_registry</span> <span class="o">=</span> <span class="p">{}</span>
@@ -896,7 +899,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_unpatched_handler_registry</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="n">handler</span>
         <span class="c1"># Let the &#39;coerce&#39; argument to Filler.__init__ modify the handler if it</span>
         <span class="c1"># wants to.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coersion_func</span><span class="p">(</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_handler_registry</span><span class="p">[</span><span class="n">spec</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_coercion_func</span><span class="p">(</span>
             <span class="n">handler</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_state</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Filler.deregister_handler"><a class="viewcode-back" href="../api.html#event_model.Filler.deregister_handler">[docs]</a>    <span class="k">def</span> <span class="nf">deregister_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">):</span>
