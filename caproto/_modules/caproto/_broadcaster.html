@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._broadcaster &mdash; caproto 0.6.0+33.g23eaead.dirty documentation</title>
+  <title>caproto._broadcaster &mdash; caproto 0.6.0+42.gc7ef7be.dirty documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                0.6.0+33.g23eaead.dirty
+                0.6.0+42.gc7ef7be.dirty
               </div>
             
           
@@ -177,15 +177,12 @@
 <span class="c1"># one Channel Access UDP connection, intended to be used as a companion to a</span>
 <span class="c1"># UDP socket provided by a client or server implementation.</span>
 <span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">random</span>
 
-<span class="kn">from</span> <span class="nn">._constants</span> <span class="kn">import</span> <span class="p">(</span><span class="n">DEFAULT_PROTOCOL_VERSION</span><span class="p">,</span> <span class="n">MAX_ID</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">._utils</span> <span class="kn">import</span> <span class="p">(</span><span class="n">CLIENT</span><span class="p">,</span> <span class="n">SERVER</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span>
-                     <span class="n">RemoteProtocolError</span><span class="p">,</span> <span class="n">ThreadsafeCounter</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">._commands</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Beacon</span><span class="p">,</span> <span class="n">RepeaterConfirmResponse</span><span class="p">,</span> <span class="n">RepeaterRegisterRequest</span><span class="p">,</span>
-                        <span class="n">SearchRequest</span><span class="p">,</span> <span class="n">SearchResponse</span><span class="p">,</span> <span class="n">VersionRequest</span><span class="p">,</span>
-                        <span class="n">read_datagram</span><span class="p">,</span>
-                        <span class="p">)</span>
+<span class="kn">from</span> <span class="nn">._commands</span> <span class="kn">import</span> <span class="p">(</span><span class="n">Beacon</span><span class="p">,</span> <span class="n">RepeaterConfirmResponse</span><span class="p">,</span>
+                        <span class="n">RepeaterRegisterRequest</span><span class="p">,</span> <span class="n">SearchRequest</span><span class="p">,</span> <span class="n">SearchResponse</span><span class="p">,</span>
+                        <span class="n">read_datagram</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">._constants</span> <span class="kn">import</span> <span class="n">DEFAULT_PROTOCOL_VERSION</span>
+<span class="kn">from</span> <span class="nn">._utils</span> <span class="kn">import</span> <span class="n">CLIENT</span><span class="p">,</span> <span class="n">SERVER</span><span class="p">,</span> <span class="n">CaprotoValueError</span><span class="p">,</span> <span class="n">RemoteProtocolError</span>
 
 <span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Broadcaster&#39;</span><span class="p">,)</span>
 
@@ -223,15 +220,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">server_addresses</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client_address</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span> <span class="o">=</span> <span class="n">protocol_version</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># map search id (cid) to name</span>
         <span class="c1"># Unlike VirtualCircuit and Channel, there is very little state to</span>
         <span class="c1"># track for the Broadcaster. We don&#39;t need a full state machine, just</span>
         <span class="c1"># one flag to check whether we have yet registered with a repeater.</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_registered</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_search_id_counter</span> <span class="o">=</span> <span class="n">ThreadsafeCounter</span><span class="p">(</span>
-            <span class="n">initial_value</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">MAX_ID</span><span class="p">),</span>
-            <span class="n">dont_clash_with</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span><span class="p">,</span>
-        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;caproto.bcast&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">beacon_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.bcast.beacon&#39;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">search_log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;caproto.bcast.search&#39;</span><span class="p">)</span>
@@ -267,7 +259,6 @@
 <span class="sd">            bytes to send over a socket</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">bytes_to_send</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
-        <span class="n">history</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">total_commands</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">commands</span><span class="p">)</span>
         <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;role&#39;</span><span class="p">:</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">)}</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">command</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">commands</span><span class="p">):</span>
@@ -276,7 +267,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">search_log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="n">tags</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">history</span><span class="o">=</span><span class="n">history</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">our_role</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span>
             <span class="n">bytes_to_send</span> <span class="o">+=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">bytes_to_send</span></div>
 
@@ -325,11 +316,10 @@
 <span class="sd">        Received commands should be passed through here before any additional</span>
 <span class="sd">        processing by a server or client layer.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">history</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">command</span> <span class="ow">in</span> <span class="n">commands</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">their_role</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">their_role</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span></div>
 
-    <span class="k">def</span> <span class="nf">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">command</span><span class="p">,</span> <span class="n">history</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_process_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">role</span><span class="p">,</span> <span class="n">command</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        All comands go through here.</span>
 
@@ -340,57 +330,10 @@
 <span class="sd">        history : list</span>
 <span class="sd">            This input will be mutated: command will be appended at the end.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># All commands go through here.</span>
-        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">SearchRequest</span><span class="p">):</span>
-            <span class="c1"># TODO do all clients respect this?</span>
-            <span class="c1"># We have a report of clients that do not so skip this</span>
-            <span class="c1"># validation.</span>
-            <span class="c1"># if VersionRequest not in map(type, history):</span>
-            <span class="c1">#     err = get_exception(self.our_role, command)</span>
-            <span class="c1">#     raise err(&quot;A broadcasted SearchRequest must be preceded by a &quot;</span>
-            <span class="c1">#               &quot;VersionRequest in the same datagram.&quot;)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span><span class="p">[</span><span class="n">command</span><span class="o">.</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="n">command</span><span class="o">.</span><span class="n">name</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">SearchResponse</span><span class="p">):</span>
-            <span class="c1"># TODO Do all versions of Rsrv respect this? Unclear why softIoc</span>
-            <span class="c1"># seems to sometimes violate this part of the protocol.</span>
-            <span class="c1"># if VersionResponse not in map(type, history):</span>
-            <span class="c1">#     err = get_exception(self.our_role, command)</span>
-            <span class="c1">#     raise err(&quot;A broadcasted SearchResponse must be preceded by &quot;</span>
-            <span class="c1">#               &quot;a VersionResponse in the same datagram.&quot;)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">unanswered_searches</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">command</span><span class="o">.</span><span class="n">cid</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">RepeaterConfirmResponse</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">RepeaterConfirmResponse</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_registered</span> <span class="o">=</span> <span class="kc">True</span>
 
-        <span class="n">history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
-
     <span class="c1"># CONVENIENCE METHODS</span>
-
-<div class="viewcode-block" id="Broadcaster.new_search_id"><a class="viewcode-back" href="../../api.html#caproto.Broadcaster.new_search_id">[docs]</a>    <span class="k">def</span> <span class="nf">new_search_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="c1"># Return the next sequential unused id. Wrap back to 0 on overflow.</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_id_counter</span><span class="p">()</span></div>
-
-<div class="viewcode-block" id="Broadcaster.search"><a class="viewcode-back" href="../../api.html#caproto.Broadcaster.search">[docs]</a>    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">cid</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Generate a valid :class:`VersionRequest` and :class:`SearchRequest`.</span>
-
-<span class="sd">        The protocol requires that these be transmitted together as part of one</span>
-<span class="sd">        datagram.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        name : string</span>
-<span class="sd">            Channnel name (PV)</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        (VersionRequest, SearchRequest)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">cid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># TODO all client implementations want to handle cids on their own.</span>
-            <span class="n">cid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">new_search_id</span><span class="p">()</span>
-        <span class="n">commands</span> <span class="o">=</span> <span class="p">(</span><span class="n">VersionRequest</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span><span class="p">),</span>
-                    <span class="n">SearchRequest</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">protocol_version</span><span class="p">))</span>
-        <span class="k">return</span> <span class="n">commands</span></div>
 
 <div class="viewcode-block" id="Broadcaster.register"><a class="viewcode-back" href="../../api.html#caproto.Broadcaster.register">[docs]</a>    <span class="k">def</span> <span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ip</span><span class="o">=</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
