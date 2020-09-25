@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto._log &mdash; caproto 0.6.0+62.g434bd0e3.dirty documentation</title>
+  <title>caproto._log &mdash; caproto 0.6.0+72.g2bd9ddc2.dirty documentation</title>
   
 
   
@@ -31,6 +31,7 @@
         <script src="../../_static/doctools.js"></script>
         <script src="../../_static/language_data.js"></script>
         <script src="../../_static/doctr-versions-menu.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../../_static/js/theme.js"></script>
 
@@ -60,7 +61,7 @@
             
             
               <div class="version">
-                0.6.0+62.g434bd0e3.dirty
+                0.6.0+72.g2bd9ddc2.dirty
               </div>
             
           
@@ -96,6 +97,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../servers.html">Servers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../shark.html">Shark (pcap/tcpdump parsing)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../loggers.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../own_docs.html">Writing Your Own Documentation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Channel Access Sans I/O</span></p>
 <ul>
@@ -179,6 +181,7 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
+
 <span class="k">try</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">colorama</span>
     <span class="n">colorama</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
@@ -225,19 +228,43 @@
 
 
 <div class="viewcode-block" id="LogFormatter"><a class="viewcode-back" href="../../loggers.html#caproto.LogFormatter">[docs]</a><span class="k">class</span> <span class="nc">LogFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Log formatter for caproto records.</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Log formatter for caproto records.</span>
 
 <span class="sd">    Adapted from the log formatter used in Tornado.</span>
-<span class="sd">    Key features of this formatter are:</span>
 
+<span class="sd">    Key features of this formatter are:</span>
 <span class="sd">    * Color support when logging to a terminal that supports it.</span>
 <span class="sd">    * Timestamps on every log line.</span>
-<span class="sd">    * Includes extra record attributes (pv, our_address, their_address,</span>
-<span class="sd">      direction, role) when present.</span>
+<span class="sd">    * When present, includes extra record attributes:</span>
+<span class="sd">        - pv</span>
+<span class="sd">        - our_address</span>
+<span class="sd">        - their_address</span>
+<span class="sd">        - direction</span>
+<span class="sd">        - role</span>
 
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    color : bool, optional</span>
+<span class="sd">        Enables color support.</span>
+
+<span class="sd">    fmt : str, optional</span>
+<span class="sd">        Log message format.</span>
+<span class="sd">        It will be applied to the attributes dict of log records. The text</span>
+<span class="sd">        between ``%(color)s`` and ``%(end_color)s`` will be colored depending</span>
+<span class="sd">        on the level if color support is on.</span>
+
+<span class="sd">    colors : dict, optional</span>
+<span class="sd">        color mappings from logging level to terminal color code</span>
+
+<span class="sd">    datefmt : str, optional</span>
+<span class="sd">        Datetime format.  Used for formatting ``(asctime)`` placeholder in</span>
+<span class="sd">        ``prefix_fmt``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">DEFAULT_FORMAT</span> <span class="o">=</span> \
-        <span class="s1">&#39;</span><span class="si">%(color)s</span><span class="s1">[</span><span class="si">%(levelname)1.1s</span><span class="s1"> </span><span class="si">%(asctime)s</span><span class="s1"> </span><span class="si">%(module)12s</span><span class="s1">:</span><span class="si">%(lineno)d</span><span class="s1">]</span><span class="si">%(end_color)s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="n">DEFAULT_FORMAT</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;</span><span class="si">%(color)s</span><span class="s1">[</span><span class="si">%(levelname)1.1s</span><span class="s1"> </span><span class="si">%(asctime)s</span><span class="s1"> &#39;</span>
+        <span class="s1">&#39;</span><span class="si">%(module)12s</span><span class="s1">:</span><span class="si">%(lineno)d</span><span class="s1">]</span><span class="si">%(end_color)s</span><span class="s1"> </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="p">)</span>
     <span class="n">DEFAULT_DATE_FORMAT</span> <span class="o">=</span> <span class="s1">&#39;%y%m</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span>
     <span class="n">DEFAULT_COLORS</span> <span class="o">=</span> <span class="p">{</span>
         <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># Blue</span>
@@ -248,19 +275,6 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fmt</span><span class="o">=</span><span class="n">DEFAULT_FORMAT</span><span class="p">,</span> <span class="n">datefmt</span><span class="o">=</span><span class="n">DEFAULT_DATE_FORMAT</span><span class="p">,</span>
                  <span class="n">style</span><span class="o">=</span><span class="s1">&#39;%&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">colors</span><span class="o">=</span><span class="n">DEFAULT_COLORS</span><span class="p">):</span>
-        <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        :arg bool color: Enables color support.</span>
-<span class="sd">        :arg str fmt: Log message format.</span>
-<span class="sd">          It will be applied to the attributes dict of log records. The</span>
-<span class="sd">          text between ``%(color)s`` and ``%(end_color)s`` will be colored</span>
-<span class="sd">          depending on the level if color support is on.</span>
-<span class="sd">        :arg dict colors: color mappings from logging level to terminal color</span>
-<span class="sd">          code</span>
-<span class="sd">        :arg str datefmt: Datetime format.</span>
-<span class="sd">          Used for formatting ``(asctime)`` placeholder in ``prefix_fmt``.</span>
-<span class="sd">        .. versionchanged:: 3.2</span>
-<span class="sd">           Added ``fmt`` and ``datefmt`` arguments.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">datefmt</span><span class="o">=</span><span class="n">datefmt</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_fmt</span> <span class="o">=</span> <span class="n">fmt</span>
 
