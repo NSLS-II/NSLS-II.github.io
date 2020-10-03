@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.server.server &mdash; caproto 0.6.0+78.g21737c75.dirty documentation</title>
+  <title>caproto.server.server &mdash; caproto 0.6.0+85.gf83250d9.dirty documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.6.0+78.g21737c75.dirty
+                0.6.0+85.gf83250d9.dirty
               </div>
             
           
@@ -175,14 +175,14 @@
            <div itemprop="articleBody">
             
   <h1>Source code for caproto.server.server</h1><div class="highlight"><pre>
-<span></span><span class="sd">&#39;&#39;&#39;</span>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">caproto IOC &quot;high-level&quot; server framework</span>
 
 <span class="sd">This does not define any wire protocol information or have anything specific to</span>
 <span class="sd">a single asyncio library.</span>
 
 <span class="sd">For an example server implementation, see caproto.curio.server</span>
-<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">argparse</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">inspect</span>
@@ -190,20 +190,18 @@
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">import</span> <span class="nn">time</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
-
-<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="p">(</span><span class="n">namedtuple</span><span class="p">,</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">namedtuple</span>
 <span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">MethodType</span>
 
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="p">(</span><span class="n">ChannelDouble</span><span class="p">,</span> <span class="n">ChannelFloat</span><span class="p">,</span> <span class="n">ChannelShort</span><span class="p">,</span> <span class="n">ChannelInteger</span><span class="p">,</span>
-                <span class="n">ChannelString</span><span class="p">,</span> <span class="n">ChannelEnum</span><span class="p">,</span> <span class="n">ChannelType</span><span class="p">,</span> <span class="n">ChannelChar</span><span class="p">,</span>
-                <span class="n">ChannelByte</span><span class="p">,</span> <span class="n">ChannelAlarm</span><span class="p">,</span>
-                <span class="n">AccessRights</span><span class="p">,</span> <span class="n">get_server_address_list</span><span class="p">,</span>
-                <span class="n">AlarmStatus</span><span class="p">,</span> <span class="n">AlarmSeverity</span><span class="p">,</span> <span class="n">CaprotoRuntimeError</span><span class="p">,</span>
-                <span class="n">CaprotoValueError</span><span class="p">,</span> <span class="n">CaprotoTypeError</span><span class="p">,</span> <span class="n">CaprotoAttributeError</span><span class="p">,</span>
-                <span class="n">__version__</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">.._backend</span> <span class="kn">import</span> <span class="n">backend</span>
-<span class="kn">from</span> <span class="nn">caproto._log</span> <span class="kn">import</span> <span class="n">set_handler</span><span class="p">,</span> <span class="n">_set_handler_with_logger</span>
+<span class="kn">from</span> <span class="nn">caproto._log</span> <span class="kn">import</span> <span class="n">_set_handler_with_logger</span><span class="p">,</span> <span class="n">set_handler</span>
 
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="p">(</span><span class="n">AccessRights</span><span class="p">,</span> <span class="n">AlarmSeverity</span><span class="p">,</span> <span class="n">AlarmStatus</span><span class="p">,</span>
+                <span class="n">CaprotoAttributeError</span><span class="p">,</span> <span class="n">CaprotoRuntimeError</span><span class="p">,</span> <span class="n">CaprotoTypeError</span><span class="p">,</span>
+                <span class="n">CaprotoValueError</span><span class="p">,</span> <span class="n">ChannelAlarm</span><span class="p">,</span> <span class="n">ChannelByte</span><span class="p">,</span> <span class="n">ChannelChar</span><span class="p">,</span>
+                <span class="n">ChannelDouble</span><span class="p">,</span> <span class="n">ChannelEnum</span><span class="p">,</span> <span class="n">ChannelFloat</span><span class="p">,</span> <span class="n">ChannelInteger</span><span class="p">,</span>
+                <span class="n">ChannelShort</span><span class="p">,</span> <span class="n">ChannelString</span><span class="p">,</span> <span class="n">ChannelType</span><span class="p">,</span> <span class="n">__version__</span><span class="p">,</span>
+                <span class="n">get_server_address_list</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.._backend</span> <span class="kn">import</span> <span class="n">backend</span>
 
 <span class="n">module_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
 
@@ -228,18 +226,48 @@
 
 
 <span class="k">class</span> <span class="nc">AsyncLibraryLayer</span><span class="p">:</span>
-    <span class="sd">&#39;&#39;&#39;Library compatibility layer</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Library compatibility layer</span>
 
 <span class="sd">    To be subclassed/customized by async library layer for compatibility Then,</span>
 <span class="sd">    a single IOC written within the high-level server framework can potentially</span>
 <span class="sd">    use the same code base and still be run on either curio or trio, etc.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">ThreadsafeQueue</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">library</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <span class="k">class</span> <span class="nc">PvpropertyData</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A top-level class for mixing in with `ChannelData` subclasses.</span>
+
+<span class="sd">    Takes in a fully-expanded `pvname`, `PVSpec`, and `group` instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pvname : str</span>
+<span class="sd">        The fully expanded process variable name.</span>
+
+<span class="sd">    group : PVGroup</span>
+<span class="sd">        The PVGroup instance to which this pvproperty belongs.</span>
+
+<span class="sd">    pvspec : PVSpec</span>
+<span class="sd">        The associated `PVSpec` instance, containing detailed information</span>
+<span class="sd">        about the pvproperty.</span>
+
+<span class="sd">    doc : str, optional</span>
+<span class="sd">        Docstring / documentation information.</span>
+
+<span class="sd">    record : str, optional</span>
+<span class="sd">        The record type to report over channel access.  This can be queried</span>
+<span class="sd">        by way of ``caproto-get record.RTYP`` or</span>
+<span class="sd">        ``caproto-get -d 38 --format &quot;{response.metadata.value}&quot; record``</span>
+
+<span class="sd">    **kwargs :</span>
+<span class="sd">        Passed to the superclass, along with reported_record_type.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">pvname</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">pvspec</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mock_record</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">record</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pvname</span> <span class="o">=</span> <span class="n">pvname</span>  <span class="c1"># the full, expanded PV name</span>
@@ -269,7 +297,11 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">record_type</span> <span class="o">=</span> <span class="n">record</span> <span class="ow">or</span> <span class="n">mock_record</span>
 
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># This should not be allowed to be different from record_type</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;reported_record_type&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">reported_record_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">record_type</span> <span class="ow">or</span> <span class="s1">&#39;caproto&#39;</span><span class="p">,</span>
+                         <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">mock_record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">record</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -310,6 +342,21 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">fields</span> <span class="o">=</span> <span class="p">{}</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_type</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The top-level read method, with a specific requested data type.</span>
+
+<span class="sd">        This calls the getter (if defined, falling back to</span>
+<span class="sd">        `PVGroup.group_read`).  If the getter returns a value, it will be</span>
+<span class="sd">        written back to update the internal state and update any subscriptions.</span>
+
+<span class="sd">        Finally, the internal value is converted to the requested data type</span>
+<span class="sd">        and returned.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        data_type : ChannelType</span>
+<span class="sd">            The type of data to return.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">getter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">get</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -322,16 +369,48 @@
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read</span><span class="p">(</span><span class="n">data_type</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">verify_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The top-level dbr-facing &quot;write&quot; method.</span>
+
+<span class="sd">        The value will first be validated by `ChannelData.verify_value`,</span>
+<span class="sd">        and then passed along to the user-specified `pvproperty.putter`,</span>
+<span class="sd">        falling back to `PVGroup.group_write`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        value : any</span>
+<span class="sd">            The value to write.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">value</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">verify_value</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">putter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_server_startup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;A per-pvproperty startup hook; enabled at __init__ time.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">startup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span> <span class="nf">_server_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;A per-pvproperty shutdown hook; enabled at __init__ time.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">get_field</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a field by name.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        field : str</span>
+<span class="sd">            The field name.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ChannelData</span>
+<span class="sd">            The field instance.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            If the field is invalid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">field</span> <span class="ow">or</span> <span class="n">field</span> <span class="o">==</span> <span class="s1">&#39;VAL&#39;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fields</span><span class="p">[</span><span class="n">field</span><span class="p">]</span>
@@ -377,6 +456,10 @@
 
 
 <span class="k">class</span> <span class="nc">PvpropertyReadOnlyData</span><span class="p">(</span><span class="n">PvpropertyData</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A mixin class which marks this data as read-only from channel access.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="nf">check_access</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">AccessRights</span><span class="o">.</span><span class="n">READ</span>
 
@@ -424,7 +507,11 @@
                         <span class="s1">&#39;get put startup shutdown attr name dtype value &#39;</span>
                         <span class="s1">&#39;max_length alarm_group read_only doc fields &#39;</span>
                         <span class="s1">&#39;cls_kwargs&#39;</span><span class="p">)):</span>
-    <span class="sd">&#39;&#39;&#39;PV information specification</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    PV information specification.</span>
+
+<span class="sd">    This is an immutable tuple that contains everything needed to generate</span>
+<span class="sd">    a `ChannelData` instance from a `pvproperty`.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -458,7 +545,7 @@
 <span class="sd">        Specification for record fields</span>
 <span class="sd">    cls_kwargs : dict, optional</span>
 <span class="sd">        Keyword arguments for the ChannelData-based class</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="vm">__slots__</span> <span class="o">=</span> <span class="p">()</span>
     <span class="n">default_dtype</span> <span class="o">=</span> <span class="nb">int</span>
 
@@ -528,7 +615,17 @@
 
 
 <span class="k">class</span> <span class="nc">FieldProxy</span><span class="p">:</span>
-    <span class="s1">&#39;pvproperty.fields.Field&#39;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A proxy class which allows access to ``pvproperty.fields.Field``.</span>
+
+<span class="sd">    This allows for customization of the putter and startup methods, for</span>
+<span class="sd">    example, in a top-level `PVGroup`.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    This class is primarily for internal use only.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">field_spec</span><span class="p">,</span> <span class="n">record_class</span><span class="p">,</span> <span class="n">field_name</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">field_spec</span> <span class="o">=</span> <span class="n">field_spec</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">record_class</span> <span class="o">=</span> <span class="n">record_class</span>
@@ -552,10 +649,16 @@
 
 
 <span class="k">class</span> <span class="nc">FieldSpec</span><span class="p">:</span>
-    <span class="sd">&#39;&#39;&#39;A field specification for a pvproperty record</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A field specification for a pvproperty record.</span>
 
-<span class="sd">    Doubles as the .fields attribute of a pvproperty</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    This is used in the ``.fields`` attribute of a pvproperty, proxying</span>
+<span class="sd">    fields for customization by way of `FieldProxy`.</span>
+
+<span class="sd">    Note</span>
+<span class="sd">    ----</span>
+<span class="sd">    This class is primarily for internal use only.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">record_type</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">prop</span> <span class="o">=</span> <span class="n">prop</span>
@@ -595,39 +698,64 @@
 
 
 <span class="k">class</span> <span class="nc">pvproperty</span><span class="p">:</span>
-    <span class="sd">&#39;&#39;&#39;A property-like descriptor for specifying a PV in a group</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A property-like descriptor for specifying a PV in a `PVGroup`.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    get : async callable, optional</span>
 <span class="sd">        Called when PV is read through channel access</span>
+
 <span class="sd">    put : async callable, optional</span>
 <span class="sd">        Called when PV is written to through channel access</span>
+
 <span class="sd">    startup : async callable, optional</span>
 <span class="sd">        Called at start of server; a hook for initialization and background</span>
 <span class="sd">        processing</span>
+
 <span class="sd">    shutdown : async callable, optional</span>
 <span class="sd">        Called at shutdown of server; a hook for cleanup</span>
+
 <span class="sd">    name : str, optional</span>
 <span class="sd">        The PV name (defaults to the attribute name of the pvproperty)</span>
+
 <span class="sd">    dtype : ChannelType or builtin type, optional</span>
 <span class="sd">        The data type</span>
+
 <span class="sd">    value : any, optional</span>
 <span class="sd">        The initial value</span>
+
 <span class="sd">    max_length : int, optional</span>
 <span class="sd">        The maximum possible length acceptable for the data</span>
 <span class="sd">        By default, this is `len(value) or 1`</span>
+
 <span class="sd">    alarm_group : str, optional</span>
 <span class="sd">        The alarm group the PV should be attached to</span>
+
 <span class="sd">    read_only : bool, optional</span>
 <span class="sd">        Read-only PV over channel access</span>
+
 <span class="sd">    doc : str, optional</span>
 <span class="sd">        Docstring associated with the property</span>
+
 <span class="sd">    fields : FieldSpec, optional</span>
 <span class="sd">        Specification for record fields</span>
+
 <span class="sd">    **cls_kwargs :</span>
 <span class="sd">        Keyword arguments for the ChannelData-based class</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pvspec : PVSpec</span>
+<span class="sd">        The information from `__init__` is aggregated into a single, immutable</span>
+<span class="sd">        `PVSpec` instance.</span>
+
+<span class="sd">    record_type : str</span>
+<span class="sd">        The reported record type name.</span>
+
+<span class="sd">    field_spec : FieldSpec</span>
+<span class="sd">        The field specification information helper.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">put</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">startup</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shutdown</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                  <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -669,17 +797,23 @@
         <span class="k">return</span> <span class="n">cls_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;record&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cls_kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mock_record&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Descriptor method: get the pvproperty instance from a group.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">instance</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># `class.pvproperty`</span>
             <span class="k">return</span> <span class="bp">self</span>
+
         <span class="k">return</span> <span class="n">instance</span><span class="o">.</span><span class="n">attr_pvdb</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="fm">__set__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Descriptor method: set the pvproperty instance in a group.&quot;&quot;&quot;</span>
         <span class="n">instance</span><span class="o">.</span><span class="n">attr_pvdb</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 
     <span class="k">def</span> <span class="fm">__delete__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Descriptor method: delete the pvproperty instance from a group.&quot;&quot;&quot;</span>
         <span class="k">del</span> <span class="n">instance</span><span class="o">.</span><span class="n">attr_pvdb</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="nf">__set_name__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">owner</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Descriptor method: auto-called to set the attribute name.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span> <span class="o">=</span> <span class="n">name</span>
         <span class="c1"># update the PV specification with the attribute name</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">new_names</span><span class="p">(</span>
@@ -689,30 +823,37 @@
             <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">attr_name</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">getter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get</span><span class="p">):</span>
-        <span class="c1"># update PVSpec with getter</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Usually used as a decorator, this sets the ``getter`` in the PVSpec.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">get</span><span class="o">=</span><span class="n">get</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">putter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">put</span><span class="p">):</span>
-        <span class="c1"># update PVSpec with putter</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Usually used as a decorator, this sets the ``putter`` in the PVSpec.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">put</span><span class="o">=</span><span class="n">put</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">startup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">startup</span><span class="p">):</span>
-        <span class="c1"># update PVSpec with startup function</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Usually used as a decorator, this sets ``startup`` in the PVSpec.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">startup</span><span class="o">=</span><span class="n">startup</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shutdown</span><span class="p">):</span>
-        <span class="c1"># update PVSpec with shutdown function</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="n">PVSpec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">get</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">put</span><span class="p">,</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">startup</span><span class="p">,</span> <span class="n">shutdown</span><span class="p">,</span>
-                             <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="p">[</span><span class="mi">4</span><span class="p">:])</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Usually used as a decorator, this sets ``shutdown`` in the PVSpec.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pvspec</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="n">shutdown</span><span class="o">=</span><span class="n">shutdown</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span>
 
     <span class="k">def</span> <span class="nf">scan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">period</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">subtract_elapsed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stop_on_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
              <span class="n">failure_severity</span><span class="o">=</span><span class="n">AlarmSeverity</span><span class="o">.</span><span class="n">MAJOR_ALARM</span><span class="p">,</span> <span class="n">use_scan_field</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-        <span class="sd">&#39;&#39;&#39;Periodically call a function to update a pvproperty.</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Periodically call a function to update a pvproperty.</span>
 
 <span class="sd">        NOTE: This replaces the pvproperty startup function. Only one or the</span>
 <span class="sd">        other can be specified.</span>
@@ -736,7 +877,7 @@
 <span class="sd">            A wrapper that should be used with an async function matching the</span>
 <span class="sd">            pvproperty startup function signature:</span>
 <span class="sd">                (group, instance, async_library)</span>
-<span class="sd">        &#39;&#39;&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># TODO: maybe allow rate to be tied to a PV (e.g., a SCAN field?)</span>
         <span class="k">def</span> <span class="nf">wrapper</span><span class="p">(</span><span class="n">scan_function</span><span class="p">):</span>
             <span class="k">async</span> <span class="k">def</span> <span class="nf">call_scan_function</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
@@ -832,7 +973,8 @@
 
 
 <span class="k">class</span> <span class="nc">NestedPvproperty</span><span class="p">(</span><span class="n">pvproperty</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Nested pvproperty which allows decorator usage in parent class</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Nested pvproperty which allows decorator usage in parent class</span>
 
 <span class="sd">    Without using this for the SubGroups, using @subgroup.prop.getter causes</span>
 <span class="sd">    the parent class to see multiple pvproperties - one defined on the</span>
@@ -841,7 +983,7 @@
 
 <span class="sd">    Bonus points if you understood all of that.</span>
 <span class="sd">        ... scratch that, bonus points to me, I think.</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="nf">getter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">get</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">getter</span><span class="p">(</span><span class="n">get</span><span class="p">)</span>
@@ -867,14 +1009,15 @@
 
 
 <span class="k">class</span> <span class="nc">SubGroup</span><span class="p">:</span>
-    <span class="sd">&#39;&#39;&#39;A property-like descriptor for specifying a subgroup in a PVGroup</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A property-like descriptor for specifying a subgroup in a PVGroup.</span>
 
 <span class="sd">    Several methods of generating a SubGroup are possible. For the `group`</span>
 <span class="sd">    parameter, one can</span>
 <span class="sd">    1. Pass in a group_dict of {attr: pvspec_or_dict}</span>
 <span class="sd">    2. Pass in an existing PVGroup class</span>
 <span class="sd">    3. Use @SubGroup as a decorator on a subsequently-defined PVGroup class</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># support copy.copy by keeping this here</span>
     <span class="n">_class_dict</span> <span class="o">=</span> <span class="kc">None</span>
@@ -933,12 +1076,11 @@
             <span class="k">if</span> <span class="s1">&#39;attr&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
                 <span class="n">info</span><span class="p">[</span><span class="s1">&#39;attr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr</span>
             <span class="k">return</span> <span class="n">PVSpec</span><span class="p">(</span><span class="o">**</span><span class="n">info</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">PVSpec</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">PVSpec</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">info</span>
-        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">pvproperty</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">pvproperty</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">info</span><span class="o">.</span><span class="n">pvspec</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">CaprotoTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown type for pvspec: </span><span class="si">{</span><span class="n">info</span><span class="si">!r}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">CaprotoTypeError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown type for pvspec: </span><span class="si">{</span><span class="n">info</span><span class="si">!r}</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_generate_class_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s1">&#39;Create the class dictionary from all PVSpecs&#39;</span>
@@ -1015,22 +1157,114 @@
 
 
 <span class="k">def</span> <span class="nf">get_pv_pair_wrapper</span><span class="p">(</span><span class="n">setpoint_suffix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">readback_suffix</span><span class="o">=</span><span class="s1">&#39;_RBV&#39;</span><span class="p">):</span>
-    <span class="s1">&#39;Generates a Subgroup class for a pair of PVs (setpoint and readback)&#39;</span>
-    <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">SubGroup</span><span class="p">(</span>
-            <span class="p">{</span><span class="s1">&#39;setpoint&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">setpoint_suffix</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span>
-                              <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span>
-             <span class="s1">&#39;readback&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">readback_suffix</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span>
-                              <span class="n">read_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span>
-             <span class="p">},</span>
-            <span class="n">attr_separator</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
-            <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span>
-            <span class="n">prefix</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generates a Subgroup class for a pair of PVs (setpoint and readback).</span>
+
+<span class="sd">    If no put method is defined for the setter, a default will be specified</span>
+<span class="sd">    which updates the readback value on write.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    setpoint_suffix : str, optional</span>
+<span class="sd">        The suffix for the setpoint PV</span>
+<span class="sd">    readback_suffix : str, optional</span>
+<span class="sd">        The suffix for the readback PV</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    wrapper : callable</span>
+<span class="sd">        A wrapper that creates a SubGroup.  It accepts all arguments used for</span>
+<span class="sd">        PVSpec (or pvproperty).  Additionally, keywords meant only for the</span>
+<span class="sd">        setpoint or readback classes may be specified using `setpoint_kw` or</span>
+<span class="sd">        `readback_kw`, respectively.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">wrapped</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">get</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">put</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">startup</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shutdown</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alarm_group</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">setpoint_kw</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">readback_kw</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">cls_kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">cls_kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;read_only&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Read-only settings for a setpoint/readback &#39;</span>
+                               <span class="s1">&#39;pair should not be specified&#39;</span><span class="p">)</span>
+
+        <span class="n">pvspec_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">startup</span><span class="o">=</span><span class="n">startup</span><span class="p">,</span> <span class="n">shutdown</span><span class="o">=</span><span class="n">shutdown</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span>
+            <span class="n">max_length</span><span class="o">=</span><span class="n">max_length</span><span class="p">,</span> <span class="n">alarm_group</span><span class="o">=</span><span class="n">alarm_group</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="n">fields</span>
         <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">put</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Create a default putter method</span>
+            <span class="k">async</span> <span class="k">def</span> <span class="nf">put</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+                <span class="s1">&#39;Default putter - assign value to readback&#39;</span>
+                <span class="k">await</span> <span class="n">obj</span><span class="o">.</span><span class="n">readback</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">get_kwargs</span><span class="p">(</span><span class="n">user_specified_kwargs</span><span class="p">,</span> <span class="o">**</span><span class="n">init_kwargs</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">(</span><span class="n">user_specified_kwargs</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">init_kwargs</span><span class="p">:</span>
+                    <span class="n">init_kwargs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">init_kwargs</span><span class="p">[</span><span class="s1">&#39;cls_kwargs&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">val</span>
+            <span class="k">return</span> <span class="n">init_kwargs</span>
+
+        <span class="n">setpoint</span> <span class="o">=</span> <span class="n">get_kwargs</span><span class="p">(</span>
+            <span class="n">setpoint_kw</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">setpoint_suffix</span><span class="p">,</span> <span class="n">put</span><span class="o">=</span><span class="n">put</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">cls_kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">cls_kwargs</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">pvspec_kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">readback</span> <span class="o">=</span> <span class="n">get_kwargs</span><span class="p">(</span>
+            <span class="n">readback_kw</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">readback_suffix</span><span class="p">,</span> <span class="n">get</span><span class="o">=</span><span class="n">get</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">cls_kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">cls_kwargs</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">pvspec_kwargs</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">SubGroup</span><span class="p">(</span>
+            <span class="nb">dict</span><span class="p">(</span><span class="n">setpoint</span><span class="o">=</span><span class="n">setpoint</span><span class="p">,</span> <span class="n">readback</span><span class="o">=</span><span class="n">readback</span><span class="p">),</span>
+            <span class="n">attr_separator</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="p">)</span>
+
     <span class="k">return</span> <span class="n">wrapped</span>
 
 
 <span class="k">class</span> <span class="nc">pvfunction</span><span class="p">(</span><span class="n">SubGroup</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A descriptor for making an RPC-like function.</span>
+
+<span class="sd">    Note: Requires Python type hinting for all arguments to the function and</span>
+<span class="sd">    its return value. These are used to generate the PVs.</span>
+
+<span class="sd">    It&#39;s worth noting that this is not particularly very useful when multiple</span>
+<span class="sd">    clients are accessing the same IOC, which is rather the point of EPICS,</span>
+<span class="sd">    isn&#39;t it?  That being said, this reflects an intended API for when</span>
+<span class="sd">    future pvAccess support gets added.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    func : async callable, optional</span>
+<span class="sd">        The function to wrap</span>
+<span class="sd">    default : any, optional</span>
+<span class="sd">        Default value for the return value</span>
+<span class="sd">    names : dict, optional</span>
+<span class="sd">        Valid keys include {&#39;process&#39;, &#39;retval&#39;, &#39;status&#39;} and also any</span>
+<span class="sd">        function argument names. This will map attributes of the</span>
+<span class="sd">        dynamically-generated PVGroup that this pvfunction represents to</span>
+<span class="sd">        EPICS PV names.</span>
+<span class="sd">    alarm_group : str, optional</span>
+<span class="sd">        The alarm group name this group should be associated with</span>
+<span class="sd">    prefix : str, optional</span>
+<span class="sd">        The prefix for all PVs</span>
+<span class="sd">    macros : dict, optional</span>
+<span class="sd">        Macro dictionary for PVs</span>
+<span class="sd">    attr_separator : str, optional</span>
+<span class="sd">        String separator between {prefix} and {attribute} for generated PV</span>
+<span class="sd">        names.</span>
+<span class="sd">    doc : str, optional</span>
+<span class="sd">        Docstring</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">default_names</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">process</span><span class="o">=</span><span class="s1">&#39;Process&#39;</span><span class="p">,</span>
                          <span class="n">retval</span><span class="o">=</span><span class="s1">&#39;Retval&#39;</span><span class="p">,</span>
                          <span class="n">status</span><span class="o">=</span><span class="s1">&#39;Status&#39;</span><span class="p">,</span>
@@ -1038,37 +1272,6 @@
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alarm_group</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">prefix</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">macros</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">attr_separator</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-
-        <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">        A descriptor for making an RPC-like function</span>
-
-<span class="sd">        Note: Requires Python type hinting for all arguments to the function</span>
-<span class="sd">        and its return value. These are used to generate the PVs.</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        func : async callable, optional</span>
-<span class="sd">            The function to wrap</span>
-<span class="sd">        default : any, optional</span>
-<span class="sd">            Default value for the return value</span>
-<span class="sd">        names : dict, optional</span>
-<span class="sd">            Valid keys include {&#39;process&#39;, &#39;retval&#39;, &#39;status&#39;} and also any</span>
-<span class="sd">            function argument names. This will map attributes of the</span>
-<span class="sd">            dynamically-generated PVGroup that this pvfunction represents to</span>
-<span class="sd">            EPICS PV names.</span>
-<span class="sd">        alarm_group : str, optional</span>
-<span class="sd">            The alarm group name this group should be associated with</span>
-<span class="sd">        prefix : str, optional</span>
-<span class="sd">            The prefix for all PVs</span>
-<span class="sd">        macros : dict, optional</span>
-<span class="sd">            Macro dictionary for PVs</span>
-<span class="sd">        attr_separator : str, optional</span>
-<span class="sd">            String separator between {prefix} and {attribute} for generated PV</span>
-<span class="sd">            names.</span>
-<span class="sd">        doc : str, optional</span>
-<span class="sd">            Docstring</span>
-<span class="sd">        &#39;&#39;&#39;</span>
-
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">,</span> <span class="n">macros</span><span class="o">=</span><span class="n">macros</span><span class="p">,</span>
                          <span class="n">attr_separator</span><span class="o">=</span><span class="n">attr_separator</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="n">doc</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">default_retval</span> <span class="o">=</span> <span class="n">default</span>
@@ -1297,7 +1500,7 @@
 
 
 <span class="k">class</span> <span class="nc">PVGroup</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">PVGroupMeta</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
+    <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class which groups a set of PVs for a high-level caproto server</span>
 
 <span class="sd">    Parameters</span>
@@ -1313,7 +1516,7 @@
 <span class="sd">    states : dict, optional</span>
 <span class="sd">        A dictionary of states used for channel filtering. See</span>
 <span class="sd">        https://epics.anl.gov/base/R3-15/5-docs/filters.html</span>
-<span class="sd">    &#39;&#39;&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">type_map</span> <span class="o">=</span> <span class="p">{</span>
         <span class="nb">str</span><span class="p">:</span> <span class="n">PvpropertyChar</span><span class="p">,</span>
