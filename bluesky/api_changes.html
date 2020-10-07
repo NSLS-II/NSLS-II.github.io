@@ -565,13 +565,13 @@ the bottom of <code class="docutils literal notranslate"><span class="pre">RunEn
 <a class="reference internal" href="generated/bluesky.run_engine.RunEngine.request_pause.html#bluesky.run_engine.RunEngine.request_pause" title="bluesky.run_engine.RunEngine.request_pause"><code class="xref py py-meth docutils literal notranslate"><span class="pre">request_pause()</span></code></a> to un-block the main thread and return
 control to the user terminal.  Now we must find an alternative way to achieve
 this effect.</p>
-<p>There is a a <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a> on the <a class="reference internal" href="generated/bluesky.run_engine.RunEngine.html#bluesky.run_engine.RunEngine" title="bluesky.run_engine.RunEngine"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunEngine</span></code></a> that
+<p>There is a a <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a> on the <a class="reference internal" href="generated/bluesky.run_engine.RunEngine.html#bluesky.run_engine.RunEngine" title="bluesky.run_engine.RunEngine"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunEngine</span></code></a> that
 will be set when the task for <code class="docutils literal notranslate"><span class="pre">RunEngine._run</span></code> in completed,
 however we can not simple wait on that event as that would again cause the Qt
 windows to freeze.  We also do not want to bake a Matplotlib / Qt dependency
 directly into the <a class="reference internal" href="generated/bluesky.run_engine.RunEngine.html#bluesky.run_engine.RunEngine" title="bluesky.run_engine.RunEngine"><code class="xref py py-class docutils literal notranslate"><span class="pre">RunEngine</span></code></a> so we added a hook, set at init
 time, for an object expected to implement the method <code class="docutils literal notranslate"><span class="pre">block(event)</span></code>.
-While the RunEngine executes a plan, it is passed the <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a>
+While the RunEngine executes a plan, it is passed the <a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Event" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code></a>
 and is responsible for blocking until the Event is set.  This function can do
 other things (such as run the Qt event loop) during that time.  The required
 signature is</p>
@@ -588,7 +588,7 @@ the case of Matplotlib not being imported.</p>
 result in re-using the coroutines passed through.  This has always
 been broken, but due to the way were stopping the event loop to pause
 the scan it was passing tests.</p>
-<p>Instead of directly passing the values passed into <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait" title="(in Python v3.8)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.wait()</span></code></a>, we
+<p>Instead of directly passing the values passed into <a class="reference external" href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait" title="(in Python v3.9)"><code class="xref py py-func docutils literal notranslate"><span class="pre">asyncio.wait()</span></code></a>, we
 now expect that the iterable passed in is callables with the signature:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">fut_fac</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">awaitable</span><span class="p">:</span>
     <span class="s1">&#39;This must work multiple times&#39;</span>
