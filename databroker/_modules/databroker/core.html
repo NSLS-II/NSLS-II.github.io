@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.1.0.post16+gf6806ec documentation</title>
+  <title>databroker.core &mdash; databroker 1.1.0.post23+g14a27d5 documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                1.1.0.post16+gf6806ec
+                1.1.0.post23+g14a27d5
               </div>
             
           
@@ -195,6 +195,7 @@
 <span class="kn">from</span> <span class="nn">.intake_xarray_core.base</span> <span class="kn">import</span> <span class="n">DataSourceMixin</span>
 <span class="kn">from</span> <span class="nn">.intake_xarray_core.xarray_container</span> <span class="kn">import</span> <span class="n">RemoteXarray</span>
 <span class="kn">from</span> <span class="nn">.utils</span> <span class="kn">import</span> <span class="n">LazyMap</span>
+<span class="kn">from</span> <span class="nn">bluesky_live.conversion</span> <span class="kn">import</span> <span class="n">documents_to_xarray</span><span class="p">,</span> <span class="n">documents_to_xarray_config</span>
 <span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">deque</span><span class="p">,</span> <span class="n">OrderedDict</span>
 <span class="kn">from</span> <span class="nn">dask.base</span> <span class="kn">import</span> <span class="n">normalize_token</span>
 
@@ -776,171 +777,6 @@
         <span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_documents_to_xarray</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start_doc</span><span class="p">,</span> <span class="n">stop_doc</span><span class="p">,</span> <span class="n">descriptor_docs</span><span class="p">,</span>
-                         <span class="n">get_event_pages</span><span class="p">,</span> <span class="n">filler</span><span class="p">,</span> <span class="n">get_resource</span><span class="p">,</span>
-                         <span class="n">lookup_resource_for_datum</span><span class="p">,</span> <span class="n">get_datum_pages</span><span class="p">,</span>
-                         <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Represent the data in one Event stream as an xarray.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    start_doc: dict</span>
-<span class="sd">        RunStart Document</span>
-<span class="sd">    stop_doc : dict</span>
-<span class="sd">        RunStop Document</span>
-<span class="sd">    descriptor_docs : list</span>
-<span class="sd">        EventDescriptor Documents</span>
-<span class="sd">    filler : event_model.Filler</span>
-<span class="sd">    get_resource : callable</span>
-<span class="sd">        Expected signature ``get_resource(resource_uid) -&gt; Resource``</span>
-<span class="sd">    lookup_resource_for_datum : callable</span>
-<span class="sd">        Expected signature ``lookup_resource_for_datum(datum_id) -&gt; resource_uid``</span>
-<span class="sd">    get_datum_pages : callable</span>
-<span class="sd">        Expected signature ``get_datum_pages(resource_uid) -&gt; generator``</span>
-<span class="sd">        where ``generator`` yields datum_page documents</span>
-<span class="sd">    get_event_pages : callable</span>
-<span class="sd">        Expected signature ``get_event_pages(descriptor_uid) -&gt; generator``</span>
-<span class="sd">        where ``generator`` yields event_page documents</span>
-<span class="sd">    include : list, optional</span>
-<span class="sd">        Fields (&#39;data keys&#39;) to include. By default all are included. This</span>
-<span class="sd">        parameter is mutually exclusive with ``exclude``.</span>
-<span class="sd">    exclude : list, optional</span>
-<span class="sd">        Fields (&#39;data keys&#39;) to exclude. By default none are excluded. This</span>
-<span class="sd">        parameter is mutually exclusive with ``include``.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    dataset : xarray.Dataset</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="n">include</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">include</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="n">exclude</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">exclude</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="n">include</span> <span class="ow">and</span> <span class="n">exclude</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-            <span class="s2">&quot;The parameters `include` and `exclude` are mutually exclusive.&quot;</span><span class="p">)</span>
-    <span class="c1"># Data keys must not change within one stream, so we can safely sample</span>
-    <span class="c1"># just the first Event Descriptor.</span>
-    <span class="k">if</span> <span class="n">descriptor_docs</span><span class="p">:</span>
-        <span class="n">data_keys</span> <span class="o">=</span> <span class="n">descriptor_docs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">include</span><span class="p">:</span>
-            <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">include</span><span class="p">))</span>
-        <span class="k">elif</span> <span class="n">exclude</span><span class="p">:</span>
-            <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">exclude</span><span class="p">))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data_keys</span><span class="p">)</span>
-
-    <span class="c1"># Collect a Dataset for each descriptor. Merge at the end.</span>
-    <span class="n">datasets</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">dim_counter</span> <span class="o">=</span> <span class="n">itertools</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
-    <span class="n">event_dim_labels</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="n">config_dim_labels</span> <span class="o">=</span> <span class="p">{}</span>
-    <span class="k">for</span> <span class="n">descriptor</span> <span class="ow">in</span> <span class="n">descriptor_docs</span><span class="p">:</span>
-        <span class="n">events</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">_flatten_event_page_gen</span><span class="p">(</span><span class="n">get_event_pages</span><span class="p">(</span><span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">])))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">events</span><span class="p">:</span>
-            <span class="k">continue</span>
-        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;external&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">):</span>
-            <span class="n">filler</span><span class="p">(</span><span class="s1">&#39;descriptor&#39;</span><span class="p">,</span> <span class="n">descriptor</span><span class="p">)</span>
-            <span class="n">filled_events</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">events</span><span class="p">:</span>
-                <span class="n">filled_event</span> <span class="o">=</span> <span class="n">_fill</span><span class="p">(</span>
-                    <span class="n">filler</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">lookup_resource_for_datum</span><span class="p">,</span> <span class="n">get_resource</span><span class="p">,</span>
-                    <span class="n">get_datum_pages</span><span class="p">)</span>
-                <span class="n">filled_events</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filled_event</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">filled_events</span> <span class="o">=</span> <span class="n">events</span>
-        <span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
-        <span class="n">seq_nums</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
-        <span class="n">uids</span> <span class="o">=</span> <span class="p">[</span><span class="n">ev</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">events</span><span class="p">]</span>
-        <span class="n">data_table</span> <span class="o">=</span> <span class="n">_transpose</span><span class="p">(</span><span class="n">filled_events</span><span class="p">,</span> <span class="n">keys</span><span class="p">,</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
-        <span class="c1"># external_keys = [k for k in data_keys if &#39;external&#39; in data_keys[k]]</span>
-
-        <span class="c1"># Collect a DataArray for each field in Event, each field in</span>
-        <span class="c1"># configuration, and &#39;seq_num&#39;. The Event &#39;time&#39; will be the</span>
-        <span class="c1"># default coordinate.</span>
-        <span class="n">data_arrays</span> <span class="o">=</span> <span class="p">{}</span>
-
-        <span class="c1"># Make DataArrays for Event data.</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
-            <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="c1"># if the EventDescriptor doesn&#39;t provide names for the</span>
-            <span class="c1"># dimensions (it&#39;s optional) use the same default dimension</span>
-            <span class="c1"># names that xarray would.</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
-            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span>
-                <span class="c1"># Reuse dim labels.</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">dims</span> <span class="o">=</span> <span class="n">event_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
-                    <span class="n">event_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dims</span>
-            <span class="n">data_arrays</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-                <span class="n">data</span><span class="o">=</span><span class="n">data_table</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
-                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">dims</span><span class="p">,</span>
-                <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
-                <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
-
-        <span class="c1"># Make DataArrays for configuration data.</span>
-        <span class="k">for</span> <span class="n">object_name</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;configuration&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">data_keys</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">]</span>
-            <span class="c1"># For configuration, label the dimension specially to</span>
-            <span class="c1"># avoid key collisions.</span>
-            <span class="n">scoped_data_keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">object_name</span><span class="si">}</span><span class="s1">:</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">&#39;</span>
-                                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">}</span>
-            <span class="k">if</span> <span class="n">include</span><span class="p">:</span>
-                <span class="n">keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">scoped_data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                        <span class="k">if</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">include</span><span class="p">}</span>
-            <span class="k">elif</span> <span class="n">exclude</span><span class="p">:</span>
-                <span class="n">keys</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">scoped_data_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-                        <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">include</span><span class="p">}</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">keys</span> <span class="o">=</span> <span class="n">scoped_data_keys</span>
-            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">scoped_key</span> <span class="ow">in</span> <span class="n">keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="n">field_metadata</span> <span class="o">=</span> <span class="n">data_keys</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span>
-                <span class="c1"># if the EventDescriptor doesn&#39;t provide names for the</span>
-                <span class="c1"># dimensions (it&#39;s optional) use the same default dimension</span>
-                <span class="c1"># names that xarray would.</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">field_metadata</span><span class="p">[</span><span class="s1">&#39;dims&#39;</span><span class="p">])</span>
-                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">dims</span> <span class="o">=</span> <span class="n">config_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-                        <span class="n">dims</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;dim_</span><span class="si">{</span><span class="nb">next</span><span class="p">(</span><span class="n">dim_counter</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
-                        <span class="n">config_dim_labels</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">dims</span>
-                <span class="n">data_arrays</span><span class="p">[</span><span class="n">scoped_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-                    <span class="c1"># TODO Once we know we have one Event Descriptor</span>
-                    <span class="c1"># per stream we can be more efficient about this.</span>
-                    <span class="n">data</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">],</span>
-                                    <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">),)</span> <span class="o">+</span> <span class="n">ndim</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">),</span>
-                    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">dims</span><span class="p">,</span>
-                    <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
-                    <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
-
-        <span class="c1"># Finally, make DataArrays for &#39;seq_num&#39; and &#39;uid&#39;.</span>
-        <span class="n">data_arrays</span><span class="p">[</span><span class="s1">&#39;seq_num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-            <span class="n">data</span><span class="o">=</span><span class="n">seq_nums</span><span class="p">,</span>
-            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,),</span>
-            <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
-            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;seq_num&#39;</span><span class="p">)</span>
-        <span class="n">data_arrays</span><span class="p">[</span><span class="s1">&#39;uid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xarray</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
-            <span class="n">data</span><span class="o">=</span><span class="n">uids</span><span class="p">,</span>
-            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">,),</span>
-            <span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">times</span><span class="p">},</span>
-            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;uid&#39;</span><span class="p">)</span>
-
-        <span class="n">datasets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xarray</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">data_vars</span><span class="o">=</span><span class="n">data_arrays</span><span class="p">))</span>
-    <span class="c1"># Merge Datasets from all Event Descriptors into one representing the</span>
-    <span class="c1"># whole stream. (In the future we may simplify to one Event Descriptor</span>
-    <span class="c1"># per stream, but as of this writing we must account for the</span>
-    <span class="c1"># possibility of multiple.)</span>
-    <span class="k">return</span> <span class="n">xarray</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
-
-
 <span class="k">def</span> <span class="nf">_canonical</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">,</span> <span class="n">entries</span><span class="p">,</span> <span class="n">fill</span><span class="p">,</span> <span class="n">strict_order</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Yields documents from this Run in chronological order.</span>
@@ -1504,6 +1340,11 @@
 <span class="sd">    exclude : list, optional</span>
 <span class="sd">        Fields (&#39;data keys&#39;) to exclude. By default none are excluded. This</span>
 <span class="sd">        parameter is mutually exclusive with ``include``.</span>
+<span class="sd">    sub_dict : {&quot;data&quot;, &quot;timestamps&quot;}, optional</span>
+<span class="sd">        Which sub-dict in the EventPage to use</span>
+<span class="sd">    configuration_for : str</span>
+<span class="sd">        The name of an object (e.g. device) whose configuration we want to</span>
+<span class="sd">        read.</span>
 <span class="sd">    **kwargs :</span>
 <span class="sd">        Additional keyword arguments are passed through to the base class.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -1555,6 +1396,8 @@
                  <span class="n">entry</span><span class="p">,</span>
                  <span class="n">include</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">exclude</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">sub_dict</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">,</span>
+                 <span class="n">configuration_for</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_stream_name</span> <span class="o">=</span> <span class="n">stream_name</span>
@@ -1572,7 +1415,16 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># set by _open_dataset below</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="n">include</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="n">exclude</span>
+        <span class="k">if</span> <span class="n">sub_dict</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamps&quot;</span><span class="p">}:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The parameter &#39;sub_dict&#39; controls where the xarray should &quot;</span>
+                <span class="s2">&quot;contain the Events&#39; &#39;data&#39; (common case) or reading-specific &quot;</span>
+                <span class="s2">&quot;&#39;timestamps&#39; (sometimes needed for hardware debugging). It &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;must be one of those two strings, not </span><span class="si">{</span><span class="n">sub_dict</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_configuration_for</span> <span class="o">=</span> <span class="n">configuration_for</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sub_dict</span> <span class="o">=</span> <span class="n">sub_dict</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_partitions</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__entry</span> <span class="o">=</span> <span class="n">entry</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="c1"># turn off any attempts at persistence</span>
@@ -1623,17 +1475,33 @@
 
     <span class="k">def</span> <span class="nf">_open_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_load_header</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">_documents_to_xarray</span><span class="p">(</span>
-            <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
-            <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
-            <span class="n">descriptor_docs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
-            <span class="n">get_event_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">,</span>
-            <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;delayed&#39;</span><span class="p">],</span>
-            <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
-            <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
-            <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
-            <span class="n">include</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span>
-            <span class="n">exclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configuration_for</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray_config</span><span class="p">(</span>
+                <span class="n">object_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_configuration_for</span><span class="p">,</span>
+                <span class="n">sub_dict</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_dict</span><span class="p">,</span>
+                <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
+                <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
+                <span class="n">descriptor_docs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
+                <span class="n">get_event_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">,</span>
+                <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;delayed&#39;</span><span class="p">],</span>
+                <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
+                <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
+                <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
+                <span class="n">include</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span>
+                <span class="n">exclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">documents_to_xarray</span><span class="p">(</span>
+                <span class="n">sub_dict</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_sub_dict</span><span class="p">,</span>
+                <span class="n">start_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_start_doc</span><span class="p">,</span>
+                <span class="n">stop_doc</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_stop_doc</span><span class="p">,</span>
+                <span class="n">descriptor_docs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">,</span>
+                <span class="n">get_event_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_event_pages</span><span class="p">,</span>
+                <span class="n">filler</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fillers</span><span class="p">[</span><span class="s1">&#39;delayed&#39;</span><span class="p">],</span>
+                <span class="n">get_resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_resource</span><span class="p">,</span>
+                <span class="n">lookup_resource_for_datum</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_lookup_resource_for_datum</span><span class="p">,</span>
+                <span class="n">get_datum_pages</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_datum_pages</span><span class="p">,</span>
+                <span class="n">include</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span>
+                <span class="n">exclude</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">)</span>
 
 <div class="viewcode-block" id="BlueskyEventStream.read"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyEventStream.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -1733,7 +1601,42 @@
         <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">container</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">get_partition</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">http_args</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_source_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">container</span><span class="p">,</span>
-            <span class="n">partition</span><span class="p">)</span></div>
+            <span class="n">partition</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
+            <span class="n">objects</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;object_keys&quot;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">Catalog</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+            <span class="p">{</span><span class="n">object_name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">configure_new</span><span class="p">(</span><span class="n">configuration_for</span><span class="o">=</span><span class="n">object_name</span><span class="p">)</span>
+             <span class="k">for</span> <span class="n">object_name</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">config_timestamps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">objects</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_descriptors</span><span class="p">:</span>
+            <span class="n">objects</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;object_keys&quot;</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="n">intake</span><span class="o">.</span><span class="n">catalog</span><span class="o">.</span><span class="n">Catalog</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span>
+            <span class="p">{</span><span class="n">object_name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">configure_new</span><span class="p">(</span><span class="n">configuration_for</span><span class="o">=</span><span class="n">object_name</span><span class="p">,</span>
+                                             <span class="n">sub_dict</span><span class="o">=</span><span class="s2">&quot;timestamps&quot;</span><span class="p">)</span>
+             <span class="k">for</span> <span class="n">object_name</span> <span class="ow">in</span> <span class="n">objects</span><span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">timestamps</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">configure_new</span><span class="p">(</span><span class="n">sub_dict</span><span class="o">=</span><span class="s2">&quot;timestamps&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BlueskyEventStream.configure_new"><a class="viewcode-back" href="../../v2/developer/reference.html#databroker.core.BlueskyEventStream.configure_new">[docs]</a>    <span class="k">def</span> <span class="nf">configure_new</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return self or, if args are provided, some new instance of type(self).</span>
+
+<span class="sd">        This is here so that the user does not have to remember whether a given</span>
+<span class="sd">        variable is a BlueskyRun or an *Entry* with a Bluesky Run. In either</span>
+<span class="sd">        case, ``obj()`` will return a BlueskyRun.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div></div>
 
 
 <span class="k">class</span> <span class="nc">RemoteBlueskyEventStream</span><span class="p">(</span><span class="n">RemoteXarray</span><span class="p">):</span>
