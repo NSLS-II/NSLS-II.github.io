@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>databroker.core &mdash; databroker 1.1.0.post23+g14a27d5 documentation</title>
+  <title>databroker.core &mdash; databroker 1.1.0.post27+gb12ce7b documentation</title>
   
 
   
@@ -60,7 +60,7 @@
             
             
               <div class="version">
-                1.1.0.post23+g14a27d5
+                1.1.0.post27+gb12ce7b
               </div>
             
           
@@ -2212,7 +2212,7 @@
         <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
             <span class="n">descriptor</span> <span class="o">=</span> <span class="n">filler_state</span><span class="o">.</span><span class="n">descriptor</span>
             <span class="n">key</span> <span class="o">=</span> <span class="n">filler_state</span><span class="o">.</span><span class="n">key</span>
-            <span class="n">shape</span> <span class="o">=</span> <span class="n">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">filler_state</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
             <span class="c1"># there is an un-determined size (-1) in the shape, abandon</span>
             <span class="c1"># lazy as it will not work</span>
             <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">s</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">):</span>
@@ -2229,37 +2229,61 @@
 <span class="c1"># By adding it via plugin, we avoid adding a dask.array dependency to</span>
 <span class="c1"># event-model and we keep the fiddly hacks into extract_shape here in</span>
 <span class="c1"># databroker, a faster-moving and less fundamental library than event-model.</span>
-<span class="n">event_model</span><span class="o">.</span><span class="n">register_coersion</span><span class="p">(</span><span class="s1">&#39;delayed&#39;</span><span class="p">,</span> <span class="n">coerce_dask</span><span class="p">)</span>
+<span class="n">event_model</span><span class="o">.</span><span class="n">register_coercion</span><span class="p">(</span><span class="s1">&#39;delayed&#39;</span><span class="p">,</span> <span class="n">coerce_dask</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">extract_shape</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Work around bug in https://github.com/bluesky/ophyd/pull/746</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># Ideally this code would just be</span>
-    <span class="c1"># descriptor[&#39;data_keys&#39;][key][&#39;shape&#39;]</span>
-    <span class="c1"># but we have to do some heuristics to make up for errors in the reporting.</span>
+<span class="sd">    Patch up misreported &#39;shape&#39; metadata in old documents.</span>
 
-    <span class="c1"># Broken ophyd reports (x, y, 0). We want (num_images, y, x).</span>
+<span class="sd">    This uses heuristcs to guess if the shape looks wrong and determine the</span>
+<span class="sd">    right one. Once historical data has been fixed, this function will be</span>
+<span class="sd">    reused to::</span>
+
+<span class="sd">    return descriptor[&#39;data_keys&#39;][key][&#39;shape&#39;]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">data_key</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">resource</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;frame_per_point&quot;</span> <span class="ow">in</span> <span class="n">resource</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;resource_kwargs&quot;</span><span class="p">,</span> <span class="p">{}):</span>
+            <span class="c1"># This is a strong signal that the correct num_images value is here.</span>
+            <span class="n">num_images</span> <span class="o">=</span> <span class="n">resource</span><span class="p">[</span><span class="s2">&quot;resource_kwargs&quot;</span><span class="p">][</span><span class="s2">&quot;frame_per_point&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Otherwise try to find something ending in &#39;num_images&#39; in the</span>
+            <span class="c1"># configuration dict associated with this device.</span>
+            <span class="n">object_keys</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_keys&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">for</span> <span class="n">object_name</span><span class="p">,</span> <span class="n">data_keys</span> <span class="ow">in</span> <span class="n">object_keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">:</span>
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not figure out shape of </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;configuration&#39;</span><span class="p">][</span><span class="n">object_name</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;num_images&#39;</span><span class="p">):</span>
+                    <span class="n">num_images</span> <span class="o">=</span> <span class="n">v</span>
+                    <span class="k">break</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">num_images</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="c1"># Work around bug in https://github.com/bluesky/ophyd/pull/746</span>
+    <span class="c1"># Broken ophyd reports (x, y, 0). We want (num_images, y, x).</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">object_keys</span> <span class="o">=</span> <span class="n">descriptor</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;object_keys&#39;</span><span class="p">,</span> <span class="p">{})</span>
-        <span class="k">for</span> <span class="n">object_name</span><span class="p">,</span> <span class="n">data_keys</span> <span class="ow">in</span> <span class="n">object_keys</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data_keys</span><span class="p">:</span>
-                <span class="k">break</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not figure out shape of </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;configuration&#39;</span><span class="p">][</span><span class="n">object_name</span><span class="p">][</span><span class="s1">&#39;data&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;num_images&#39;</span><span class="p">):</span>
-                <span class="n">num_images</span> <span class="o">=</span> <span class="n">v</span>
-                <span class="k">break</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">num_images</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
         <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">num_images</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">shape</span> <span class="o">=</span> <span class="n">descriptor</span><span class="p">[</span><span class="s1">&#39;data_keys&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">shape</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">data_key</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">num_images</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Along this path, we have no way to make dask work. The calling code</span>
+        <span class="c1"># will fall back to numpy.</span>
+        <span class="k">return</span> <span class="n">shape</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Along this path, we have inferred that a -1 in here is num_images,</span>
+        <span class="c1"># extracted based on inspecting the resource or the descriptor,</span>
+        <span class="c1"># and we should replace -1 with that.</span>
+        <span class="n">shape_</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">shape_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">num_images</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">shape_</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">shape_</span>
 
 
 <span class="k">def</span> <span class="nf">extract_dtype</span><span class="p">(</span><span class="n">descriptor</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
