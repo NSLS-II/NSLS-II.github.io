@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>How Bluesky Interfaces with Hardware &mdash; bluesky 1.6.6.post30+g43efe51 documentation</title>
+  <title>How Bluesky Interfaces with Hardware &mdash; bluesky 1.6.7 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                1.6.6.post30+g43efe51
+                1.6.7
               </div>
             
           
@@ -114,7 +114,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#specification">Specification</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#status-object">Status object</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#readable-device">Readable Device</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#settable-movable-device">Settable (Movable) Device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#movable-or-settable-device">Movable (or “Settable”)  Device</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#flyer-interface">“Flyer” Interface</a></li>
 </ul>
 </li>
@@ -448,15 +448,24 @@ resumes after a pause.</p>
 </dd></dl>
 
 </div>
-<div class="section" id="settable-movable-device">
-<h3>Settable (Movable) Device<a class="headerlink" href="#settable-movable-device" title="Permalink to this headline">¶</a></h3>
-<p>The interface of a settable device extends the interface of a readable device
-with the following additional methods and attributes.
-Settable device objects must pass <code class="docutils literal notranslate"><span class="pre">bluesky.utils.is_movable(obj)</span></code>.</p>
+<div class="section" id="movable-or-settable-device">
+<h3>Movable (or “Settable”)  Device<a class="headerlink" href="#movable-or-settable-device" title="Permalink to this headline">¶</a></h3>
+<p>The interface of a movable device extends the interface of a readable device
+with the following additional methods and attributes. The utility function
+<code class="xref py py-func docutils literal notranslate"><span class="pre">bluesky.utils.is_movable()</span></code> can be used to check if an object meets the
+expected interface of a Movable.</p>
 <dl class="py class">
 <dt>
-<code class="sig-name descname">SettableDevice:</code></dt>
+<code class="sig-name descname">MovableDevice:</code></dt>
 <dd><dl class="py method">
+<dt id="set">
+<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#set" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> that is marked done when the device is done
+moving. This is the only <em>required</em> method that the Movable interace
+adds to the  Readable one.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt id="stop">
 <code class="sig-name descname">stop</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">success</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#stop" title="Permalink to this definition">¶</a></dt>
 <dd><p>Safely stop a device that may or may not be in motion.
@@ -464,16 +473,21 @@ The argument <code class="docutils literal notranslate"><span class="pre">succes
 When <code class="docutils literal notranslate"><span class="pre">success</span></code> is true, bluesky is stopping the device as planned
 and the device should stop “normally”.
 When <code class="docutils literal notranslate"><span class="pre">success</span></code> is false, something has gone wrong and the device
-may wish to take defensive action to make itself safe.
-Optional: devices that cannot be stopped should not implement this
+may wish to take defensive action to make itself safe.</p>
+<p>Optional: devices that cannot be stopped should not implement this
 method.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt id="set">
-<code class="sig-name descname">set</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#set" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a <code class="docutils literal notranslate"><span class="pre">Status</span></code> that is marked done when the device is done
-moving.</p>
+<dt id="check_value">
+<code class="sig-name descname">check_value</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#check_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>This should accept the same arguments as <code class="docutils literal notranslate"><span class="pre">set</span></code>. It should raise an
+Exception if the argument represent an illegal setting — e.g. a
+position that would move a motor outside its limits or a temperature
+controller outside of its settable range.</p>
+<p>Optional: If this method is not present, simulators that check limits
+such as <a class="reference internal" href="generated/bluesky.simulators.check_limits.html#bluesky.simulators.check_limits" title="bluesky.simulators.check_limits"><code class="xref py py-func docutils literal notranslate"><span class="pre">bluesky.simulators.check_limits()</span></code></a> may issue a warning but
+should assume that all values are legal.</p>
 </dd></dl>
 
 <dl class="py attribute">
@@ -481,8 +495,8 @@ moving.</p>
 <code class="sig-name descname">position</code><a class="headerlink" href="#position" title="Permalink to this definition">¶</a></dt>
 <dd><p>A heuristic that describes the current position of a device as a
 single scalar, as opposed to the potentially multi-valued description
-provided by <code class="docutils literal notranslate"><span class="pre">read()</span></code>.
-Optional: bluesky itself does not use the position attribute, but other
+provided by <code class="docutils literal notranslate"><span class="pre">read()</span></code>.</p>
+<p>Optional: bluesky itself does not use the position attribute, but other
 parts of the ecosystem might.
 Developers are encouraged to implement this attribute where possible.</p>
 </dd></dl>
@@ -493,7 +507,7 @@ Developers are encouraged to implement this attribute where possible.</p>
 <div class="section" id="flyer-interface">
 <h3>“Flyer” Interface<a class="headerlink" href="#flyer-interface" title="Permalink to this headline">¶</a></h3>
 <p><em>For context on what we mean by “flyer”, refer to the section on :doc:`async`.</em></p>
-<p>The interace of a “flyable” device is separate from the interface of a readable
+<p>The interface of a “flyable” device is separate from the interface of a readable
 or settable device, though there is some overlap.</p>
 <dl class="py class">
 <dt>
