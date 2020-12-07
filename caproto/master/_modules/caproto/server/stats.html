@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.server.stats &mdash; caproto 0.6.0+126.g0ef3919e documentation</title>
+  <title>caproto.server.stats &mdash; caproto 0.6.0+128.g7e994408 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.6.0+126.g0ef3919e
+                0.6.0+128.g7e994408
               </div>
             
           
@@ -626,14 +626,14 @@
 <span class="n">TRACEMALLOC_FILTERS</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;&lt;frozen importlib._bootstrap&gt;&quot;</span><span class="p">),</span>
     <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;&lt;unknown&gt;&quot;</span><span class="p">),</span>
-    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;&lt;tracemalloc&gt;&quot;</span><span class="p">),</span>
+    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="vm">__file__</span><span class="p">),</span>
 <span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">get_top_allocation_info</span><span class="p">(</span><span class="n">snapshot</span><span class="p">:</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Snapshot</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
                             <span class="n">key_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;lineno&#39;</span><span class="p">,</span>
                             <span class="n">cumulative</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-                            <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+                            <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
                             <span class="n">filters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                             <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -680,12 +680,34 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A helper which quickly allows for tracing memory usage and allocations on a</span>
 <span class="sd">    caproto server instance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    prefix : str</span>
+<span class="sd">        Prefix for all PVs in the group</span>
+<span class="sd">    macros : dict, optional</span>
+<span class="sd">        Dictionary of macro name to value</span>
+<span class="sd">    parent : PVGroup, optional</span>
+<span class="sd">        Parent PVGroup</span>
+<span class="sd">    name : str, optional</span>
+<span class="sd">        Name for the group, defaults to the class name</span>
+<span class="sd">    states : dict, optional</span>
+<span class="sd">        A dictionary of states used for channel filtering. See</span>
+<span class="sd">        https://epics.anl.gov/base/R3-15/5-docs/filters.html</span>
+<span class="sd">    filters : list of tracemalloc.Filter, optional</span>
+<span class="sd">        Filters to apply to the snapshot.  Defaults to TRACEMALLOC_FILTERS.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">_old_snapshot</span><span class="p">:</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">Snapshot</span>
+    <span class="n">filters</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">]</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span>
+                 <span class="n">filters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">tracemalloc</span><span class="o">.</span><span class="n">Filter</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_old_snapshot</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">filters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">filters</span> <span class="o">=</span> <span class="n">TRACEMALLOC_FILTERS</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filters</span> <span class="o">=</span> <span class="n">filters</span>
 
     <span class="n">enable_tracing</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
         <span class="n">name</span><span class="o">=</span><span class="s1">&#39;EnableTracing&#39;</span><span class="p">,</span>
@@ -714,6 +736,14 @@
         <span class="n">record</span><span class="o">=</span><span class="s1">&#39;waveform&#39;</span><span class="p">,</span>
     <span class="p">)</span>
 
+    <span class="n">trace_count</span> <span class="o">=</span> <span class="n">pvproperty</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;TraceCount&#39;</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">read_only</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">doc</span><span class="o">=</span><span class="s1">&#39;Number of top allocations to view&#39;</span><span class="p">,</span>
+        <span class="n">record</span><span class="o">=</span><span class="s1">&#39;ao&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+
     <span class="nd">@enable_tracing</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">period</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
     <span class="k">async</span> <span class="k">def</span> <span class="nf">enable_tracing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_tracing</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;Disable&#39;</span><span class="p">:</span>
@@ -726,21 +756,23 @@
             <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 
         <span class="n">snapshot</span> <span class="o">=</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">take_snapshot</span><span class="p">()</span>
-
-        <span class="n">top_lines</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">get_top_allocation_info</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>
+        <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trace_count</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">top_lines</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">get_top_allocation_info</span><span class="p">(</span><span class="n">snapshot</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">count</span><span class="p">)</span>
 
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">top_allocations</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
             <span class="n">value</span><span class="o">=</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">top_lines</span><span class="p">)[:</span><span class="bp">self</span><span class="o">.</span><span class="n">top_allocations</span><span class="o">.</span><span class="n">max_length</span><span class="p">]</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_old_snapshot</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">comparison</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">compare_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_old_snapshot</span><span class="p">,</span> <span class="s1">&#39;lineno&#39;</span><span class="p">)</span>
+            <span class="n">comparison</span> <span class="o">=</span> <span class="n">snapshot</span><span class="o">.</span><span class="n">filter_traces</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">filters</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">compare_to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_old_snapshot</span><span class="p">,</span> <span class="s1">&#39;lineno&#39;</span><span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;** </span><span class="si">%s</span><span class="s1"> **&#39;</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span>
-            <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">comparison</span><span class="p">[:</span><span class="mi">10</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">comparison</span><span class="p">[:</span><span class="n">count</span><span class="p">]:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span>
 
-            <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span> <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">comparison</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">stat</span><span class="p">)</span> <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="n">comparison</span><span class="p">[:</span><span class="n">count</span><span class="p">])</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">diff_results</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
                 <span class="n">value</span><span class="o">=</span><span class="n">status</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">diff_results</span><span class="o">.</span><span class="n">max_length</span><span class="p">]</span>
             <span class="p">)</span>
