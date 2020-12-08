@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>caproto.threading.client &mdash; caproto 0.6.0+133.g67516c6b documentation</title>
+  <title>caproto.threading.client &mdash; caproto 0.6.0+135.g9a77f866 documentation</title>
   
 
   
@@ -61,7 +61,7 @@
             
             
               <div class="version">
-                0.6.0+133.g67516c6b
+                0.6.0+135.g9a77f866
               </div>
             
           
@@ -1624,7 +1624,18 @@
                 <span class="n">event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
             <span class="n">callback</span> <span class="o">=</span> <span class="n">ioid_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;callback&#39;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">user_callback_executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">user_callback_executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">command</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dead</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                        <span class="c1"># if we are trying to process updates while</span>
+                        <span class="c1"># shutting down the submit will fail.  In that</span>
+                        <span class="c1"># case we should drop the exception on the</span>
+                        <span class="c1"># floor and move on</span>
+                        <span class="k">return</span>
+                    <span class="c1"># otherwise raise and let someone else deal with</span>
+                    <span class="c1"># the mess</span>
+                    <span class="k">raise</span>
 
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">ca</span><span class="o">.</span><span class="n">EventAddResponse</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
@@ -2255,10 +2266,17 @@
             <span class="k">if</span> <span class="n">callback</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb_id</span><span class="p">)</span>
                 <span class="k">continue</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">circuit_manager</span><span class="o">.</span><span class="n">user_callback_executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span>
-                <span class="n">callback</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">circuit_manager</span><span class="o">.</span><span class="n">user_callback_executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span>
+                    <span class="n">callback</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pv</span><span class="o">.</span><span class="n">circuit_manager</span><span class="o">.</span><span class="n">dead</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="c1"># if the circuit is dead, so is the executor forgive</span>
+                    <span class="c1"># and exit</span>
+                    <span class="k">return</span>
+                <span class="c1"># otherwise raise and let someone else deal with the</span>
+                <span class="c1"># mess</span>
+                <span class="k">raise</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">callback_lock</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">remove_id</span> <span class="ow">in</span> <span class="n">to_remove</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">remove_id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
