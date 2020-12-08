@@ -1,0 +1,790 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Input-Output Controllers (IOCs) &mdash; caproto 0.7.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script src="../_static/doctr-versions-menu.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="caproto.pva.ioc_examples.normative" href="generated/caproto.pva.ioc_examples.normative.html" />
+    <link rel="prev" title="Synchronous Client" href="clients.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> caproto
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.7.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Install Caproto</a></li>
+</ul>
+<p class="caption"><span class="caption-text">EPICS Clients and Servers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../clients.html">Clients</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../iocs.html">Input-Output Controllers (IOCs)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../records.html">Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../servers.html">Servers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../shark.html">Shark (pcap/tcpdump parsing)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../loggers.html">Logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookiecutter.html">IOC Template Cookiecutter</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../own_docs.html">Writing Your Own Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Channel Access Sans I/O</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Writing Your Own Channel Access Client</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">Core API Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">pvAccess</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clients.html">Synchronous Client</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Input-Output Controllers (IOCs)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#type-annotations">Type Annotations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#arrays">Arrays</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#specific-types">Specific Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unions-and-nested-types">Unions and Nested Types</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unsupported-types">Unsupported Types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pvagroup">PVAGroup</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pvaproperty">pvaproperty</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#handling-put">Handling put</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#handling-rpc-calls">Handling RPC calls</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#startup-and-shutdown-methods">Startup and shutdown methods</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#handling-authentication">Handling Authentication</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#asynclibrarylayer">AsyncLibraryLayer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-the-ioc-examples">Using the IOC Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#normative-types">Normative Types</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/caproto.pva.ioc_examples.normative.html">caproto.pva.ioc_examples.normative</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/caproto.pva.ioc_examples.normative.NormativeIOC.html">caproto.pva.ioc_examples.normative.NormativeIOC</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#groups">Groups</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="generated/caproto.pva.ioc_examples.group.html">caproto.pva.ioc_examples.group</a></li>
+<li class="toctree-l4"><a class="reference internal" href="generated/caproto.pva.ioc_examples.group.MyIOC.html">caproto.pva.ioc_examples.group.MyIOC</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">PVAccess API</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../protocol-compliance.html">Details of our Protocol Compliance for CA Nerds</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../references.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../release-notes.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../containers.html">Caproto-in-a-box</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">caproto</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Input-Output Controllers (IOCs)</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/pva/iocs.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="input-output-controllers-iocs">
+<h1>Input-Output Controllers (IOCs)<a class="headerlink" href="#input-output-controllers-iocs" title="Permalink to this headline">¶</a></h1>
+<p>In this section, we will review some of the example IOCs that are included with
+caproto, intended as demonstrations of what is possible.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Please note that this is preliminary API and may very likely change in
+future releases.</p>
+</div>
+<div class="section" id="type-annotations">
+<h2>Type Annotations<a class="headerlink" href="#type-annotations" title="Permalink to this headline">¶</a></h2>
+<p>Python type annotations are the primary method used to generate PVA-compatible
+data structures for usage in an IOC.</p>
+<p>This makes for reasonably compact and easy definitions of new types.  A simple
+example may be:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">info</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+<p>This creates a data structure named <code class="docutils literal notranslate"><span class="pre">MyData</span></code> with two fields <code class="docutils literal notranslate"><span class="pre">value</span></code>
+(containing an integer - <code class="docutils literal notranslate"><span class="pre">int64</span></code>) and <code class="docutils literal notranslate"><span class="pre">info</span></code> (containing a variable-length
+string).</p>
+<div class="section" id="arrays">
+<h3>Arrays<a class="headerlink" href="#arrays" title="Permalink to this headline">¶</a></h3>
+<p>Arrays can be specified using Python standard library annotations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">value_array</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">info</span><span class="p">:</span> <span class="nb">str</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="specific-types">
+<h3>Specific Types<a class="headerlink" href="#specific-types" title="Permalink to this headline">¶</a></h3>
+<p>Using the Python built-in types implies usage of the maximum supported
+compatible data type - that is, <code class="docutils literal notranslate"><span class="pre">int</span></code> implies a 64-bit signed integer,
+<code class="docutils literal notranslate"><span class="pre">float</span></code> implies a double (64-bit).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span>
+
+<span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">list_of_bytes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">pva</span><span class="o">.</span><span class="n">UInt8</span><span class="p">]</span>
+    <span class="n">list_of_int32</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">pva</span><span class="o">.</span><span class="n">Int32</span><span class="p">]</span>
+    <span class="n">float_value</span><span class="p">:</span> <span class="n">pva</span><span class="o">.</span><span class="n">Float32</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="unions-and-nested-types">
+<h3>Unions and Nested Types<a class="headerlink" href="#unions-and-nested-types" title="Permalink to this headline">¶</a></h3>
+<p>Nesting data types is supported, inside or outside of the class body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">NestedData</span><span class="p">:</span>
+    <span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+    <span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+        <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+        <span class="n">info</span><span class="p">:</span> <span class="nb">str</span>
+
+    <span class="n">my_data</span><span class="p">:</span> <span class="n">MyData</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+</pre></div>
+</div>
+<p>Basic support for union types is also present:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">to_form_a</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">more_perfect</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Alternatively:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">caproto</span> <span class="kn">import</span> <span class="n">pva</span>
+
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span><span class="p">(</span><span class="n">union</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">MyUnion</span><span class="p">:</span>
+    <span class="n">string_value</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">float_value</span><span class="p">:</span> <span class="nb">float</span>
+
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">to_form_a</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">more_perfect</span><span class="p">:</span> <span class="n">MyUnion</span>
+</pre></div>
+</div>
+<p>The key for the above is that only one value may be non-<code class="docutils literal notranslate"><span class="pre">None</span></code> for it to
+be selected automatically.</p>
+</div>
+<div class="section" id="unsupported-types">
+<h3>Unsupported Types<a class="headerlink" href="#unsupported-types" title="Permalink to this headline">¶</a></h3>
+<p>Some types are not yet supported, though they currently have annotations:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>BoundedString</p></li>
+<li><p>Float16</p></li>
+<li><p>Float128</p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+<div class="section" id="pvagroup">
+<h2>PVAGroup<a class="headerlink" href="#pvagroup" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While caproto-pva supports an “expert” (non-magical) method of writing
+IOCs, but these are considered advanced usage and are not documented here.
+An example of one may be found in the “advanced” example
+(<code class="xref py py-mod docutils literal notranslate"><span class="pre">caproto.pva.ioc_examples.advanced</span></code>)</p>
+</div>
+<p>To define an IOC, we first define a new <code class="xref py py-class docutils literal notranslate"><span class="pre">PVAGroup</span></code>
+subclass.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">pva</span><span class="o">.</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>There is no data contained in this just yet, so we need to add some
+<code class="xref py py-class docutils literal notranslate"><span class="pre">pvaproperty</span></code> attributes.  These act something like
+Python’s built-in <cite>property</cite> decorator.</p>
+<p>The following IOC class, upon instantiation, will generate one PV named
+<code class="docutils literal notranslate"><span class="pre">&quot;value&quot;</span></code> - not including a prefix - which contains an <code class="docutils literal notranslate"><span class="pre">NTScalar</span></code> floating
+point value:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">pva</span><span class="o">.</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">pva</span><span class="o">.</span><span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mf">1.234</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Data type support is not just limited to normative types.  One may create their
+own data type as described in <span class="target" id="id1">Type Annotations</span>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+
+
+<span class="nd">@pva</span><span class="o">.</span><span class="n">pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">info</span><span class="p">:</span> <span class="nb">str</span>
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">pva</span><span class="o">.</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">pva</span><span class="o">.</span><span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="s1">&#39;testing&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Adding a bit of boilerplate, any of the above IOCs can be run by simply
+executing the given Python source code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">pva</span><span class="o">.</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">pva</span><span class="o">.</span><span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mf">1.234</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">ioc_options</span><span class="p">,</span> <span class="n">run_options</span> <span class="o">=</span> <span class="n">ioc_arg_parser</span><span class="p">(</span>
+        <span class="n">default_prefix</span><span class="o">=</span><span class="s1">&#39;caproto:pva:&#39;</span><span class="p">,</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;A basic caproto-pva test server.&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">ioc</span> <span class="o">=</span> <span class="n">MyIOC</span><span class="p">(</span><span class="o">**</span><span class="n">ioc_options</span><span class="p">)</span>
+    <span class="n">run</span><span class="p">(</span><span class="n">ioc</span><span class="o">.</span><span class="n">pvdb</span><span class="p">,</span> <span class="o">**</span><span class="n">run_options</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The <code class="xref py py-func docutils literal notranslate"><span class="pre">ioc_arg_parser()</span></code> handles parsing arguments, and
+<code class="xref py py-func docutils literal notranslate"><span class="pre">run()</span></code> handles setting up the async library and booting the
+IOC.</p>
+<div class="section" id="pvaproperty">
+<h3>pvaproperty<a class="headerlink" href="#pvaproperty" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="handling-put">
+<h4>Handling put<a class="headerlink" href="#handling-put" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">pva</span><span class="o">.</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">pva</span><span class="o">.</span><span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mf">1.234</span><span class="p">)</span>
+
+    <span class="nd">@value</span><span class="o">.</span><span class="n">putter</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">update</span><span class="p">:</span> <span class="n">pva</span><span class="o">.</span><span class="n">WriteUpdate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Put handler.</span>
+
+<span class="sd">        Default handling: `update.accept()` (take everything)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>Key-based accepting and rejecting of values:</p>
+<ol class="arabic">
+<li><p><code class="docutils literal notranslate"><span class="pre">update.accept('value',</span> <span class="pre">'info')</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">update.reject('info')</span></code></p></li>
+<li><p>Checking if a key is included in an update, and updating based on that:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="s1">&#39;value&#39;</span> <span class="ow">in</span> <span class="n">update</span><span class="p">:</span>
+    <span class="n">instance</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">instance</span><span class="o">.</span><span class="n">value</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+<div class="section" id="handling-rpc-calls">
+<h4>Handling RPC calls<a class="headerlink" href="#handling-rpc-calls" title="Permalink to this headline">¶</a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">rpc</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">())</span>
+
+    <span class="nd">@rpc</span><span class="o">.</span><span class="n">call</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c1"># It&#39;s likely but not required that normative type stuff comes</span>
+        <span class="c1"># through ``data``.</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;RPC call data is&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Scheme:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">scheme</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Query:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">query</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="c1"># Echo back the query value, if available:</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">query</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="s1">&#39;1234&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">MyData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="startup-and-shutdown-methods">
+<h4>Startup and shutdown methods<a class="headerlink" href="#startup-and-shutdown-methods" title="Permalink to this headline">¶</a></h4>
+<p>When the server starts up, it can optionally call startup hooks for each
+pvaproperty.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">swap_a</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">swap_b</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+    <span class="nd">@swap_a</span><span class="o">.</span><span class="n">startup</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">swap_a</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">swap_a</span> <span class="k">as</span> <span class="n">a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">swap_b</span> <span class="k">as</span> <span class="n">b</span><span class="p">:</span>
+                <span class="c1"># Swap values</span>
+                <span class="n">a</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">value</span>
+
+            <span class="k">await</span> <span class="n">async_lib</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">async_lib</span></code> here is a shim that abstracts away the async library, whether
+it be asyncio, curio, trio, or something else.</p>
+<p>A shutdown hook has the same API and allows for resource cleanup prior to the
+process exiting.</p>
+</div>
+<div class="section" id="handling-authentication">
+<h4>Handling Authentication<a class="headerlink" href="#handling-authentication" title="Permalink to this headline">¶</a></h4>
+<p>This isn’t fully exposed yet in the pvaproperty API.</p>
+</div>
+</div>
+</div>
+<div class="section" id="asynclibrarylayer">
+<h2>AsyncLibraryLayer<a class="headerlink" href="#asynclibrarylayer" title="Permalink to this headline">¶</a></h2>
+<p>Frequently referred to as <code class="docutils literal notranslate"><span class="pre">async_lib</span></code> in <code class="docutils literal notranslate"><span class="pre">startup</span></code> hooks, the
+<code class="xref py py-class docutils literal notranslate"><span class="pre">AsyncLibraryLayer</span></code> class is a shim that abstracts away the async
+library, whether it be asyncio, curio, trio, or something else.</p>
+<p>Attributes guaranteed to exist are:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code> - the name of the asyncio library</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">library</span></code> - the library module itself (e.g., <code class="docutils literal notranslate"><span class="pre">asyncio</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ThreadsafeQueue</span></code> - a thread-safe queue with a common API</p></li>
+</ol>
+<p>Additionally, one may assume the <code class="docutils literal notranslate"><span class="pre">library.sleep</span></code> coroutine exists.</p>
+</div>
+<div class="section" id="using-the-ioc-examples">
+<h2>Using the IOC Examples<a class="headerlink" href="#using-the-ioc-examples" title="Permalink to this headline">¶</a></h2>
+<p>They can be started like so:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python -m caproto.pva.ioc_examples.normative
+<span class="o">[</span>I <span class="m">13</span>:02:01.350       server:  <span class="m">127</span><span class="o">]</span> Asyncio server starting up...
+<span class="o">[</span>I <span class="m">13</span>:02:01.350       server:  <span class="m">128</span><span class="o">]</span> Server GUID is: 0x313565616438386234356637
+<span class="o">[</span>I <span class="m">13</span>:02:01.350       server:  <span class="m">143</span><span class="o">]</span> Listening on <span class="m">0</span>.0.0.0:5075
+<span class="o">[</span>I <span class="m">13</span>:02:01.351       server:  <span class="m">204</span><span class="o">]</span> Server startup complete.
+</pre></div>
+</div>
+<p>and stopped using Ctrl+C:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>^C
+<span class="o">[</span>I <span class="m">13</span>:02:19.129       server:  <span class="m">212</span><span class="o">]</span> Server task cancelled. Will shut down.
+<span class="o">[</span>I <span class="m">13</span>:02:19.129       server:  <span class="m">222</span><span class="o">]</span> Server exiting....
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">--list-pvs</span></code> to display which PVs they serve:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python -m caproto.pva.ioc_examples.normative --list-pvs
+<span class="o">[</span>I <span class="m">13</span>:02:33.318       server:  <span class="m">127</span><span class="o">]</span> Asyncio server starting up...
+<span class="o">[</span>I <span class="m">13</span>:02:33.318       server:  <span class="m">128</span><span class="o">]</span> Server GUID is: 0x393063653765653064633235
+<span class="o">[</span>I <span class="m">13</span>:02:33.318       server:  <span class="m">143</span><span class="o">]</span> Listening on <span class="m">0</span>.0.0.0:5075
+<span class="o">[</span>I <span class="m">13</span>:02:33.319       server:  <span class="m">204</span><span class="o">]</span> Server startup complete.
+<span class="o">[</span>I <span class="m">13</span>:02:33.319       server:  <span class="m">207</span><span class="o">]</span> PVs available:
+    caproto:pva:bool
+    caproto:pva:int
+    caproto:pva:float
+    caproto:pva:str
+    caproto:pva:int_array
+    caproto:pva:float_array
+    caproto:pva:string_array
+    server
+</pre></div>
+</div>
+<p>and use <code class="docutils literal notranslate"><span class="pre">--prefix</span></code> to conveniently customize the PV prefix.</p>
+<p>Type <code class="docutils literal notranslate"><span class="pre">python3</span> <span class="pre">-m</span> <span class="pre">caproto.pva.ioc_examples.normative</span> <span class="pre">-h</span></code> for more options.</p>
+<p><code class="docutils literal notranslate"><span class="pre">caproto-pva</span></code> does not yet have an option for getting a PV list as the
+built-in epics-base <code class="docutils literal notranslate"><span class="pre">pvlist</span></code> does, but the servers support the interface
+required for this information.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># NOTE: The following requires epics-base to be installed, for now.</span>
+$ pvlist
+GUID 0x393063653765653064633235, version <span class="m">1</span>: tcp@<span class="o">[</span><span class="m">10</span>.0.0.2:5075<span class="o">]</span>
+
+$ pvlist 0x393063653765653064633235
+caproto:pva:bool
+caproto:pva:float
+caproto:pva:float_array
+caproto:pva:int
+caproto:pva:int_array
+caproto:pva:str
+caproto:pva:string_array
+</pre></div>
+</div>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="normative-types">
+<h3>Normative Types<a class="headerlink" href="#normative-types" title="Permalink to this headline">¶</a></h3>
+<p>Normative types (<code class="docutils literal notranslate"><span class="pre">NTScalar</span></code>, <code class="docutils literal notranslate"><span class="pre">NTScalarArray</span></code>) are data types that are
+of a standardized form, containing data one might expect from Channel Access
+V3 data types.  At minimum, these are guaranteed to contain a <code class="docutils literal notranslate"><span class="pre">value</span></code> field,
+but may also include control, display, and alarm information with limits,
+units, and descriptions.</p>
+<p>caproto server normative values (by default) include all additional metadata.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/caproto.pva.ioc_examples.normative.html#module-caproto.pva.ioc_examples.normative" title="caproto.pva.ioc_examples.normative"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normative</span></code></a></p></td>
+<td><p>A basic caproto-pva test server with normative types.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/caproto.pva.ioc_examples.normative.NormativeIOC.html#caproto.pva.ioc_examples.normative.NormativeIOC" title="caproto.pva.ioc_examples.normative.NormativeIOC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normative.NormativeIOC</span></code></a>(prefix, *[, macros, …])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A basic caproto-pva test server with normative types.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">caproto.pva.server</span> <span class="kn">import</span> <span class="p">(</span><span class="n">PVAGroup</span><span class="p">,</span> <span class="n">ServerRPC</span><span class="p">,</span> <span class="n">ioc_arg_parser</span><span class="p">,</span>
+                                <span class="n">pvaproperty</span><span class="p">,</span> <span class="n">run</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">NormativeIOC</span><span class="p">(</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">nt_bool</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">nt_int</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">nt_float</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mf">42.1</span><span class="p">)</span>
+    <span class="n">nt_string</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+    <span class="n">nt_int_array</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="mi">42</span><span class="p">])</span>
+    <span class="n">nt_float_array</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="mf">42.1</span><span class="p">])</span>
+    <span class="n">nt_string_array</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;test&#39;</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">ioc_options</span><span class="p">,</span> <span class="n">run_options</span> <span class="o">=</span> <span class="n">ioc_arg_parser</span><span class="p">(</span>
+        <span class="n">default_prefix</span><span class="o">=</span><span class="s1">&#39;caproto:pva:&#39;</span><span class="p">,</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;A basic caproto-pva test server for normative types.&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">ioc</span> <span class="o">=</span> <span class="n">NormativeIOC</span><span class="p">(</span><span class="o">**</span><span class="n">ioc_options</span><span class="p">)</span>
+    <span class="n">server_info</span> <span class="o">=</span> <span class="n">ServerRPC</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">server_instance</span><span class="o">=</span><span class="n">ioc</span><span class="p">)</span>
+    <span class="n">ioc</span><span class="o">.</span><span class="n">pvdb</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">server_info</span><span class="o">.</span><span class="n">pvdb</span><span class="p">)</span>
+    <span class="n">run</span><span class="p">(</span><span class="n">ioc</span><span class="o">.</span><span class="n">pvdb</span><span class="p">,</span> <span class="o">**</span><span class="n">run_options</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="groups">
+<h3>Groups<a class="headerlink" href="#groups" title="Permalink to this headline">¶</a></h3>
+<p>The full set of possibilities with what groups and properties can do.</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/caproto.pva.ioc_examples.group.html#module-caproto.pva.ioc_examples.group" title="caproto.pva.ioc_examples.group"><code class="xref py py-obj docutils literal notranslate"><span class="pre">group</span></code></a></p></td>
+<td><p>A basic caproto-pva test server using PVAGroup.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/caproto.pva.ioc_examples.group.MyIOC.html#caproto.pva.ioc_examples.group.MyIOC" title="caproto.pva.ioc_examples.group.MyIOC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">group.MyIOC</span></code></a>(prefix, *[, macros, parent, name])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A basic caproto-pva test server using PVAGroup.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">caproto.pva</span> <span class="k">as</span> <span class="nn">pva</span>
+<span class="kn">from</span> <span class="nn">caproto.pva.server</span> <span class="kn">import</span> <span class="p">(</span><span class="n">PVAGroup</span><span class="p">,</span> <span class="n">ioc_arg_parser</span><span class="p">,</span> <span class="n">pva_dataclass</span><span class="p">,</span>
+                                <span class="n">pvaproperty</span><span class="p">,</span> <span class="n">run</span><span class="p">)</span>
+
+
+<span class="nd">@pva_dataclass</span>
+<span class="k">class</span> <span class="nc">MyData</span><span class="p">:</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">info</span><span class="p">:</span> <span class="nb">str</span>
+
+
+<span class="nd">@pva_dataclass</span>
+<span class="k">class</span> <span class="nc">NestedData</span><span class="p">:</span>
+    <span class="n">my_data</span><span class="p">:</span> <span class="n">MyData</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+
+
+<span class="k">class</span> <span class="nc">MyIOC</span><span class="p">(</span><span class="n">PVAGroup</span><span class="p">):</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="s1">&#39;a string&#39;</span><span class="p">))</span>
+    <span class="n">test2</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="s1">&#39;a different string&#39;</span><span class="p">))</span>
+    <span class="n">test3</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">NestedData</span><span class="p">)</span>
+    <span class="n">long_write</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">())</span>
+    <span class="n">rpc</span> <span class="o">=</span> <span class="n">pvaproperty</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">MyData</span><span class="p">())</span>
+
+    <span class="nd">@test</span><span class="o">.</span><span class="n">putter</span>  <span class="c1"># (accepts=[&#39;value&#39;])   (potential API?)</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">update</span><span class="p">:</span> <span class="n">pva</span><span class="o">.</span><span class="n">WriteUpdate</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Put handler.</span>
+
+<span class="sd">        Default handling: `update.accept()` (take everything)</span>
+
+<span class="sd">        The following also work::</span>
+
+<span class="sd">            1. update.accept(&#39;value&#39;, &#39;info&#39;)</span>
+<span class="sd">            2. update.reject(&#39;info&#39;)</span>
+<span class="sd">            3. if &#39;value&#39; in update:</span>
+<span class="sd">                  instance.value = update.instance.value</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span>
+
+    <span class="nd">@test</span><span class="o">.</span><span class="n">startup</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">async_lib</span> <span class="o">=</span> <span class="n">async_lib</span>
+
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">test</span> <span class="k">as</span> <span class="n">test</span><span class="p">:</span>
+                <span class="n">test</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">test</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">test</span><span class="o">.</span><span class="n">info</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;testing </span><span class="si">{</span><span class="n">test</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s1">&#39;</span>
+
+            <span class="k">await</span> <span class="n">async_lib</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="nd">@test</span><span class="o">.</span><span class="n">shutdown</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;shutdown&#39;</span><span class="p">)</span>
+
+    <span class="nd">@test2</span><span class="o">.</span><span class="n">startup</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">test2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">async_lib</span><span class="p">):</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">test2</span> <span class="k">as</span> <span class="n">test2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">test3</span> <span class="k">as</span> <span class="n">test3</span><span class="p">:</span>
+                <span class="c1"># Swap values</span>
+                <span class="n">test2</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">test3</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">test3</span><span class="o">.</span><span class="n">value</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">test2</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">async_lib</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="nd">@rpc</span><span class="o">.</span><span class="n">call</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">rpc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c1"># Some awf... nice normative type stuff comes through here (NTURI):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;RPC call data is&#39;</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Scheme:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">scheme</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Query:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">query</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path:&#39;</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="c1"># Echo back the query value, if available:</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">query</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="s1">&#39;value&#39;</span><span class="p">,</span> <span class="s1">&#39;1234&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">MyData</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="nd">@long_write</span><span class="o">.</span><span class="n">putter</span>
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">long_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">update</span><span class="p">:</span> <span class="n">pva</span><span class="o">.</span><span class="n">WriteUpdate</span><span class="p">):</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">async_lib</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">ioc_options</span><span class="p">,</span> <span class="n">run_options</span> <span class="o">=</span> <span class="n">ioc_arg_parser</span><span class="p">(</span>
+        <span class="n">default_prefix</span><span class="o">=</span><span class="s1">&#39;caproto:pva:&#39;</span><span class="p">,</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s1">&#39;A basic caproto-pva test server.&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">ioc</span> <span class="o">=</span> <span class="n">MyIOC</span><span class="p">(</span><span class="o">**</span><span class="n">ioc_options</span><span class="p">)</span>
+    <span class="n">server_info</span> <span class="o">=</span> <span class="n">pva</span><span class="o">.</span><span class="n">ServerRPC</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">server_instance</span><span class="o">=</span><span class="n">ioc</span><span class="p">)</span>
+    <span class="n">ioc</span><span class="o">.</span><span class="n">pvdb</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">server_info</span><span class="o">.</span><span class="n">pvdb</span><span class="p">)</span>
+    <span class="n">run</span><span class="p">(</span><span class="n">ioc</span><span class="o">.</span><span class="n">pvdb</span><span class="p">,</span> <span class="o">**</span><span class="n">run_options</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="generated/caproto.pva.ioc_examples.normative.html" class="btn btn-neutral float-right" title="caproto.pva.ioc_examples.normative" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="clients.html" class="btn btn-neutral float-left" title="Synchronous Client" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Daniel Allan
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
