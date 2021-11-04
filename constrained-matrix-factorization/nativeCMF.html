@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Using Native Constrained NMF &mdash; Constrained Matrix Factorization 0.1.0.post26+gb886d6a documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="_static/copybutton.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/clipboard.min.js"></script>
+        <script src="_static/copybutton.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Companion Agents" href="companions.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> Constrained Matrix Factorization
+          </a>
+              <div class="version">
+                0.1.0.post26+gb886d6a
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using Native Constrained NMF</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#simple-nmf">Simple NMF</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-underlying-class">The underlying class</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="companions.html">Companion Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Constrained Matrix Factorization</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Using Native Constrained NMF</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/nativeCMF.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="using-native-constrained-nmf">
+<h1>Using Native Constrained NMF<a class="headerlink" href="#using-native-constrained-nmf" title="Permalink to this headline">¶</a></h1>
+<p>Start by importing Constrained Matrix Factorization.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">constrainedmf</span> <span class="k">as</span> <span class="nn">cmf</span>
+</pre></div>
+</div>
+<p>For extensibility, each instance of NMF is inherits from a base class.
+This class set’s up the matrix factorization using the correct shapes and number of components.
+It also allows for portions of the matricies to be initialized, and fixed.</p>
+<section id="simple-nmf">
+<h2>Simple NMF<a class="headerlink" href="#simple-nmf" title="Permalink to this headline">¶</a></h2>
+<p>A simple, albeit nonsensical, example of NMF can be accomplished with the following, starting from a matrix of 30 different 100 member vectors.
+We can constrain the components to be zeros and ones, and allow a third component to approximate the variation.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">x_0</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">x_1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">cmf</span><span class="o">.</span><span class="n">nmf</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">NMF</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                           <span class="mi">3</span><span class="p">,</span>
+                           <span class="n">initial_components</span><span class="o">=</span><span class="p">[</span><span class="n">x_0</span><span class="p">,</span> <span class="n">x_1</span><span class="p">],</span>
+                           <span class="n">fix_components</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
+<span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMF">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">constrainedmf.nmf.models.</span></span><span class="sig-name descname"><span class="pre">NMF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMF"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Standard NMF with ability for constraints constructed from input matrix shape.</p>
+<p>W is (m_examples, n_components)</p>
+<p>H is (n_components, n_example_features)</p>
+<p>W &#64; H give reconstruction of X.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>X_shape: tuple</strong></dt><dd><p>Tuple of ints describing shape of input matrix</p>
+</dd>
+<dt><strong>n_components: int</strong></dt><dd><p>Number of desired components for the matrix factorization</p>
+</dd>
+<dt><strong>kwargs: dict</strong></dt><dd><p>For available kwargs see documentation on NMFBase</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMF.reconstruct">
+<span class="sig-name descname"><span class="pre">reconstruct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">H</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">W</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMF.reconstruct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMF.reconstruct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reconstructs the approximate input matrix from matrix product of weights and components</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>H: torch.Tensor</strong></dt><dd><p>Components matrix</p>
+</dd>
+<dt><strong>W: torch.Tensor</strong></dt><dd><p>Weights matrix</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><dl class="simple">
+<dt>torch.Tensor</dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="the-underlying-class">
+<h2>The underlying class<a class="headerlink" href="#the-underlying-class" title="Permalink to this headline">¶</a></h2>
+<p>Referring to the base class details some of the constraint functionality available.
+The base class could be conceivibly used to construct different reconstruction approaches with NMF; however,
+has some required implementations for any child classes.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMFBase">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">constrainedmf.nmf.models.</span></span><span class="sig-name descname"><span class="pre">NMFBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">W_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H_shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_components</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fix_weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMFBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMFBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for setting up NMF</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>W_shape: tuple of int</strong></dt><dd><p>Shape of the weights matrix</p>
+</dd>
+<dt><strong>H_shape: tuple of int</strong></dt><dd><p>Shape of the components matrix</p>
+</dd>
+<dt><strong>n_components: int</strong></dt><dd><p>Number of components in the factorization</p>
+</dd>
+<dt><strong>initial_components: list of torch.Tensor</strong></dt><dd><p>Initial components for the factorization</p>
+</dd>
+<dt><strong>fix_components: list of bool</strong></dt><dd><p>Corresponding directive to fix each component in the factorization.
+The components are ordered, and the default behavior is to allow a component to vary.
+I.e. (True, False, True) for a 4 component factorization will result in the first and third
+component being fixed, while the second and fourth vary.</p>
+</dd>
+<dt><strong>initial_weights: list of torch.Tensor</strong></dt><dd><p>Initial weights for the factorization</p>
+</dd>
+<dt><strong>fix_weights: list of bool</strong></dt><dd><p>Corresponding directive to fix each weight in the factorization.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMFBase.get_H_positive">
+<span class="sig-name descname"><span class="pre">get_H_positive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">WH</span></em>, <em class="sig-param"><span class="pre">beta</span></em>, <em class="sig-param"><span class="pre">W_sum)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'torch.Tensor'&gt;</span></em>, <em class="sig-param"><span class="pre">&lt;class</span> <span class="pre">'torch.Tensor'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMFBase.get_H_positive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMFBase.get_H_positive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the positive denominator (mu) and W sum for H update</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>WH: torch.Tensor</strong></dt><dd><p>Reconstruction of input matrix (in the simple case this is the matrix produce W &#64; H</p>
+</dd>
+<dt><strong>beta: int, float</strong></dt><dd><p>Value for beta divergence</p>
+</dd>
+<dt><strong>W_sum: torch.Tensor, None</strong></dt><dd><p>Sum over weights matrix to use in denominator of update. If unknown or not required use None.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMFBase.get_W_positive">
+<span class="sig-name descname"><span class="pre">get_W_positive</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">WH</span></em>, <em class="sig-param"><span class="pre">beta</span></em>, <em class="sig-param"><span class="pre">H_sum)</span> <span class="pre">-&gt;</span> <span class="pre">(&lt;class</span> <span class="pre">'torch.Tensor'&gt;</span></em>, <em class="sig-param"><span class="pre">&lt;class</span> <span class="pre">'torch.Tensor'&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMFBase.get_W_positive"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMFBase.get_W_positive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the positive denominator (mu) and H sum for W update</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>WH: torch.Tensor</strong></dt><dd><p>Reconstruction of input matrix (in the simple case this is the matrix produce W &#64; H</p>
+</dd>
+<dt><strong>beta: int, float</strong></dt><dd><p>Value for beta divergence</p>
+</dd>
+<dt><strong>H_sum: torch.Tensor, None</strong></dt><dd><p>Sum over components matrix to use in denominator of update. If unknown or not required use None.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="constrainedmf.nmf.models.NMFBase.reconstruct">
+<span class="sig-name descname"><span class="pre">reconstruct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">H</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">W</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/constrainedmf/nmf/models.html#NMFBase.reconstruct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#constrainedmf.nmf.models.NMFBase.reconstruct" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method for reconstructing the approximate input matrix from the components and weights</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>H: torch.Tensor</strong></dt><dd><p>Components matrix</p>
+</dd>
+<dt><strong>W: torch.Tensor</strong></dt><dd><p>Weights matrix</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="companions.html" class="btn btn-neutral float-right" title="Companion Agents" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, Brookhaven National Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
