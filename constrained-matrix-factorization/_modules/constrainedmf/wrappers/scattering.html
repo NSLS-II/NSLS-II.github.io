@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>constrainedmf.wrappers.scattering &mdash; Constrained Matrix Factorization 0.1.0.post32+g39837f8 documentation</title>
+  <title>constrainedmf.wrappers.scattering &mdash; Constrained Matrix Factorization 0.1.0.post54+g7ae089a documentation</title>
       <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/plot_directive.css" type="text/css" />
@@ -31,7 +31,7 @@
             <a href="../../../index.html" class="icon icon-home"> Constrained Matrix Factorization
           </a>
               <div class="version">
-                0.1.0.post32+g39837f8
+                0.1.0.post54+g7ae089a
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
@@ -46,6 +46,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../nativeCMF.html">Using Native Constrained NMF</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../companions.html">Wrappers and Companion Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tips-and-tricks.html">Tips and Tricks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../release-history.html">Release History</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../min_versions.html">Minimum Version of Python and NumPy</a></li>
 </ul>
@@ -82,9 +83,51 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
+<span class="k">def</span> <span class="nf">_decomposition_preprocess</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">I</span><span class="p">,</span> <span class="n">q_range</span><span class="p">,</span> <span class="n">bkg_removal</span><span class="p">,</span> <span class="n">normalize</span><span class="p">):</span>  <span class="c1"># noqa: E741</span>
+    <span class="sd">&quot;&quot;&quot;Preprocess options for trimming q-range, removing background, and normalization&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">q_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">idx_min</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">idx_max</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">idx_min</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="n">idx_max</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">else</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span>
+
+    <span class="n">sub_I</span> <span class="o">=</span> <span class="n">I</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
+    <span class="n">sub_Q</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
+
+    <span class="c1"># Data manipulation</span>
+    <span class="k">if</span> <span class="n">bkg_removal</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">peakutils</span>
+
+        <span class="n">bases</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sub_I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">bases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">peakutils</span><span class="o">.</span><span class="n">baseline</span><span class="p">(</span><span class="n">sub_I</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">deg</span><span class="o">=</span><span class="n">bkg_removal</span><span class="p">))</span>
+        <span class="n">bases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">bases</span><span class="p">)</span>
+        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">bases</span>
+    <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
+        <span class="n">sub_I</span> <span class="o">=</span> <span class="p">(</span><span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Numerical stability of non-negativity</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">idx_min</span><span class="p">,</span> <span class="n">idx_max</span>
+
+
 <div class="viewcode-block" id="decomposition"><a class="viewcode-back" href="../../../companions.html#constrainedmf.wrappers.scattering.decomposition">[docs]</a><span class="k">def</span> <span class="nf">decomposition</span><span class="p">(</span>
     <span class="n">Q</span><span class="p">,</span>
     <span class="n">I</span><span class="p">,</span>  <span class="c1"># noqa: E741</span>
+    <span class="o">*</span><span class="p">,</span>
     <span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
     <span class="n">q_range</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">initial_components</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -94,6 +137,7 @@
     <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
     <span class="n">bkg_removal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -134,6 +178,8 @@
 <span class="sd">        Integer degree for peakutils background removal</span>
 <span class="sd">    normalize: bool, optional</span>
 <span class="sd">        Flag for min-max normalization</span>
+<span class="sd">    device: str, torch.device, None</span>
+<span class="sd">            Device for matrix factorization to proceed on. Defaults to cpu.</span>
 <span class="sd">    **kwargs: dict</span>
 <span class="sd">        Arguments passed to the fit method. See nmf.models.NMFBase.</span>
 
@@ -150,42 +196,9 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1"># Data subselection</span>
-    <span class="k">if</span> <span class="n">q_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">idx_min</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">idx_max</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">idx_min</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">else</span> <span class="mi">0</span>
-        <span class="p">)</span>
-        <span class="n">idx_max</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">else</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="p">)</span>
-
-    <span class="n">sub_I</span> <span class="o">=</span> <span class="n">I</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
-    <span class="n">sub_Q</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
-
-    <span class="c1"># Data manipulation</span>
-    <span class="k">if</span> <span class="n">bkg_removal</span><span class="p">:</span>
-        <span class="kn">import</span> <span class="nn">peakutils</span>
-
-        <span class="n">bases</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sub_I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-            <span class="n">bases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">peakutils</span><span class="o">.</span><span class="n">baseline</span><span class="p">(</span><span class="n">sub_I</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">deg</span><span class="o">=</span><span class="n">bkg_removal</span><span class="p">))</span>
-        <span class="n">bases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">bases</span><span class="p">)</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">bases</span>
-    <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="p">(</span><span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="p">)</span>
-
-    <span class="c1"># Numerical stability of non-negativity</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">idx_min</span><span class="p">,</span> <span class="n">idx_max</span> <span class="o">=</span> <span class="n">_decomposition_preprocess</span><span class="p">(</span>
+        <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span> <span class="n">I</span><span class="o">=</span><span class="n">I</span><span class="p">,</span> <span class="n">q_range</span><span class="o">=</span><span class="n">q_range</span><span class="p">,</span> <span class="n">bkg_removal</span><span class="o">=</span><span class="n">bkg_removal</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span>
+    <span class="p">)</span>
 
     <span class="c1"># Initial components</span>
     <span class="k">if</span> <span class="n">mode</span> <span class="o">!=</span> <span class="s2">&quot;Deconvolutional&quot;</span><span class="p">:</span>
@@ -216,6 +229,7 @@
             <span class="n">n_components</span><span class="p">,</span>
             <span class="n">initial_components</span><span class="o">=</span><span class="n">input_H</span><span class="p">,</span>
             <span class="n">fix_components</span><span class="o">=</span><span class="n">fix_components</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Deconvolutional&quot;</span><span class="p">:</span>
         <span class="n">model</span> <span class="o">=</span> <span class="n">NMFD</span><span class="p">(</span>
@@ -224,6 +238,7 @@
             <span class="n">T</span><span class="o">=</span><span class="n">kernel_width</span><span class="p">,</span>
             <span class="n">initial_components</span><span class="o">=</span><span class="n">input_H</span><span class="p">,</span>
             <span class="n">fix_components</span><span class="o">=</span><span class="n">fix_components</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
@@ -239,54 +254,64 @@
     <span class="k">return</span> <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">alphas</span><span class="p">,</span> <span class="n">components</span></div>
 
 
-<span class="k">def</span> <span class="nf">iterative_decomposition</span><span class="p">(</span>
+<div class="viewcode-block" id="iterative_decomposition"><a class="viewcode-back" href="../../../companions.html#constrainedmf.wrappers.scattering.iterative_decomposition">[docs]</a><span class="k">def</span> <span class="nf">iterative_decomposition</span><span class="p">(</span>
     <span class="n">Q</span><span class="p">,</span>
     <span class="n">I</span><span class="p">,</span>  <span class="c1"># noqa: E741</span>
+    <span class="o">*</span><span class="p">,</span>
     <span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
     <span class="n">q_range</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;Linear&quot;</span><span class="p">,</span>
     <span class="n">kernel_width</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-    <span class="n">max_iter</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
     <span class="n">bkg_removal</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
 <span class="p">):</span>
-    <span class="c1"># Data subselection</span>
-    <span class="k">if</span> <span class="n">q_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">idx_min</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">idx_max</span> <span class="o">=</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">idx_min</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&lt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">else</span> <span class="mi">0</span>
-        <span class="p">)</span>
-        <span class="n">idx_max</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Q</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">else</span> <span class="n">I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Iterative decomposition by performing constrained NMF using dataset memebers as constraints.</span>
+<span class="sd">    The first 2 constraints are the end members of the dataset.</span>
+<span class="sd">    The next constraint is chosen by examining the most prominent (heavily weighted) learned component.</span>
+<span class="sd">    The index where this component&#39;s weight is the highest, is used to select the next constraint from the dataset.</span>
+<span class="sd">    This continues until all components are constrained by dataset memebrs.</span>
 
-    <span class="n">sub_I</span> <span class="o">=</span> <span class="n">I</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
-    <span class="n">sub_Q</span> <span class="o">=</span> <span class="n">Q</span><span class="p">[:,</span> <span class="n">idx_min</span><span class="p">:</span><span class="n">idx_max</span><span class="p">]</span>
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Q : array</span>
+<span class="sd">        Ordinate Q for I(Q). Assumed to be rank 2, shape (m_patterns, n_data)</span>
+<span class="sd">    I : array</span>
+<span class="sd">        The intensity values for each Q, assumed to be the same shape as Q. (m_patterns, n_data)</span>
+<span class="sd">    n_components: int</span>
+<span class="sd">        Number of components for NMF</span>
+<span class="sd">    q_range : tuple, list</span>
+<span class="sd">        (Min, Max) Q values for consideration in NMF. This enables a focused region for decomposition.</span>
+<span class="sd">    mode: {&quot;Linear&quot;, &quot;Deconvolutional&quot;}</span>
+<span class="sd">        Operating mode</span>
+<span class="sd">    kernel_width: int</span>
+<span class="sd">        Width of 1-dimensional convolutional kernel</span>
+<span class="sd">    bkg_removal: int, optional</span>
+<span class="sd">        Integer degree for peakutils background removal</span>
+<span class="sd">    normalize: bool, optional</span>
+<span class="sd">        Flag for min-max normalization</span>
+<span class="sd">    kwargs: dict</span>
+<span class="sd">        Keyword arguments first get passed to nmf.utils.iterative_nmf to control fit parameters.</span>
+<span class="sd">        Fit parameters include beta, alpha, tol, max_iter.</span>
+<span class="sd">        Keyword arguments are then passed to the class initialization.</span>
+<span class="sd">        Common init parameters include device, or initial_weights</span>
 
-    <span class="c1"># Data manipulation</span>
-    <span class="k">if</span> <span class="n">bkg_removal</span><span class="p">:</span>
-        <span class="kn">import</span> <span class="nn">peakutils</span>
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sub_Q: array</span>
+<span class="sd">        Subselected region of Q</span>
+<span class="sd">    sub_I: array</span>
+<span class="sd">        Subselected region of I</span>
+<span class="sd">    weights: array</span>
+<span class="sd">        Final weights from NMF</span>
+<span class="sd">    components: array</span>
+<span class="sd">        Final components from NMF</span>
 
-        <span class="n">bases</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">sub_I</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-            <span class="n">bases</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">peakutils</span><span class="o">.</span><span class="n">baseline</span><span class="p">(</span><span class="n">sub_I</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">deg</span><span class="o">=</span><span class="n">bkg_removal</span><span class="p">))</span>
-        <span class="n">bases</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">bases</span><span class="p">)</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">bases</span>
-    <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="p">(</span><span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="p">)</span>
-
-    <span class="c1"># Numerical stability of non-negativity</span>
-    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="n">sub_I</span> <span class="o">=</span> <span class="n">sub_I</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">idx_min</span><span class="p">,</span> <span class="n">idx_max</span> <span class="o">=</span> <span class="n">_decomposition_preprocess</span><span class="p">(</span>
+        <span class="n">Q</span><span class="o">=</span><span class="n">Q</span><span class="p">,</span> <span class="n">I</span><span class="o">=</span><span class="n">I</span><span class="p">,</span> <span class="n">q_range</span><span class="o">=</span><span class="n">q_range</span><span class="p">,</span> <span class="n">bkg_removal</span><span class="o">=</span><span class="n">bkg_removal</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="n">normalize</span>
+    <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;Deconvolutional&quot;</span><span class="p">:</span>
         <span class="n">nmf_class</span> <span class="o">=</span> <span class="n">NMFD</span>
@@ -305,7 +330,6 @@
         <span class="n">nmf_class</span><span class="p">,</span>
         <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">sub_I</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">),</span>
         <span class="n">n_components</span><span class="o">=</span><span class="n">n_components</span><span class="p">,</span>
-        <span class="n">max_iter</span><span class="o">=</span><span class="n">max_iter</span><span class="p">,</span>
         <span class="n">kernel_width</span><span class="o">=</span><span class="n">kernel_width</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">)</span>
@@ -314,11 +338,11 @@
     <span class="n">W</span> <span class="o">=</span> <span class="n">nmf</span><span class="o">.</span><span class="n">W</span>
     <span class="n">H</span> <span class="o">=</span> <span class="n">nmf</span><span class="o">.</span><span class="n">H</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">W</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">alphas</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">alphas</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
     <span class="n">components</span> <span class="o">=</span> <span class="n">H</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-    <span class="k">return</span> <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">alphas</span><span class="p">,</span> <span class="n">components</span>
+    <span class="k">return</span> <span class="n">sub_Q</span><span class="p">,</span> <span class="n">sub_I</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">components</span></div>
 </pre></div>
 
            </div>

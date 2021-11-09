@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>constrainedmf.nmf.models &mdash; Constrained Matrix Factorization 0.1.0.post32+g39837f8 documentation</title>
+  <title>constrainedmf.nmf.models &mdash; Constrained Matrix Factorization 0.1.0.post54+g7ae089a documentation</title>
       <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/plot_directive.css" type="text/css" />
@@ -31,7 +31,7 @@
             <a href="../../../index.html" class="icon icon-home"> Constrained Matrix Factorization
           </a>
               <div class="version">
-                0.1.0.post32+g39837f8
+                0.1.0.post54+g7ae089a
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
@@ -46,6 +46,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../nativeCMF.html">Using Native Constrained NMF</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../companions.html">Wrappers and Companion Agents</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tips-and-tricks.html">Tips and Tricks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../release-history.html">Release History</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../min_versions.html">Minimum Version of Python and NumPy</a></li>
 </ul>
@@ -82,6 +83,26 @@
 
 
 <span class="k">def</span> <span class="nf">_mu_update</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="n">l1_reg</span><span class="p">,</span> <span class="n">l2_reg</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform multiplicative update of param (W, or H)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    param: tensor</span>
+<span class="sd">        Weights or components</span>
+<span class="sd">    pos: tensor</span>
+<span class="sd">        positive denominator (mu)</span>
+<span class="sd">    gamma: float</span>
+<span class="sd">        Beta - 1 from Beta divergence loss</span>
+<span class="sd">    l1_reg: float</span>
+<span class="sd">        L1 regularization</span>
+<span class="sd">    l2_reg: float</span>
+<span class="sd">        L2 regularization</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">):</span>
         <span class="c1"># Handle no gradients in fixed components</span>
         <span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
@@ -91,8 +112,10 @@
         <span class="k">return</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">grad</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span>
-    <span class="c1"># prevent negative term, very likely to happen with kl divergence</span>
+    <span class="c1"># prevent negative terms and zero division</span>
     <span class="n">multiplier</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">pos</span> <span class="o">-</span> <span class="n">grad</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">pos</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pos</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="mf">1e-7</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">l1_reg</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">pos</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">l1_reg</span><span class="p">)</span>
@@ -122,10 +145,12 @@
         <span class="n">W_shape</span><span class="p">,</span>
         <span class="n">H_shape</span><span class="p">,</span>
         <span class="n">n_components</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
         <span class="n">initial_components</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">fix_components</span><span class="o">=</span><span class="p">(),</span>
         <span class="n">initial_weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">fix_weights</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -150,14 +175,20 @@
 <span class="sd">            Initial weights for the factorization</span>
 <span class="sd">        fix_weights: list of bool</span>
 <span class="sd">            Corresponding directive to fix each weight in the factorization.</span>
+<span class="sd">        device: str, torch.device, None</span>
+<span class="sd">            Device for matrix factorization to proceed on. Defaults to cpu.</span>
+<span class="sd">        kwargs: dict</span>
+<span class="sd">            Keyword arguments for torch.nn.Module</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fix_neg</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Threshold</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1e-8</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="n">n_components</span>
+        <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="n">W</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="o">*</span><span class="n">W_shape</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">initial_weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">w_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">for</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">initial_weights</span><span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
@@ -167,7 +198,7 @@
         <span class="k">if</span> <span class="n">fix_weights</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fix_weights</span><span class="p">)):</span>
                 <span class="n">w_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">fix_weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">W_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">(</span><span class="n">w_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">W_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">(</span><span class="n">w_list</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">initial_components</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">h_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">component</span><span class="p">)</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">initial_components</span><span class="p">]</span>
@@ -178,7 +209,7 @@
         <span class="k">if</span> <span class="n">fix_components</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fix_components</span><span class="p">)):</span>
                 <span class="n">h_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">fix_components</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">H_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">(</span><span class="n">h_list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">H_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">(</span><span class="n">h_list</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">H</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -219,7 +250,7 @@
 
 <div class="viewcode-block" id="NMFBase.get_W_positive"><a class="viewcode-back" href="../../../nativeCMF.html#constrainedmf.nmf.models.NMFBase.get_W_positive">[docs]</a>    <span class="k">def</span> <span class="nf">get_W_positive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">WH</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">H_sum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the positive denominator (mu) and H sum for W update</span>
+<span class="sd">        Get the positive denominator an/or H sum for multiplicative W update</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -238,7 +269,7 @@
 
 <div class="viewcode-block" id="NMFBase.get_H_positive"><a class="viewcode-back" href="../../../nativeCMF.html#constrainedmf.nmf.models.NMFBase.get_H_positive">[docs]</a>    <span class="k">def</span> <span class="nf">get_H_positive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">WH</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">W_sum</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the positive denominator (mu) and W sum for H update</span>
+<span class="sd">        Get the positive denominator and/or W sum for multiplicative H update</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -267,27 +298,34 @@
         <span class="n">l1_ratio</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fit the wights (W) and components (H) to the dataset X.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        X</span>
-<span class="sd">        update_W</span>
-<span class="sd">        update_H</span>
-<span class="sd">        beta</span>
-<span class="sd">        tol</span>
-<span class="sd">        max_iter</span>
-<span class="sd">        alpha</span>
-<span class="sd">        l1_ratio</span>
+<span class="sd">        X: torch.Tensor</span>
+<span class="sd">            Tensor of the dataset to fit, shape (m_examples, n_features)</span>
+<span class="sd">        update_W: bool</span>
+<span class="sd">            Override on updating weights matrix</span>
+<span class="sd">        update_H: bool</span>
+<span class="sd">            Override on updating components matrix</span>
+<span class="sd">        beta: float</span>
+<span class="sd">            Value for beta divergence</span>
+<span class="sd">        tol: float</span>
+<span class="sd">            Change in loss tolerance for exiting optimization loop</span>
+<span class="sd">        max_iter: int</span>
+<span class="sd">            Maximum number of iterations to consider for optimization loop</span>
+<span class="sd">        alpha: float</span>
+<span class="sd">            Amount of regularization for the mu update</span>
+<span class="sd">        l1_ratio: float</span>
+<span class="sd">            Ratio of L1 to L2 regularization</span>
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="n">X</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fix_neg</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-        <span class="c1"># self.W.requires_grad = update_W</span>
-        <span class="c1"># self.H.requires_grad = update_H</span>
 
         <span class="k">if</span> <span class="n">beta</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">gamma</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">-</span> <span class="n">beta</span><span class="p">)</span>
@@ -300,8 +338,12 @@
         <span class="n">l2_reg</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">l1_ratio</span><span class="p">)</span>
 
         <span class="n">loss_scale</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="n">H_sum</span><span class="p">,</span> <span class="n">W_sum</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">max_iter</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Maximum number of iterations must be at least 1.&quot;</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">n_iter</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
             <span class="c1"># W update</span>
@@ -335,8 +377,9 @@
             <span class="k">elif</span> <span class="p">(</span><span class="n">previous_loss</span> <span class="o">-</span> <span class="n">loss</span><span class="p">)</span> <span class="o">/</span> <span class="n">loss_init</span> <span class="o">&lt;</span> <span class="n">tol</span><span class="p">:</span>  <span class="c1"># noqa: F821</span>
                 <span class="k">break</span>
             <span class="n">previous_loss</span> <span class="o">=</span> <span class="n">loss</span>  <span class="c1"># noqa:F841</span>
+            <span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">n_iter</span>
+        <span class="k">return</span> <span class="n">losses</span>
 
     <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="n">n_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
@@ -344,7 +387,18 @@
 
 
 <div class="viewcode-block" id="NMF"><a class="viewcode-back" href="../../../nativeCMF.html#constrainedmf.nmf.models.NMF">[docs]</a><span class="k">class</span> <span class="nc">NMF</span><span class="p">(</span><span class="n">NMFBase</span><span class="p">):</span>
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X_shape</span><span class="p">,</span> <span class="n">n_components</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">X_shape</span><span class="p">,</span>
+        <span class="n">n_components</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">initial_components</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">fix_components</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">initial_weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">fix_weights</span><span class="o">=</span><span class="p">(),</span>
+        <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Standard NMF with ability for constraints constructed from input matrix shape.</span>
 
@@ -360,14 +414,32 @@
 <span class="sd">            Tuple of ints describing shape of input matrix</span>
 <span class="sd">        n_components: int</span>
 <span class="sd">            Number of desired components for the matrix factorization</span>
+<span class="sd">        initial_components: list of torch.Tensor</span>
+<span class="sd">            Initial components for the factorization</span>
+<span class="sd">        fix_components: list of bool</span>
+<span class="sd">            Corresponding directive to fix each component in the factorization.</span>
+<span class="sd">            The components are ordered, and the default behavior is to allow a component to vary.</span>
+<span class="sd">            I.e. (True, False, True) for a 4 component factorization will result in the first and third</span>
+<span class="sd">            component being fixed, while the second and fourth vary.</span>
+<span class="sd">        initial_weights: list of torch.Tensor</span>
+<span class="sd">            Initial weights for the factorization</span>
+<span class="sd">        fix_weights: list of bool</span>
+<span class="sd">            Corresponding directive to fix each weight in the factorization.</span>
+<span class="sd">        device: str, torch.device, None</span>
+<span class="sd">            Device for matrix factorization to proceed on. Defaults to cpu.</span>
 <span class="sd">        kwargs: dict</span>
-<span class="sd">            For available kwargs see documentation on NMFBase</span>
+<span class="sd">            kwargs for torch.nn.Module</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">m_examples</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span> <span class="o">=</span> <span class="n">X_shape</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">m_examples</span><span class="p">,</span> <span class="n">n_components</span><span class="p">),</span>
             <span class="p">(</span><span class="n">n_components</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">),</span>
             <span class="n">n_components</span><span class="p">,</span>
+            <span class="n">initial_components</span><span class="o">=</span><span class="n">initial_components</span><span class="p">,</span>
+            <span class="n">initial_weights</span><span class="o">=</span><span class="n">initial_weights</span><span class="p">,</span>
+            <span class="n">fix_weights</span><span class="o">=</span><span class="n">fix_weights</span><span class="p">,</span>
+            <span class="n">fix_components</span><span class="o">=</span><span class="n">fix_components</span><span class="p">,</span>
+            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span>
 
