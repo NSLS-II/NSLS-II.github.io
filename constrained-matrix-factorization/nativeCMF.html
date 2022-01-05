@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Using Native Constrained NMF &mdash; Constrained Matrix Factorization 0.1.1.post3+g3dfb634 documentation</title>
+  <title>Using Native Constrained NMF &mdash; Constrained Matrix Factorization 0.1.1.post11+ge4d8ee1 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/plot_directive.css" type="text/css" />
@@ -34,7 +34,7 @@
             <a href="index.html" class="icon icon-home"> Constrained Matrix Factorization
           </a>
               <div class="version">
-                0.1.1.post3+g3dfb634
+                0.1.1.post11+ge4d8ee1
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -94,7 +94,9 @@ It also allows for portions of the matricies to be initialized, and fixed.</p>
 <section id="simple-nmf">
 <h2>Simple NMF<a class="headerlink" href="#simple-nmf" title="Permalink to this headline">¶</a></h2>
 <p>A simple, albeit nonsensical, example of NMF can be accomplished with the following, starting from a matrix of 30 different 100 member vectors.
-We can constrain the components to be zeros and ones, and allow a third component to approximate the variation.</p>
+We can constrain the components to be zeros and ones, and allow a third component to approximate the variation.
+This approach gives us the learning curve of the alternating update algorithm,
+and two numpy arrays of weights and components.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">torch</span>
 
 <span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
@@ -105,7 +107,8 @@ We can constrain the components to be zeros and ones, and allow a third componen
                            <span class="mi">3</span><span class="p">,</span>
                            <span class="n">initial_components</span><span class="o">=</span><span class="p">[</span><span class="n">x_0</span><span class="p">,</span> <span class="n">x_1</span><span class="p">],</span>
                            <span class="n">fix_components</span><span class="o">=</span><span class="p">[</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">])</span>
-<span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="c1"># Learning curve of loss over timesteps</span>
+<span class="n">learned_weights</span><span class="p">,</span> <span class="n">learned_components</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">model</span><span class="o">.</span><span class="n">H</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 </pre></div>
 </div>
 <dl class="py class">
@@ -122,16 +125,16 @@ We can constrain the components to be zeros and ones, and allow a third componen
 </dd>
 <dt><strong>n_components: int</strong></dt><dd><p>Number of desired components for the matrix factorization</p>
 </dd>
-<dt><strong>initial_components: list of torch.Tensor</strong></dt><dd><p>Initial components for the factorization</p>
+<dt><strong>initial_components: tuple of torch.Tensor</strong></dt><dd><p>Initial components for the factorization. Shape (1, n_features)</p>
 </dd>
-<dt><strong>fix_components: list of bool</strong></dt><dd><p>Corresponding directive to fix each component in the factorization.
+<dt><strong>fix_components: tuple of bool</strong></dt><dd><p>Corresponding directive to fix each component in the factorization.
 The components are ordered, and the default behavior is to allow a component to vary.
 I.e. (True, False, True) for a 4 component factorization will result in the first and third
 component being fixed, while the second and fourth vary.</p>
 </dd>
-<dt><strong>initial_weights: list of torch.Tensor</strong></dt><dd><p>Initial weights for the factorization</p>
+<dt><strong>initial_weights: tuple of torch.Tensor</strong></dt><dd><p>Initial weights for the factorization. Shape (1, m_examples)</p>
 </dd>
-<dt><strong>fix_weights: list of bool</strong></dt><dd><p>Corresponding directive to fix each weight in the factorization.</p>
+<dt><strong>fix_weights: tuple of bool</strong></dt><dd><p>Corresponding directive to fix each weight in the factorization.</p>
 </dd>
 <dt><strong>device: str, torch.device, None</strong></dt><dd><p>Device for matrix factorization to proceed on. Defaults to cpu.</p>
 </dd>
@@ -182,16 +185,16 @@ has some required implementations for any child classes.</p>
 </dd>
 <dt><strong>n_components: int</strong></dt><dd><p>Number of components in the factorization</p>
 </dd>
-<dt><strong>initial_components: list of torch.Tensor</strong></dt><dd><p>Initial components for the factorization</p>
+<dt><strong>initial_components: tuple of torch.Tensor</strong></dt><dd><p>Initial components for the factorization. Shape (1, n_features)</p>
 </dd>
-<dt><strong>fix_components: list of bool</strong></dt><dd><p>Corresponding directive to fix each component in the factorization.
+<dt><strong>fix_components: tuple of bool</strong></dt><dd><p>Corresponding directive to fix each component in the factorization.
 The components are ordered, and the default behavior is to allow a component to vary.
 I.e. (True, False, True) for a 4 component factorization will result in the first and third
 component being fixed, while the second and fourth vary.</p>
 </dd>
-<dt><strong>initial_weights: list of torch.Tensor</strong></dt><dd><p>Initial weights for the factorization</p>
+<dt><strong>initial_weights: tuple of torch.Tensor</strong></dt><dd><p>Initial weights for the factorization. Shape (1, m_examples)</p>
 </dd>
-<dt><strong>fix_weights: list of bool</strong></dt><dd><p>Corresponding directive to fix each weight in the factorization.</p>
+<dt><strong>fix_weights: tuple of bool</strong></dt><dd><p>Corresponding directive to fix each weight in the factorization.</p>
 </dd>
 <dt><strong>device: str, torch.device, None</strong></dt><dd><p>Device for matrix factorization to proceed on. Defaults to cpu.</p>
 </dd>

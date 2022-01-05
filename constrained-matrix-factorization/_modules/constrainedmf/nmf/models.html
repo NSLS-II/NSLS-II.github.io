@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>constrainedmf.nmf.models &mdash; Constrained Matrix Factorization 0.1.1.post3+g3dfb634 documentation</title>
+  <title>constrainedmf.nmf.models &mdash; Constrained Matrix Factorization 0.1.1.post11+ge4d8ee1 documentation</title>
       <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../../../_static/plot_directive.css" type="text/css" />
@@ -31,7 +31,7 @@
             <a href="../../../index.html" class="icon icon-home"> Constrained Matrix Factorization
           </a>
               <div class="version">
-                0.1.1.post3+g3dfb634
+                0.1.1.post11+ge4d8ee1
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
@@ -164,16 +164,16 @@
 <span class="sd">            Shape of the components matrix</span>
 <span class="sd">        n_components: int</span>
 <span class="sd">            Number of components in the factorization</span>
-<span class="sd">        initial_components: list of torch.Tensor</span>
-<span class="sd">            Initial components for the factorization</span>
-<span class="sd">        fix_components: list of bool</span>
+<span class="sd">        initial_components: tuple of torch.Tensor</span>
+<span class="sd">            Initial components for the factorization. Shape (1, n_features)</span>
+<span class="sd">        fix_components: tuple of bool</span>
 <span class="sd">            Corresponding directive to fix each component in the factorization.</span>
 <span class="sd">            The components are ordered, and the default behavior is to allow a component to vary.</span>
 <span class="sd">            I.e. (True, False, True) for a 4 component factorization will result in the first and third</span>
 <span class="sd">            component being fixed, while the second and fourth vary.</span>
-<span class="sd">        initial_weights: list of torch.Tensor</span>
-<span class="sd">            Initial weights for the factorization</span>
-<span class="sd">        fix_weights: list of bool</span>
+<span class="sd">        initial_weights: tuple of torch.Tensor</span>
+<span class="sd">            Initial weights for the factorization. Shape (1, m_examples)</span>
+<span class="sd">        fix_weights: tuple of bool</span>
 <span class="sd">            Corresponding directive to fix each weight in the factorization.</span>
 <span class="sd">        device: str, torch.device, None</span>
 <span class="sd">            Device for matrix factorization to proceed on. Defaults to cpu.</span>
@@ -190,7 +190,10 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">initial_weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">w_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">for</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">initial_weights</span><span class="p">]</span>
+            <span class="n">w_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span> <span class="k">for</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">initial_weights</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">W_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">W_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">initial_weights</span><span class="p">))</span>
+            <span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">w_list</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">W_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">W_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -201,7 +204,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">W_list</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ParameterList</span><span class="p">(</span><span class="n">w_list</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">initial_components</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">h_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">component</span><span class="p">)</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">initial_components</span><span class="p">]</span>
+            <span class="n">h_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">component</span><span class="p">)</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">initial_components</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">H_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span>
+                <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">H_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">initial_components</span><span class="p">))</span>
+            <span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">h_list</span> <span class="o">=</span> <span class="p">[</span>
                 <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">*</span><span class="n">H_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">H_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -382,8 +388,8 @@
         <span class="k">return</span> <span class="n">losses</span>
 
     <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">n_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">n_iter</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">W_list</span><span class="p">])</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span></div>
 
 
 <div class="viewcode-block" id="NMF"><a class="viewcode-back" href="../../../nativeCMF.html#constrainedmf.nmf.models.NMF">[docs]</a><span class="k">class</span> <span class="nc">NMF</span><span class="p">(</span><span class="n">NMFBase</span><span class="p">):</span>
@@ -414,16 +420,16 @@
 <span class="sd">            Tuple of ints describing shape of input matrix</span>
 <span class="sd">        n_components: int</span>
 <span class="sd">            Number of desired components for the matrix factorization</span>
-<span class="sd">        initial_components: list of torch.Tensor</span>
-<span class="sd">            Initial components for the factorization</span>
-<span class="sd">        fix_components: list of bool</span>
+<span class="sd">        initial_components: tuple of torch.Tensor</span>
+<span class="sd">            Initial components for the factorization. Shape (1, n_features)</span>
+<span class="sd">        fix_components: tuple of bool</span>
 <span class="sd">            Corresponding directive to fix each component in the factorization.</span>
 <span class="sd">            The components are ordered, and the default behavior is to allow a component to vary.</span>
 <span class="sd">            I.e. (True, False, True) for a 4 component factorization will result in the first and third</span>
 <span class="sd">            component being fixed, while the second and fourth vary.</span>
-<span class="sd">        initial_weights: list of torch.Tensor</span>
-<span class="sd">            Initial weights for the factorization</span>
-<span class="sd">        fix_weights: list of bool</span>
+<span class="sd">        initial_weights: tuple of torch.Tensor</span>
+<span class="sd">            Initial weights for the factorization. Shape (1, m_examples)</span>
+<span class="sd">        fix_weights: tuple of bool</span>
 <span class="sd">            Corresponding directive to fix each weight in the factorization.</span>
 <span class="sd">        device: str, torch.device, None</span>
 <span class="sd">            Device for matrix factorization to proceed on. Defaults to cpu.</span>
