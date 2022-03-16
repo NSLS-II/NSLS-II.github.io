@@ -4,8 +4,8 @@ Installation
 
 Create and activate Conda environment::
 
-    $ conda create -n <env-name> python=3.9 -c conda-forge
-    $ conda activate <env-name>
+    $ conda create -n xmidas_env python=3.9 -c conda-forge
+    $ conda activate xmidas_env
 
 Installation from *conda-forge*::
 

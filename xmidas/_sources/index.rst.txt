@@ -10,4 +10,5 @@ XMidas Documentation
    :maxdepth: 2
 
    installation
+   Loading_Data
    release-history
