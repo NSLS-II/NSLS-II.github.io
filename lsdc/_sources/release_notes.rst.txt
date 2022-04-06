@@ -2,8 +2,29 @@
  Release History
 =================
 
+1.0.1 (2022-03-11)
+==================
+
+This is the version actually deployed onto AMX/FMX.
+
+Fixes
+-----
+
+Changes
+-------
+* New version numbering system details - starting with 2.0 for fully Bluesky release (expected summer 2022). Working backwards, 1.0 for this version.
+* AMX/FMX branch (master)
+
+  * Remove ordering of pucks by time (DK) - could not be made to fully work as intended.
+  * Use clean conda environments generated via conda-pack-template and deployed with Explorer using Ansible
+  * Speed up rastering by simplifying lastOnSample() check
+  * FMX annealer code fixed
+
+
 1.0.0 (2022-02-08)
 ==================
+
+This version was intended to be the new release but testing could not be completed, resulting in old code 2021-3 being used for the start of the cycle.
 
 Fixes
 -----
@@ -12,7 +33,7 @@ Changes
 -------
 
 * Adding documentation that gets published to the NSLS-II site.
-* New version numbering system.
+* New version numbering system
 * NYX branch (nyx_ophyd) - not yet merged into master
 
   * LSDC GUI and server starting 
@@ -23,7 +44,7 @@ Changes
 * AMX/FMX branch (master)
 
   * complete changeover to cluster processing including all types of processing
-  * Ordering of pucks by time for easier selection (DK) 
+  * Ordering of pucks by time for easier selection (DK)
 
 * additional work during the last cycle
 
