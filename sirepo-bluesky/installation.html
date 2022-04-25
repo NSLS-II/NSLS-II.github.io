@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation instructions &mdash; sirepo-bluesky 0.post1+g933939e documentation</title>
+  <title>Installation instructions &mdash; sirepo-bluesky 0.post1+g05be2df documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/plot_directive.css" type="text/css" />
@@ -35,7 +35,7 @@
             <a href="index.html" class="icon icon-home"> sirepo-bluesky
           </a>
               <div class="version">
-                0.post1+g933939e
+                0.post1+g05be2df
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -151,6 +151,7 @@ fi
 
 SIREPO_SRDB_HOST=&quot;${SIREPO_SRDB_HOST:-}&quot;
 SIREPO_SRDB_GUEST=&quot;${SIREPO_SRDB_GUEST:-}&quot;
+SIREPO_SRDB_ROOT=&quot;${SIREPO_SRDB_ROOT:-&#39;/sirepo&#39;}&quot;
 
 unset cmd _cmd docker_image SIREPO_DOCKER_CONTAINER_ID
 
@@ -174,14 +175,20 @@ ${docker_binary} pull ${docker_image}
 
 ${docker_binary} images
 
-in_docker_cmd=&quot;mkdir -v -p /sirepo/ &amp;&amp; cp -Rv /SIREPO_SRDB_ROOT/* /sirepo/ &amp;&amp; sirepo service http&quot;
+in_docker_cmd=&quot;mkdir -v -p ${SIREPO_SRDB_ROOT} &amp;&amp; \
+    if [ ! -f &quot;${SIREPO_SRDB_ROOT}/auth.db&quot; ]; then \
+        cp -Rv /SIREPO_SRDB_ROOT/* ${SIREPO_SRDB_ROOT}/; \
+    else \
+        echo &#39;The directory exists. Nothing to do&#39;; \
+    fi &amp;&amp; \
+    sirepo service http&quot;
 cmd_start=&quot;${docker_binary} run ${arg} --init --rm --name sirepo \
-       -e SIREPO_AUTH_METHODS=bluesky:guest \
-       -e SIREPO_AUTH_BLUESKY_SECRET=bluesky \
-       -e SIREPO_SRDB_ROOT=/sirepo \
-       -e SIREPO_COOKIE_IS_SECURE=false \
-       -p 8000:8000 \
-       -v $PWD/sirepo_bluesky/tests/SIREPO_SRDB_ROOT:/SIREPO_SRDB_ROOT:ro,z &quot;
+    -e SIREPO_AUTH_METHODS=bluesky:guest \
+    -e SIREPO_AUTH_BLUESKY_SECRET=bluesky \
+    -e SIREPO_SRDB_ROOT=${SIREPO_SRDB_ROOT} \
+    -e SIREPO_COOKIE_IS_SECURE=false \
+    -p 8000:8000 \
+    -v $PWD/sirepo_bluesky/tests/SIREPO_SRDB_ROOT:/SIREPO_SRDB_ROOT:ro,z &quot;
 
 cmd_extra=&quot;&quot;
 if [ ! -z &quot;${SIREPO_SRDB_HOST}&quot; -a ! -z &quot;${SIREPO_SRDB_GUEST}&quot; ]; then
