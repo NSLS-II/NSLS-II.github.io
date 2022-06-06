@@ -2,6 +2,32 @@
  Release History
 =================
 
+1.0.2 (2022-05-25, a.k.a. 2022-2)
+=================================
+
+Fixes
+-----
+* AMX/FMX branch (master)
+
+  * Improve handling of GUI spreadsheet file selection and spreadsheet import errors
+  * Detector distance update when unmounting a sample for AMX
+  * Fix incorrect number of steps in energy scan and allow non-integer steps
+  * Improve handling when no Chooch output during energy scan
+  * Ensure startup files point to code deployed on Lustre (/nsls2/software/mx/daq)
+  * Prevent using 777 permissions for visit directory to prevent overriding of
+    folder security
+
+* NYX branch (nyx-one-branch)
+
+  * Based on combined code (one-branch)
+  * Vector scans now available
+  * Publish Bluesky documents to Kafka
+  * xlsx spreadsheet files can now be read in
+
+Changes
+-------
+* Do not move main detector when collecting energy scan or spec raster
+
 1.0.1 (2022-03-11)
 ==================
 
