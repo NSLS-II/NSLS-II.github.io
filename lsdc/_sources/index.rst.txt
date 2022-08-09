@@ -15,3 +15,4 @@ Primary location of code: https://github.com/NSLS-II/lsdc
    :caption: Developer notes
 
    release_notes
+   processing_node_installation
