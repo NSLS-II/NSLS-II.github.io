@@ -29,4 +29,4 @@ If this computer has not been set up before, firewall configuration may be neces
 
    telnet xf17id2-srv2 7770
 
- - Ask ITD to allow communication from your new node to ports 7770, 7771, 7773 on xf17id2-srv2
+ - Ask your AST lead to update firewall settings to allow communication from your new node to ports 7770, 7771, 7773 on xf17id2-srv2
