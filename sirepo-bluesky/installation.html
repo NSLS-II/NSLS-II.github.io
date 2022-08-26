@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation instructions &mdash; sirepo-bluesky 0.post1+g05be2df documentation</title>
+  <title>Installation instructions &mdash; sirepo-bluesky 0.post1+gcf0ddd6 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="_static/plot_directive.css" type="text/css" />
@@ -16,6 +16,7 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/clipboard.min.js"></script>
         <script src="_static/copybutton.js"></script>
@@ -35,7 +36,7 @@
             <a href="index.html" class="icon icon-home"> sirepo-bluesky
           </a>
               <div class="version">
-                0.post1+g05be2df
+                0.post1+gcf0ddd6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -113,9 +114,9 @@
 }
 </style>
 <section id="installation-instructions">
-<h1>Installation instructions<a class="headerlink" href="#installation-instructions" title="Permalink to this headline">¶</a></h1>
+<h1>Installation instructions<a class="headerlink" href="#installation-instructions" title="Permalink to this heading">¶</a></h1>
 <section id="preparation">
-<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline">¶</a></h2>
+<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this heading">¶</a></h2>
 <p>Clone the repository to run the prerequisites:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ git clone https://github.com/NSLS-II/sirepo-bluesky.git
 $ <span class="nb">cd</span> sirepo-bluesky/
@@ -123,7 +124,7 @@ $ <span class="nb">cd</span> sirepo-bluesky/
 </div>
 </section>
 <section id="starting-sirepo">
-<span id="sirepo-startup"></span><h2>Starting Sirepo<a class="headerlink" href="#starting-sirepo" title="Permalink to this headline">¶</a></h2>
+<span id="sirepo-startup"></span><h2>Starting Sirepo<a class="headerlink" href="#starting-sirepo" title="Permalink to this heading">¶</a></h2>
 <p>To make use of the package, we need to run Sirepo as a service. We run Sirepo
 using <a class="reference external" href="https://www.docker.com/">Docker</a> images (<a class="reference external" href="https://podman.io/">Podman</a>
 can be used as well) from <a class="reference external" href="https://hub.docker.com/r/radiasoft/sirepo">DockerHub</a>.  We can start Sirepo locally
@@ -149,6 +150,12 @@ elif [ &quot;${arg}&quot; != &quot;-it&quot; -a &quot;${arg}&quot; != &quot;-d&q
     exit 2
 fi
 
+if [ &quot;${arg}&quot; == &quot;-it&quot; ]; then
+    remove_container=&quot;--rm&quot;
+else
+    remove_container=&quot;&quot;
+fi
+
 SIREPO_SRDB_HOST=&quot;${SIREPO_SRDB_HOST:-}&quot;
 SIREPO_SRDB_GUEST=&quot;${SIREPO_SRDB_GUEST:-}&quot;
 SIREPO_SRDB_ROOT=&quot;${SIREPO_SRDB_ROOT:-&#39;/sirepo&#39;}&quot;
@@ -168,7 +175,8 @@ else
     mkdir -p &quot;${today}&quot;
 fi
 
-docker_image=&quot;radiasoft/sirepo:beta&quot;
+# docker_image=&quot;radiasoft/sirepo:beta&quot;
+docker_image=&quot;radiasoft/sirepo:20220806.215448&quot;
 docker_binary=${DOCKER_BINARY:-&quot;docker&quot;}
 
 ${docker_binary} pull ${docker_image}
@@ -182,7 +190,7 @@ in_docker_cmd=&quot;mkdir -v -p ${SIREPO_SRDB_ROOT} &amp;&amp; \
         echo &#39;The directory exists. Nothing to do&#39;; \
     fi &amp;&amp; \
     sirepo service http&quot;
-cmd_start=&quot;${docker_binary} run ${arg} --init --rm --name sirepo \
+cmd_start=&quot;${docker_binary} run ${arg} --init ${remove_container} --name sirepo \
     -e SIREPO_AUTH_METHODS=bluesky:guest \
     -e SIREPO_AUTH_BLUESKY_SECRET=bluesky \
     -e SIREPO_SRDB_ROOT=${SIREPO_SRDB_ROOT} \
@@ -218,7 +226,7 @@ daemon mode.</p>
 </div>
 </section>
 <section id="starting-mongo">
-<h2>Starting Mongo<a class="headerlink" href="#starting-mongo" title="Permalink to this headline">¶</a></h2>
+<h2>Starting Mongo<a class="headerlink" href="#starting-mongo" title="Permalink to this heading">¶</a></h2>
 <p>Accessing the simualted data using Databroker requires us to have Mongo running.
 We can similarly run:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ bash scripts/start_mongo.sh -it
@@ -253,7 +261,7 @@ ${docker_binary} run ${arg} --rm -p 27017:27017 --name mongo ${docker_image}
 in the daemon mode.</p>
 </section>
 <section id="configuration-of-databroker">
-<h2>Configuration of databroker<a class="headerlink" href="#configuration-of-databroker" title="Permalink to this headline">¶</a></h2>
+<h2>Configuration of databroker<a class="headerlink" href="#configuration-of-databroker" title="Permalink to this heading">¶</a></h2>
 <p>To to access the collected data with the <a class="reference external" href="https://blueskyproject.io/databroker">databroker</a> library, we need to configure it. For
 that, please copy the <a class="reference external" href="https://github.com/NSLS-II/sirepo-bluesky/blob/master/examples/local.yml">local.yml</a>
 configuration file to the <code class="docutils literal notranslate"><span class="pre">~/.config/databroker/</span></code> directory.</p>
@@ -277,7 +285,7 @@ configuration file to the <code class="docutils literal notranslate"><span class
 </div>
 </section>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The installation requires the SRW and Shadow3 packages to be installed to make
@@ -324,13 +332,13 @@ the development requirements, such as:</p>
 follow the instructions at <a class="reference external" href="https://pandoc.org/installing.html">https://pandoc.org/installing.html</a> to install it.</p>
 </div>
 <section id="run-tests">
-<h3>Run tests<a class="headerlink" href="#run-tests" title="Permalink to this headline">¶</a></h3>
+<h3>Run tests<a class="headerlink" href="#run-tests" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ pytest -vv -s -x --pdb
 </pre></div>
 </div>
 </section>
 <section id="build-documentation">
-<h3>Build documentation<a class="headerlink" href="#build-documentation" title="Permalink to this headline">¶</a></h3>
+<h3>Build documentation<a class="headerlink" href="#build-documentation" title="Permalink to this heading">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ make -C docs/ html
 </pre></div>
 </div>
