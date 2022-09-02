@@ -2,6 +2,40 @@
  Release History
 =================
 
+1.0.3 (2022-09-05, a.k.a. 2022-3)
+=================================
+
+Fixes and other changes
+-----------------------
+* AMX/FMX branch (master)
+
+  * Make a copy of the lysozyme PDB file for Raddose instead of a symlink to prevent Globus issues
+  * More handling of ValueErrors from bad input on GUI fields
+  * Remove extra popup dialog on startup (progress bar)
+  * Add beamCheck box to GUI
+
+* AMX/FMX branch (amx-fmx-one-branch-fixes)
+
+  * Calculate wavelength from energy on all beamlines
+  * Add Bluesky logging
+  * Use new ISPyB database hostname
+  * Fix detector distance in flyer
+  * Vector data collection working on AMX/FMX
+  * Initial code for rastering for AMX/FMX
+  * Use system Kafka configuration
+
+* NYX branch (nyx-one-branch)
+
+  * Do not update gain/acquire time for sample camera upon zoom change on NYX
+  * Ensure correct VectorProgram used for NYX
+  * Generally make sure vector collection works for NYX
+  * Longer total exposure time (1000 sec) for NYX
+  * Fix detector Z value going into Eiger metadata
+
+Note
+----
+AMX/FMX will still be using the master branch (instead of a one-branch derivative) as rastering was not fully transitioned to Bluesky before the end of the cycle - note that additional testing time will be necessary once rastering is complete before being suitable for production.
+
 1.0.2 (2022-05-25, a.k.a. 2022-2)
 =================================
 
