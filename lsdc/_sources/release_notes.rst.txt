@@ -2,7 +2,7 @@
  Release History
 =================
 
-1.0.3 (2022-09-05, a.k.a. 2022-3)
+1.0.3 (2022-09-06, a.k.a. 2022-3)
 =================================
 
 Fixes and other changes
@@ -13,6 +13,8 @@ Fixes and other changes
   * More handling of ValueErrors from bad input on GUI fields
   * Remove extra popup dialog on startup (progress bar)
   * Add beamCheck box to GUI
+  * Add DewarRefill function on the server-side
+  * Refactor hutch camera code to stop GUI from crashing when cameras are broken/absent and to update quicker
 
 * AMX/FMX branch (amx-fmx-one-branch-fixes)
 
