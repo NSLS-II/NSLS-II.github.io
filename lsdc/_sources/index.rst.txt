@@ -14,5 +14,13 @@ Primary location of code: https://github.com/NSLS-II/lsdc
    :maxdepth: 1
    :caption: Developer notes
 
-   release_notes
-   processing_node_installation
+   ./developer_notes/release_notes
+   ./developer_notes/processing_node_installation
+   ./developer_notes/mx_tools_update
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Architecture
+
+   ./architecture/overview
+
