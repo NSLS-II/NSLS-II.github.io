@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>MAD-X Simulations &#8212; sirepo-bluesky 0.5.0.post14+gda7a04f documentation</title>
+    <title>MAD-X Simulations &#8212; sirepo-bluesky 0.5.0.post19+g60c532a documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/cloud.css" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
@@ -16,9 +16,6 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noticia+Text:400,i,b,bi|Open+Sans:400,i,b,bi|Roboto+Mono:400,i,b,bi&amp;display=swap" type="text/css" />
     
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
-    <script src="../_static/jquery.js"></script>
-    <script src="../_static/underscore.js"></script>
-    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../_static/doctools.js"></script>
     <script src="../_static/sphinx_highlight.js"></script>
     <script src="../_static/clipboard.min.js"></script>
@@ -63,7 +60,7 @@
         <li class="right" >
           <a href="elements.html" title="Optical Elements as Ophyd Objects"
              accesskey="P">previous</a> &nbsp; &nbsp;</li>
-    <li><a href="../index.html">sirepo-bluesky 0.5.0.post14+gda7a04f documentation</a> &#187;</li>
+    <li><a href="../index.html">sirepo-bluesky 0.5.0.post19+g60c532a documentation</a> &#187;</li>
 
           <li class="nav-item nav-item-1"><a href="../notebooks-new-api.html" accesskey="U">Notebooks (new API)</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">MAD-X Simulations</a></li> 
@@ -360,8 +357,10 @@ div.admonition.inline-title p.admonition-title {
 </style>
 <section id="MAD-X-Simulations">
 <h1>MAD-X Simulations<a class="headerlink" href="#MAD-X-Simulations" title="Permalink to this heading">¶</a></h1>
-<p>This section is based on the <strong>BL2_TDC</strong> ATF example.</p>
+<p>This section is based on the <strong>BL2_Triplet_TDC_full</strong> (Beamline 2, transverse deflector cavity in operation) ATF example.</p>
 <p><strong>Hint</strong>: See the <a class="reference internal" href="../simulations.html"><span class="doc">List of predefined simulations in Sirepo</span></a> for examples of identifiers for different beamlines.</p>
+<section id="Setup-and-scan-model-before-changing-parameters">
+<h2>Setup and scan model before changing parameters<a class="headerlink" href="#Setup-and-scan-model-before-changing-parameters" title="Permalink to this heading">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
@@ -376,24 +375,20 @@ div.admonition.inline-title p.admonition-title {
 
 <span class="n">connection</span> <span class="o">=</span> <span class="n">SirepoBluesky</span><span class="p">(</span><span class="s2">&quot;http://localhost:8000&quot;</span><span class="p">)</span>
 
-<span class="n">data</span><span class="p">,</span> <span class="n">schema</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">auth</span><span class="p">(</span><span class="s2">&quot;madx&quot;</span><span class="p">,</span> <span class="s2">&quot;00000001&quot;</span><span class="p">)</span>
+<span class="n">data</span><span class="p">,</span> <span class="n">schema</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">auth</span><span class="p">(</span><span class="s2">&quot;madx&quot;</span><span class="p">,</span> <span class="s2">&quot;00000002&quot;</span><span class="p">)</span>
 <span class="n">classes</span><span class="p">,</span> <span class="n">objects</span> <span class="o">=</span> <span class="n">create_classes</span><span class="p">(</span><span class="n">connection</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
                                   <span class="n">connection</span><span class="o">=</span><span class="n">connection</span><span class="p">,</span>
-                                  <span class="n">extra_model_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rpnVariables&quot;</span><span class="p">])</span>
+                                  <span class="n">extra_model_fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rpnVariables&quot;</span><span class="p">,</span> <span class="s2">&quot;commands&quot;</span><span class="p">])</span>
 <span class="nb">globals</span><span class="p">()</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="n">objects</span><span class="p">)</span>
 
 <span class="n">madx_flyer</span> <span class="o">=</span> <span class="n">MADXFlyer</span><span class="p">(</span><span class="n">connection</span><span class="o">=</span><span class="n">connection</span><span class="p">,</span>
                        <span class="n">root_dir</span><span class="o">=</span><span class="s2">&quot;/tmp/sirepo-bluesky-data&quot;</span><span class="p">,</span>
                        <span class="n">report</span><span class="o">=</span><span class="s2">&quot;elementAnimation250-20&quot;</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">madx_plan</span><span class="p">(</span><span class="n">parameter</span><span class="o">=</span><span class="n">ihq1</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
-    <span class="k">yield from</span> <span class="n">bps</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">parameter</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">bp</span><span class="o">.</span><span class="n">fly</span><span class="p">([</span><span class="n">madx_flyer</span><span class="p">]))</span>
-
-<span class="p">(</span><span class="n">uid</span><span class="p">,)</span> <span class="o">=</span> <span class="n">RE</span><span class="p">(</span><span class="n">madx_plan</span><span class="p">())</span>
-<span class="n">hdr</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span>
-<span class="n">tbl</span> <span class="o">=</span> <span class="n">hdr</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">stream_name</span><span class="o">=</span><span class="s2">&quot;madx_flyer&quot;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">tbl</span><span class="p">)</span>
+<span class="p">(</span><span class="n">uid1</span><span class="p">,)</span> <span class="o">=</span> <span class="n">RE</span><span class="p">(</span><span class="n">bp</span><span class="o">.</span><span class="n">fly</span><span class="p">([</span><span class="n">madx_flyer</span><span class="p">]))</span>
+<span class="n">hdr1</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">uid1</span><span class="p">]</span>
+<span class="n">tbl1</span> <span class="o">=</span> <span class="n">hdr1</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">stream_name</span><span class="o">=</span><span class="s2">&quot;madx_flyer&quot;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">tbl1</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -404,25 +399,25 @@ div.admonition.inline-title p.admonition-title {
 <div class="highlight"><pre>
 
 
-Transient Scan ID: 1     Time: 2022-12-21 00:27:48
-Persistent Unique Scan ID: &#39;d4610e79-c062-4a04-8a50-15a98fbc6e99&#39;
+Transient Scan ID: 1     Time: 2023-01-17 16:59:32
+Persistent Unique Scan ID: &#39;9e594535-d8c0-45ba-9da7-d1b232c465ec&#39;
 New stream: &#39;madx_flyer&#39;
 
 
 
                                  time      madx_flyer_NAME madx_flyer_S  \
 seq_num
-1       2022-12-21 00:27:57.130152464  BEAMLINE_FULL$START          0.0
-2       2022-12-21 00:27:57.130193232                 HO00          0.2
-3       2022-12-21 00:27:57.130214930                HPOP1          0.2
-4       2022-12-21 00:27:57.130232572                HT1HV          0.2
-5       2022-12-21 00:27:57.130247593                 HO01         0.37
+1       2023-01-17 16:59:41.269338131  BEAMLINE_FULL$START          0.0
+2       2023-01-17 16:59:41.269383669                 HO00          0.2
+3       2023-01-17 16:59:41.269405603                HPOP1          0.2
+4       2023-01-17 16:59:41.269421816                HT1HV          0.2
+5       2023-01-17 16:59:41.269438505                 HO01         0.37
 ...                               ...                  ...          ...
-157     2022-12-21 00:27:57.132438421                 GO38  27.53831648
-158     2022-12-21 00:27:57.132451534                 GD32  27.81538296
-159     2022-12-21 00:27:57.132464169                 GO39  27.93538296
-160     2022-12-21 00:27:57.132478714                 GP12  27.93538296
-161     2022-12-21 00:27:57.132493734    BEAMLINE_FULL$END  27.93538296
+147     2023-01-17 16:59:41.271581650                 IO20     28.28665
+148     2023-01-17 16:59:41.271593809                  IQ9     28.36265
+149     2023-01-17 16:59:41.271605730                 IO21     28.86265
+150     2023-01-17 16:59:41.271621227                 IP85     28.86265
+151     2023-01-17 16:59:41.271636248    BEAMLINE_FULL$END     28.86265
 
         madx_flyer_BETX madx_flyer_ALFX madx_flyer_BETY madx_flyer_ALFY  \
 seq_num
@@ -432,27 +427,27 @@ seq_num
 4                10.408           -1.04          10.408           -1.04
 5              10.76738          -1.074        10.76738          -1.074
 ...                 ...             ...             ...             ...
-157         2.396883578    -3.863282884     84.26809523     230.9077167
-158        0.5164147523    -5.146489917     252.4075341    -427.2069816
-159         2.518017443    -11.53353251     365.3493315    -513.9746634
-160         2.518017443    -11.53353251     365.3493315    -513.9746634
-161         2.518017443    -11.53353251     365.3493315    -513.9746634
+147         7.511737399     29.28116647     50.70010595    -49.81206671
+148         4.955889215     6.950629231     46.35487045     102.4208395
+149        0.4927675011     1.975614196    0.5139990441    -10.73909671
+150        0.4927675011     1.975614196    0.5139990441    -10.73909671
+151        0.4927675011     1.975614196    0.5139990441    -10.73909671
 
-            madx_flyer_DX madx_flyer_DY
+        madx_flyer_DX madx_flyer_DY
 seq_num
-1                     0.0           0.0
-2                     0.0           0.0
-3                     0.0           0.0
-4                     0.0           0.0
-5                     0.0           0.0
-...                   ...           ...
-157      -0.0008130600296  0.2204931072
-158       0.0003492332044     0.7817777
-159       0.0008034259101   1.101499236
-160       0.0008034259101   1.101499236
-161       0.0008034259101   1.101499236
+1                 0.0           0.0
+2                 0.0           0.0
+3                 0.0           0.0
+4                 0.0           0.0
+5                 0.0           0.0
+...               ...           ...
+147      0.2928633271           0.0
+148      0.2901702805           0.0
+149      0.4938460783           0.0
+150      0.4938460783           0.0
+151      0.4938460783           0.0
 
-[161 rows x 9 columns]
+[151 rows x 9 columns]
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
@@ -464,56 +459,182 @@ seq_num
   warnings.warn(
 </pre></div></div>
 </div>
-<section id="Get-the-data-via-databroker-API">
-<h2>Get the data via databroker API<a class="headerlink" href="#Get-the-data-via-databroker-API" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="Scan-again-after-changing-parameters">
+<h2>Scan again after changing parameters<a class="headerlink" href="#Scan-again-after-changing-parameters" title="Permalink to this heading">¶</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="o">=</span> <span class="n">tbl</span><span class="p">[</span><span class="s2">&quot;madx_flyer_S&quot;</span><span class="p">]</span>
-<span class="n">betx</span> <span class="o">=</span> <span class="n">tbl</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETX&quot;</span><span class="p">]</span>
-<span class="n">bety</span> <span class="o">=</span> <span class="n">tbl</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETY&quot;</span><span class="p">]</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">madx_plan</span><span class="p">(</span><span class="n">element</span><span class="o">=</span><span class="n">match8</span><span class="p">,</span> <span class="n">parameter</span><span class="o">=</span><span class="n">ihq1</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+    <span class="k">yield from</span> <span class="n">bps</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">element</span><span class="o">.</span><span class="n">deltap</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">yield from</span> <span class="n">bps</span><span class="o">.</span><span class="n">mv</span><span class="p">(</span><span class="n">parameter</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="k">yield from</span> <span class="n">bp</span><span class="o">.</span><span class="n">fly</span><span class="p">([</span><span class="n">madx_flyer</span><span class="p">]))</span>
+
+<span class="p">(</span><span class="n">uid2</span><span class="p">,)</span> <span class="o">=</span> <span class="n">RE</span><span class="p">(</span><span class="n">madx_plan</span><span class="p">())</span>
+<span class="n">hdr2</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">uid2</span><span class="p">]</span>
+<span class="n">tbl2</span> <span class="o">=</span> <span class="n">hdr2</span><span class="o">.</span><span class="n">table</span><span class="p">(</span><span class="n">stream_name</span><span class="o">=</span><span class="s2">&quot;madx_flyer&quot;</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">tbl2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 2     Time: 2023-01-17 16:59:41
+Persistent Unique Scan ID: &#39;86f27111-1dbf-43e9-9bca-9d8c86d333e4&#39;
+New stream: &#39;madx_flyer&#39;
+
+
+
+                                 time      madx_flyer_NAME madx_flyer_S  \
+seq_num
+1       2023-01-17 16:59:46.404938698  BEAMLINE_FULL$START          0.0
+2       2023-01-17 16:59:46.404980659                 HO00          0.2
+3       2023-01-17 16:59:46.405003309                HPOP1          0.2
+4       2023-01-17 16:59:46.405022621                HT1HV          0.2
+5       2023-01-17 16:59:46.405038834                 HO01         0.37
+...                               ...                  ...          ...
+147     2023-01-17 16:59:46.407037258                 IO20     28.28665
+148     2023-01-17 16:59:46.407050133                  IQ9     28.36265
+149     2023-01-17 16:59:46.407063484                 IO21     28.86265
+150     2023-01-17 16:59:46.407077789                 IP85     28.86265
+151     2023-01-17 16:59:46.407090902    BEAMLINE_FULL$END     28.86265
+
+        madx_flyer_BETX madx_flyer_ALFX madx_flyer_BETY madx_flyer_ALFY  \
+seq_num
+1                  10.0            -1.0            10.0            -1.0
+2                10.408           -1.04          10.408           -1.04
+3                10.408           -1.04          10.408           -1.04
+4                10.408           -1.04          10.408           -1.04
+5              10.76738          -1.074        10.76738          -1.074
+...                 ...             ...             ...             ...
+147          1900.02317     -512.983326     939.0523192    -1904.117613
+148         1994.298015    -730.7480304     1241.777577    -2068.588869
+149         2791.986102    -864.6281425     4171.845384    -3791.546745
+150         2791.986102    -864.6281425     4171.845384    -3791.546745
+151         2791.986102    -864.6281425     4171.845384    -3791.546745
+
+        madx_flyer_DX madx_flyer_DY
+seq_num
+1                 0.0           0.0
+2                 0.0           0.0
+3                 0.0           0.0
+4                 0.0           0.0
+5                 0.0           0.0
+...               ...           ...
+147        1.04657493           0.0
+148       1.073606624           0.0
+149       1.279162206           0.0
+150       1.279162206           0.0
+151       1.279162206           0.0
+
+[151 rows x 9 columns]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/sirepo-bluesky-py3.9/lib/python3.9/site-packages/event_model/__init__.py:224: UserWarning: The document type &#39;bulk_events&#39; has been deprecated in favor of &#39;event_page&#39;, whose structure is a transpose of &#39;bulk_events&#39;.
+  warnings.warn(
+</pre></div></div>
+</div>
+</section>
+<section id="Get-the-data-via-databroker-API-and-plot">
+<h2>Get the data via databroker API and plot<a class="headerlink" href="#Get-the-data-via-databroker-API-and-plot" title="Permalink to this heading">¶</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Before changing parameters</span>
+<span class="n">s1</span> <span class="o">=</span> <span class="n">tbl1</span><span class="p">[</span><span class="s2">&quot;madx_flyer_S&quot;</span><span class="p">]</span>
+<span class="n">betx1</span> <span class="o">=</span> <span class="n">tbl1</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETX&quot;</span><span class="p">]</span>
+<span class="n">bety1</span> <span class="o">=</span> <span class="n">tbl1</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETY&quot;</span><span class="p">]</span>
 
 <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">betx</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;betx&quot;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bety</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;bety&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">betx1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;betx&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">bety1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;bety&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;s [m]&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;betx, bety [m]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Before&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.legend.Legend at 0x7efeb2043220&gt;
+&lt;matplotlib.legend.Legend at 0x7fccf4391310&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_madx_3_1.png" src="../_images/notebooks_madx_3_1.png" />
+<img alt="../_images/notebooks_madx_6_1.png" src="../_images/notebooks_madx_6_1.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># After changing parameters</span>
+<span class="n">s2</span> <span class="o">=</span> <span class="n">tbl2</span><span class="p">[</span><span class="s2">&quot;madx_flyer_S&quot;</span><span class="p">]</span>
+<span class="n">betx2</span> <span class="o">=</span> <span class="n">tbl2</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETX&quot;</span><span class="p">]</span>
+<span class="n">bety2</span> <span class="o">=</span> <span class="n">tbl2</span><span class="p">[</span><span class="s2">&quot;madx_flyer_BETY&quot;</span><span class="p">]</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="n">betx2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;betx&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="n">bety2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;bety&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;s [m]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;betx, bety [m]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;After&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;matplotlib.legend.Legend at 0x7fccf42fe3a0&gt;
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_madx_7_1.png" src="../_images/notebooks_madx_7_1.png" />
 </div>
 </div>
 </section>
-<section id="Get-the-data-from-the-original-TFS-file">
-<h2>Get the data from the original TFS file<a class="headerlink" href="#Get-the-data-from-the-original-TFS-file" title="Permalink to this heading">¶</a></h2>
+<section id="Get-the-data-from-the-raw-TFS-file-and-plot">
+<h2>Get the data from the raw TFS file and plot<a class="headerlink" href="#Get-the-data-from-the-raw-TFS-file-and-plot" title="Permalink to this heading">¶</a></h2>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">tfs</span>
 
-<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">hdr</span><span class="o">.</span><span class="n">documents</span><span class="p">():</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">hdr2</span><span class="o">.</span><span class="n">documents</span><span class="p">():</span>
     <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;resource&quot;</span><span class="p">:</span>
         <span class="n">resource_doc</span> <span class="o">=</span> <span class="n">doc</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">resource_doc</span><span class="p">)</span>
+
 <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">resource_doc</span><span class="p">[</span><span class="s2">&quot;root&quot;</span><span class="p">],</span> <span class="n">resource_doc</span><span class="p">[</span><span class="s2">&quot;resource_path&quot;</span><span class="p">])</span>
 <span class="n">df</span> <span class="o">=</span> <span class="n">tfs</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
 </pre></div>
@@ -529,15 +650,15 @@ Resource
 ========
 path_semantics  : posix
 resource_kwargs :
-resource_path   : 2022/12/21/448e9578-b7d6-40bf-9202-1242255eebaf.tfs
+resource_path   : 2023/01/17/ce9a3e10-1a96-4039-8eca-b1b6647545a3.tfs
 root            : /tmp/sirepo-bluesky-data
-run_start       : d4610e79-c062-4a04-8a50-15a98fbc6e99
+run_start       : 86f27111-1dbf-43e9-9bca-9d8c86d333e4
 spec            : madx
-uid             : 81574c3b-8942-4493-a5e7-332b42001986
+uid             : 6c0e796f-e183-4d48-b7c0-0015cb0d8b5c
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df</span>
@@ -545,7 +666,7 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -581,57 +702,57 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
     <tr>
       <th>0</th>
       <td>BEAMLINE_FULL$START</td>
-      <td>0.000000</td>
+      <td>0.00000</td>
       <td>10.000000</td>
       <td>-1.000000</td>
       <td>10.000000</td>
       <td>-1.000000</td>
       <td>0.000000</td>
-      <td>0.000000</td>
+      <td>0.0</td>
     </tr>
     <tr>
       <th>1</th>
       <td>HO00</td>
-      <td>0.200000</td>
+      <td>0.20000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>0.000000</td>
-      <td>0.000000</td>
+      <td>0.0</td>
     </tr>
     <tr>
       <th>2</th>
       <td>HPOP1</td>
-      <td>0.200000</td>
+      <td>0.20000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>0.000000</td>
-      <td>0.000000</td>
+      <td>0.0</td>
     </tr>
     <tr>
       <th>3</th>
       <td>HT1HV</td>
-      <td>0.200000</td>
+      <td>0.20000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>10.408000</td>
       <td>-1.040000</td>
       <td>0.000000</td>
-      <td>0.000000</td>
+      <td>0.0</td>
     </tr>
     <tr>
       <th>4</th>
       <td>HO01</td>
-      <td>0.370000</td>
+      <td>0.37000</td>
       <td>10.767380</td>
       <td>-1.074000</td>
       <td>10.767380</td>
       <td>-1.074000</td>
       <td>0.000000</td>
-      <td>0.000000</td>
+      <td>0.0</td>
     </tr>
     <tr>
       <th>...</th>
@@ -645,67 +766,67 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
       <td>...</td>
     </tr>
     <tr>
-      <th>156</th>
-      <td>GO38</td>
-      <td>27.538316</td>
-      <td>2.396884</td>
-      <td>-3.863283</td>
-      <td>84.268095</td>
-      <td>230.907717</td>
-      <td>-0.000813</td>
-      <td>0.220493</td>
+      <th>146</th>
+      <td>IO20</td>
+      <td>28.28665</td>
+      <td>1900.023170</td>
+      <td>-512.983326</td>
+      <td>939.052319</td>
+      <td>-1904.117613</td>
+      <td>1.046575</td>
+      <td>0.0</td>
     </tr>
     <tr>
-      <th>157</th>
-      <td>GD32</td>
-      <td>27.815383</td>
-      <td>0.516415</td>
-      <td>-5.146490</td>
-      <td>252.407534</td>
-      <td>-427.206982</td>
-      <td>0.000349</td>
-      <td>0.781778</td>
+      <th>147</th>
+      <td>IQ9</td>
+      <td>28.36265</td>
+      <td>1994.298015</td>
+      <td>-730.748030</td>
+      <td>1241.777577</td>
+      <td>-2068.588869</td>
+      <td>1.073607</td>
+      <td>0.0</td>
     </tr>
     <tr>
-      <th>158</th>
-      <td>GO39</td>
-      <td>27.935383</td>
-      <td>2.518017</td>
-      <td>-11.533533</td>
-      <td>365.349332</td>
-      <td>-513.974663</td>
-      <td>0.000803</td>
-      <td>1.101499</td>
+      <th>148</th>
+      <td>IO21</td>
+      <td>28.86265</td>
+      <td>2791.986102</td>
+      <td>-864.628142</td>
+      <td>4171.845384</td>
+      <td>-3791.546745</td>
+      <td>1.279162</td>
+      <td>0.0</td>
     </tr>
     <tr>
-      <th>159</th>
-      <td>GP12</td>
-      <td>27.935383</td>
-      <td>2.518017</td>
-      <td>-11.533533</td>
-      <td>365.349332</td>
-      <td>-513.974663</td>
-      <td>0.000803</td>
-      <td>1.101499</td>
+      <th>149</th>
+      <td>IP85</td>
+      <td>28.86265</td>
+      <td>2791.986102</td>
+      <td>-864.628142</td>
+      <td>4171.845384</td>
+      <td>-3791.546745</td>
+      <td>1.279162</td>
+      <td>0.0</td>
     </tr>
     <tr>
-      <th>160</th>
+      <th>150</th>
       <td>BEAMLINE_FULL$END</td>
-      <td>27.935383</td>
-      <td>2.518017</td>
-      <td>-11.533533</td>
-      <td>365.349332</td>
-      <td>-513.974663</td>
-      <td>0.000803</td>
-      <td>1.101499</td>
+      <td>28.86265</td>
+      <td>2791.986102</td>
+      <td>-864.628142</td>
+      <td>4171.845384</td>
+      <td>-3791.546745</td>
+      <td>1.279162</td>
+      <td>0.0</td>
     </tr>
   </tbody>
 </table>
-<p>161 rows × 8 columns</p>
+<p>151 rows × 8 columns</p>
 </div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
@@ -713,31 +834,39 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;S&quot;</span><span class="p">],</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;BETY&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;bety&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;s [m]&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;betx, bety [m]&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;After&quot;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-&lt;matplotlib.legend.Legend at 0x7efeb0b94be0&gt;
+&lt;matplotlib.legend.Legend at 0x7fcd047c8670&gt;
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/notebooks_madx_7_1.png" src="../_images/notebooks_madx_7_1.png" />
+<img alt="../_images/notebooks_madx_11_1.png" src="../_images/notebooks_madx_11_1.png" />
 </div>
 </div>
+<section id="Screenshots-from-Sirepo-Website">
+<h3>Screenshots from Sirepo Website<a class="headerlink" href="#Screenshots-from-Sirepo-Website" title="Permalink to this heading">¶</a></h3>
 </section>
-<section id="Screenshot-from-Sirepo-website">
-<h2>Screenshot from Sirepo website<a class="headerlink" href="#Screenshot-from-Sirepo-website" title="Permalink to this heading">¶</a></h2>
-<p><img alt="image.png" src="../_images/madx_twiss2_file.png" /></p>
+</section>
+<section id="Original-model,-before-changing-parameters">
+<h2>Original model, before changing parameters<a class="headerlink" href="#Original-model,-before-changing-parameters" title="Permalink to this heading">¶</a></h2>
+<p><img alt="image.png" src="../_images/madx_before_twiss3_file.png" /></p>
+</section>
+<section id="After-changing-parameters">
+<h2>After changing parameters<a class="headerlink" href="#After-changing-parameters" title="Permalink to this heading">¶</a></h2>
+<p><img alt="image2.png" src="../_images/madx_after_twiss3_file.png" /></p>
 </section>
 </section>
 
@@ -756,9 +885,12 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
 <li class="toctree-l1 current"><a class="reference internal" href="../notebooks-new-api.html">Notebooks (new API)</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="elements.html">Optical Elements as Ophyd Objects</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">MAD-X Simulations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#Get-the-data-via-databroker-API">Get the data via databroker API</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Get-the-data-from-the-original-TFS-file">Get the data from the original TFS file</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#Screenshot-from-Sirepo-website">Screenshot from Sirepo website</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Setup-and-scan-model-before-changing-parameters">Setup and scan model before changing parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Scan-again-after-changing-parameters">Scan again after changing parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Get-the-data-via-databroker-API-and-plot">Get the data via databroker API and plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Get-the-data-from-the-raw-TFS-file-and-plot">Get the data from the raw TFS file and plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#Original-model,-before-changing-parameters">Original model, before changing parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#After-changing-parameters">After changing parameters</a></li>
 </ul>
 </li>
 </ul>
@@ -812,7 +944,7 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
         <li class="right" >
           <a href="elements.html" title="Optical Elements as Ophyd Objects"
              >previous</a> &nbsp; &nbsp;</li>
-    <li><a href="../index.html">sirepo-bluesky 0.5.0.post14+gda7a04f documentation</a> &#187;</li>
+    <li><a href="../index.html">sirepo-bluesky 0.5.0.post19+g60c532a documentation</a> &#187;</li>
 
           <li class="nav-item nav-item-1"><a href="../notebooks-new-api.html" >Notebooks (new API)</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">MAD-X Simulations</a></li> 
@@ -822,7 +954,7 @@ uid             : 81574c3b-8942-4493-a5e7-332b42001986
 
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Brookhaven National Laboratory.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 6.1.3.
     </div>
     <!-- cloud_sptheme 1.4 -->
   </body>
