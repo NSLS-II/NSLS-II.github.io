@@ -2,6 +2,40 @@
  Release History
 =================
 
+2.0.0 (2023-01-18, a.k.a. 2023-1)
+=================================
+
+Fixes and other changes
+-----------------------
+* AMX/FMX branch (master)
+
+  * GUI updates - right-click options on collection and close shutter button is now the main experiment "stop" button
+  * Startup check added - including not allowing startup in home directory
+  * Annealer working on both beamlines
+  * Vector tweak - more intuitive editing of vector start/end points 
+  * Puck list in order of modification
+  * Crashes in puck/dewar position dialog boxes fixed
+  * c3d location fixed
+  * Hutch cameras run on independent QThreads, shows message when feed is unavailable
+
+* AMX/FMX branch (one-branch)
+
+  * Check for detector arming (part of SB-166)
+  * Fix issues with governor moves at beginning and toward end of collections SB-165
+  * Always stop the detector acquisition at the end of standard, vector, and raster collections SB-166
+  * Fix energy being incorrect for rasters SB-184
+  * Rastering looks like it is now working - will be tested once beam is available SB-168
+
+* NYX branch (nyx-one-branch)
+
+  * Isara robot (in nyxtools)
+  * Isara robot integration into LSDC
+
+* Documentation
+
+  * Architecture diagram and description added
+  * Graphviz files can now be used in documentation and are compiled during the build process
+
 1.0.3 (2022-09-06, a.k.a. 2022-3)
 =================================
 
