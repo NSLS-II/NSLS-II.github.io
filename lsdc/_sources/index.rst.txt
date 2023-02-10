@@ -17,6 +17,7 @@ Primary location of code: https://github.com/NSLS-II/lsdc
    ./developer_notes/release_notes
    ./developer_notes/processing_node_installation
    ./developer_notes/mx_tools_update
+   ./developer_notes/collection_priorities
 
 .. toctree::
    :maxdepth: 1
