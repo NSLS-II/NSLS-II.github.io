@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Run the GP optimizer in two dimensions &mdash; bloptools 0.post106+g0bdc84d documentation</title>
+  <title>Run the GP optimizer in two dimensions &mdash; bloptools 0.post124+g435bf12 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/plot_directive.css" type="text/css" />
@@ -25,7 +25,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Run the GP optimizer in four dimensions" href="gp-optimizer-4d.html" />
+    <link rel="next" title="Run the GP optimizer in two dimensions" href="gp-optimizer-4d.html" />
     <link rel="prev" title="Notebooks" href="../notebooks.html" /> 
 </head>
 
@@ -41,7 +41,7 @@
             bloptools
           </a>
               <div class="version">
-                0.post106+g0bdc84d
+                0.post124+g435bf12
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -56,7 +56,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../notebooks.html">Notebooks</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Run the GP optimizer in two dimensions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gp-optimizer-4d.html">Run the GP optimizer in four dimensions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gp-optimizer-4d.html">Run the GP optimizer in two dimensions</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../release-history.html">Release History</a></li>
@@ -94,13 +94,12 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">run</span> -i ../../../examples/prepare_gp_optimizer.py
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">run</span> -i ../../../examples/prepare_tes_shadow.py
 
-<span class="n">dofs</span> <span class="o">=</span> <span class="p">[</span><span class="n">kbv</span><span class="o">.</span><span class="n">x_rot</span><span class="p">,</span> <span class="n">kbv</span><span class="o">.</span><span class="n">offz</span><span class="p">]</span> <span class="c1"># two degrees of freedom of the vertical KB mirror</span>
+<span class="n">kbs</span> <span class="o">=</span> <span class="p">[</span><span class="n">kbv</span><span class="o">.</span><span class="n">x_rot</span><span class="p">,</span> <span class="n">kbv</span><span class="o">.</span><span class="n">offz</span><span class="p">]</span>
+<span class="n">kb_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.10</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.50</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.50</span><span class="p">]])</span>
 
-<span class="n">hard_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.10</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.50</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.50</span><span class="p">]])</span>
-
-<span class="k">for</span> <span class="n">dof</span> <span class="ow">in</span> <span class="n">dofs</span><span class="p">:</span>
+<span class="k">for</span> <span class="n">dof</span> <span class="ow">in</span> <span class="n">kbs</span><span class="p">:</span>
     <span class="n">dof</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;hinted&quot;</span>
 </pre></div>
 </div>
@@ -109,33 +108,63 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpo</span> <span class="o">=</span> <span class="n">Optimizer</span><span class="p">(</span>
-    <span class="n">init_scheme</span><span class="o">=</span><span class="s1">&#39;quasi-random&#39;</span><span class="p">,</span>
-    <span class="n">n_init</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-    <span class="n">run_engine</span><span class="o">=</span><span class="n">RE</span><span class="p">,</span>
-    <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
-    <span class="n">detector</span><span class="o">=</span><span class="n">w9</span><span class="p">,</span>
-    <span class="n">detector_type</span><span class="o">=</span><span class="s1">&#39;image&#39;</span><span class="p">,</span>
-    <span class="n">dofs</span><span class="o">=</span><span class="n">dofs</span><span class="p">,</span>
-    <span class="n">dof_bounds</span><span class="o">=</span><span class="n">hard_bounds</span><span class="p">,</span>
-    <span class="n">fitness_model</span><span class="o">=</span><span class="s1">&#39;max_sep_density&#39;</span><span class="p">,</span>
-    <span class="n">training_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
-    <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bloptools.experiments.nsls2</span> <span class="kn">import</span> <span class="n">tes_shadow</span>
+
+<span class="n">boa</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">bo</span><span class="o">.</span><span class="n">BayesianOptimizationAgent</span><span class="p">(</span>
+                                             <span class="n">dofs</span><span class="o">=</span><span class="n">kbs</span><span class="p">,</span>
+                                             <span class="n">dets</span><span class="o">=</span><span class="p">[</span><span class="n">w9</span><span class="p">],</span>
+                                             <span class="n">dof_bounds</span><span class="o">=</span><span class="n">kb_bounds</span><span class="p">,</span>
+                                             <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
+                                             <span class="n">experiment</span><span class="o">=</span><span class="n">tes_shadow</span>
+                                            <span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">init_scheme</span><span class="o">=</span><span class="s1">&#39;quasi-random&#39;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">8</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 learning with strategy &#34;quasi-random&#34; ...
+8
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
    kbv_x_rot  kbv_offz    fitness
-0  -0.045632  0.236417  11.292087
-1   0.054368 -0.208028  11.412985
-2  -0.095632  0.125305  10.514909
-3   0.004368  0.458639        NaN
+0   0.005665 -0.072221  22.889115
+1  -0.044335  0.150001  20.492563
+2  -0.069335  0.483335  19.429715
+3   0.055665  0.261112  18.315553
+4   0.080665  0.038890  17.962145
+5   0.030665 -0.183332  20.717393
+6  -0.019335 -0.294443  21.956769
+7  -0.094335 -0.405554  19.951410
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;0ea86614-54ed-4eb9-83ce-b199204a647b&#39;,)
 </pre></div></div>
 </div>
 <p>We initialized the GP with the “quasi-random” strategy, as it doesn’t require any prior data. But now that we have some points to work with, we can start to call some more sophisticated learning strategies. Let’s try exploring the space (“explore”), and then try to aim for the best possible fitness (“exploit”).</p>
@@ -143,30 +172,222 @@ learning with strategy &#34;quasi-random&#34; ...
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpo</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">n_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;explore&#39;</span><span class="p">,</span> <span class="n">greedy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reuse_hypers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">gpo</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">n_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;exploit&#39;</span><span class="p">,</span> <span class="n">greedy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">reuse_hypers</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;explore&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;exploit&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
-<div class="nboutput nblast docutils container">
+<div class="nboutput docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
 learning with strategy &#34;explore&#34; ...
+9
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
    kbv_x_rot  kbv_offz    fitness
-4   0.009946  0.179957  12.168275
-5  -0.022362 -0.324428  12.172489
-   kbv_x_rot  kbv_offz    fitness
-6   0.077032  0.133327   9.687557
-7  -0.061594 -0.068229  11.104854
-learning with strategy &#34;exploit&#34; ...
-   kbv_x_rot  kbv_offz    fitness
-8   0.000765 -0.342308  12.470885
-9   0.000226 -0.114375  12.605609
+8   0.096474  -0.49832  15.986294
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+10
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+   kbv_x_rot  kbv_offz  fitness
+9   0.097742  0.492655      NaN
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+getshonecol: no GOOD rays, returning empty array
+11
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    kbv_x_rot  kbv_offz  fitness
+10   0.099892  0.498982      NaN
+12
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
     kbv_x_rot  kbv_offz    fitness
-10   0.001670 -0.101627  12.454233
-11   0.002174 -0.229237  12.555688
+11  -0.098902 -0.002283  18.962191
+learning with strategy &#34;exploit&#34; ...
+13
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    kbv_x_rot  kbv_offz    fitness
+12  -0.014122 -0.093411  22.116544
+14
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    kbv_x_rot  kbv_offz    fitness
+13   0.007012  0.020412  22.290514
+15
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    kbv_x_rot  kbv_offz    fitness
+14  -0.051708 -0.214108  20.180548
+16
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;disp&#39;, &#39;maxiter&#39;] will be ignored because they are not allowed parameters for function Adam. Allowed parameters are [&#39;params&#39;, &#39;lr&#39;, &#39;betas&#39;, &#39;eps&#39;, &#39;weight_decay&#39;, &#39;amsgrad&#39;, &#39;foreach&#39;, &#39;maximize&#39;, &#39;capturable&#39;, &#39;differentiable&#39;, &#39;fused&#39;].
+  warn(
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/optim/utils/common.py:31: UserWarning: Keyword arguments [&#39;lr&#39;, &#39;disp&#39;] will be ignored because they are not allowed parameters for function ExpMAStoppingCriterion. Allowed parameters are [&#39;maxiter&#39;, &#39;minimize&#39;, &#39;n_window&#39;, &#39;eta&#39;, &#39;rel_tol&#39;].
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+    kbv_x_rot  kbv_offz    fitness
+15   0.002538 -0.113324  23.306895
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;a7a8c887-db4a-4cd5-9627-b03df0e0e141&#39;,
+ &#39;ef697812-8b7a-4eb3-93cb-1d91340e92a6&#39;,
+ &#39;b7196fa5-b1e4-4909-92f8-eb90dd43f3c2&#39;,
+ &#39;6c8e937c-272f-411a-9bc1-4776d5047f13&#39;)
 </pre></div></div>
 </div>
 <p>We can plot the “state” of the GPs, which shows their posteriors about the whole parameter space:</p>
@@ -174,7 +395,7 @@ learning with strategy &#34;exploit&#34; ...
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpo</span><span class="o">.</span><span class="n">plot_state</span><span class="p">(</span><span class="n">gridded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">boa</span><span class="o">.</span><span class="n">plot_state</span><span class="p">(</span><span class="n">gridded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -185,22 +406,6 @@ learning with strategy &#34;exploit&#34; ...
 <img alt="../_images/notebooks_gp-optimizer-2d_6_0.png" src="../_images/notebooks_gp-optimizer-2d_6_0.png" />
 </div>
 </div>
-<p>We can also plot the cumulative maximum fitness over time:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">gpo</span><span class="o">.</span><span class="n">plot_fitness</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/notebooks_gp-optimizer-2d_8_0.png" src="../_images/notebooks_gp-optimizer-2d_8_0.png" />
-</div>
-</div>
 </section>
 
 
@@ -208,7 +413,7 @@ learning with strategy &#34;exploit&#34; ...
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../notebooks.html" class="btn btn-neutral float-left" title="Notebooks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="gp-optimizer-4d.html" class="btn btn-neutral float-right" title="Run the GP optimizer in four dimensions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="gp-optimizer-4d.html" class="btn btn-neutral float-right" title="Run the GP optimizer in two dimensions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
