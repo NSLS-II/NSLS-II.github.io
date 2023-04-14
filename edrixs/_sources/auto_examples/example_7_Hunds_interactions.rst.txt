@@ -18,8 +18,8 @@
 .. _sphx_glr_auto_examples_example_7_Hunds_interactions.py:
 
 
-Hund's Interactions
-=====================================
+Hund's Interactions in charge transfer insulators
+=================================================
 In this exercise we will solve a toy model relevant to cubic :math:`d^8` charge transfer insulators
 such as NiO or NiPS\ :sub:`3`. We are interested in better understanding the interplay between the
 Hund's interactions and the charge transfer energy in terms of the energy of the triplet-singlet
@@ -42,27 +42,19 @@ Hamiltonian, which is a simplfied form for the interactions, which treats all or
 equivalent. Daniel Khomskii's book provides a great explanation of this physics [1]_.  We
 parameterize the interactions via Coulomb repulsion parameter :math:`U` and Hund's exchange
 :math:`J_H`. EDRIXS provides this functionality via the  more general
-:func:`.get_umat_kanamori_ge` function. The leading interactions in this function are :math:`U_1`
-and :math:`U_2`, which are the Coulomb energy for electrons residing on the same orbital with
-opposite spin and the Coulomb energy for electrons residing on different orbitals, where
-
-  .. math::
-    \begin{eqnarray}
-    U_1 &=& U \\
-    U_2 &=& U -2J_H.
-    \end{eqnarray}
+:func:`.get_umat_kanamori` function.
 
 It's also easiest to consider this problem in hole langauge, which means our eight spin-orbitals
 are populated by two fermions.
 
-.. GENERATED FROM PYTHON SOURCE LINES 42-46
+.. GENERATED FROM PYTHON SOURCE LINES 34-38
 
 Setup
 ------------------------------------------------------------------------------
 We start by loading the necessary modules, and defining the total number of
 orbitals and electrons.
 
-.. GENERATED FROM PYTHON SOURCE LINES 46-54
+.. GENERATED FROM PYTHON SOURCE LINES 38-46
 
 .. code-block:: default
 
@@ -81,7 +73,7 @@ orbitals and electrons.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 55-63
+.. GENERATED FROM PYTHON SOURCE LINES 47-55
 
 Diagonalization
 ------------------------------------------------------------------------------
@@ -92,7 +84,7 @@ Within this function, we also create operators to count the number of
 :math:`S^2` and :math:`S_z`. For the latter to make sense, we also include a
 small effective spin interaction along :math:`z`.
 
-.. GENERATED FROM PYTHON SOURCE LINES 63-115
+.. GENERATED FROM PYTHON SOURCE LINES 55-103
 
 .. code-block:: default
 
@@ -100,13 +92,9 @@ small effective spin interaction along :math:`z`.
 
     def diagonalize(U, JH, t, eL, n=1):
         # Setup Coulomb matrix
-        U1 = U
-        U2 = U - 2*JH
         umat = np.zeros((norb, norb, norb, norb), dtype=complex)
-        uNi = edrixs.get_umat_kanamori_ge(norb//2, U1, U2, 1e-6, 1e-6, 1e-6)
+        uNi = edrixs.get_umat_kanamori(norb//2, U, JH)
         umat[:norb//2, :norb//2, :norb//2, :norb//2] = uNi
-        uS = edrixs.get_umat_kanamori_ge(norb//2, U1/100, U2/100, 1e-6, 1e-6, 1e-6)
-        umat[norb//2:, norb//2:, norb//2:, norb//2:] = uS
 
         # Setup hopping matrix
         emat = np.zeros((norb, norb), dtype=complex)
@@ -155,7 +143,7 @@ small effective spin interaction along :math:`z`.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 116-122
+.. GENERATED FROM PYTHON SOURCE LINES 104-110
 
 The atomic limit
 ------------------------------------------------------------------------------
@@ -164,23 +152,23 @@ where all holes are on nickel. In this case, there are six ways to distribute
 two holes on the four Ni spin-orbitals. Let's examine the expectation values
 of the :math:`S^2` and :math:`S_z` operators.
 
-.. GENERATED FROM PYTHON SOURCE LINES 122-137
+.. GENERATED FROM PYTHON SOURCE LINES 110-125
 
 .. code-block:: default
 
     U = 10
     JH = 2
     t = 100
-    eL = 1000
+    eL = 1e10
 
     e, d0, d1, d2, S_squared_exp, S_z_exp = diagonalize(U, JH, t, eL, n=6)
 
     print("Ground state\nE\t<S(S+1)\tSz>")
-    for i in range(4):
+    for i in range(3):
         print(f"{e[i]:.2f}\t{S_squared_exp[i]:.2f}\t{S_z_exp[i]:.2f}")
 
     print("\nExcited state\nE\t<S(S+1)\tSz>")
-    for i in range(4, 6):
+    for i in range(3, 6):
         print(f"{e[i]:.2f}\t{S_squared_exp[i]:.2f}\t{S_z_exp[i]:.2f}")
 
 
@@ -193,27 +181,29 @@ of the :math:`S^2` and :math:`S_z` operators.
 
     Ground state
     E       <S(S+1) Sz>
-    0.00    2.00    -1.00
-    0.00    2.00    0.00
     0.00    2.00    1.00
-    0.00    0.00    0.00
+    0.00    2.00    0.00
+    0.00    2.00    -1.00
 
     Excited state
     E       <S(S+1) Sz>
-    3.92    0.00    0.00
-    3.92    0.00    0.00
+    4.00    0.00    0.00
+    4.00    0.00    0.00
+    8.00    0.00    0.00
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 138-142
+.. GENERATED FROM PYTHON SOURCE LINES 126-132
 
-We see a ground state high-spin triplet and a low-spin singlet exciton
-at :math:`2J_H`. The additional ground state singlet is the antisymmetric
-combination of :math:`|\uparrow,\downarrow> - |\downarrow,\uparrow>`
-with one hole on each orbital.
+The ground state is a high-spin triplet. The fourth and fifth
+states (the first excited state) are low-spin singlet excitons at
+:math:`2 J_H`. These have one hole on each orbital in the antisymmetric
+combination of :math:`|\uparrow\downarrow>-|\downarrow\uparrow>`.
+The state at :math:`3 J_H` also has one hole on each orbital in the symmetric
+:math:`|\uparrow\downarrow>+|\downarrow\uparrow>` configuration.
 
-.. GENERATED FROM PYTHON SOURCE LINES 144-150
+.. GENERATED FROM PYTHON SOURCE LINES 134-140
 
 Where are the holes for large hopping
 ------------------------------------------------------------------------------
@@ -222,7 +212,7 @@ and charge-transfer physics, which will obviously depend strongly on whether
 the holes are on Ni or the ligand. Let's see what happens as :math:`e_L` is
 reduced while observing the location of the ground state and exciton holes.
 
-.. GENERATED FROM PYTHON SOURCE LINES 150-174
+.. GENERATED FROM PYTHON SOURCE LINES 140-164
 
 .. code-block:: default
 
@@ -234,7 +224,7 @@ reduced while observing the location of the ground state and exciton holes.
 
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
-    for ax, ind in zip(axs.ravel(), [0, 5]):
+    for ax, ind in zip(axs.ravel(), [0, 3]):
         ds = np.array([diagonalize(U, JH, t, eL, n=6)
                        for eL in eLs])
 
@@ -262,7 +252,7 @@ reduced while observing the location of the ground state and exciton holes.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 175-181
+.. GENERATED FROM PYTHON SOURCE LINES 165-171
 
 For large :math:`|e_L|`, we see that both holes are on nickel as expected. In
 the opposite limit of :math:`|e_L| \ll t` and :math:`U \ll t` the holes are
@@ -271,7 +261,7 @@ Ni. In the limit of large :math:`e_L`, all holes move onto Ni. Since
 :math:`t` is large, this applies equally to both the ground state and the
 exciton.
 
-.. GENERATED FROM PYTHON SOURCE LINES 184-189
+.. GENERATED FROM PYTHON SOURCE LINES 174-179
 
 Connecton between atomic and charge transfer limits
 ------------------------------------------------------------------------------
@@ -279,7 +269,7 @@ We now examine the quantum numbers during cross over between the two limits
 with :math:`e_L`. Let's first look at the how :math:`<S^2>` changes for the
 ground state and exciton and then examine how the exciton energy changes.
 
-.. GENERATED FROM PYTHON SOURCE LINES 189-226
+.. GENERATED FROM PYTHON SOURCE LINES 179-216
 
 .. code-block:: default
 
@@ -297,13 +287,13 @@ ground state and exciton and then examine how the exciton energy changes.
 
 
     axs[0].plot(eLs, info[:, 4, 0], label='Ground state')
-    axs[0].plot(eLs, info[:, 4, 5], label='Exciton')
+    axs[0].plot(eLs, info[:, 4, 3], label='Exciton')
     axs[0].set_xlabel("Energy of ligands $e_L$")
     axs[0].set_ylabel('$<S^2>$')
     axs[0].set_title('Quantum numbers')
     axs[0].legend()
 
-    axs[1].plot(eLs, info[:, 0, 5], '+', color='C0')
+    axs[1].plot(eLs, info[:, 0, 3], '+', color='C0')
     axs[1].set_xlabel("Energy of ligands $e_L$")
     axs[1].set_ylabel('Exciton energy', color='C0')
     axr = axs[1].twinx()
@@ -332,7 +322,7 @@ ground state and exciton and then examine how the exciton energy changes.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 227-239
+.. GENERATED FROM PYTHON SOURCE LINES 217-229
 
 In the left panel, we see that the two limits are adiabatically connected
 as they preseve the same quantum numbers. This is because there is always
@@ -347,7 +337,7 @@ electronic configuration, whenever :math:`t` is appreciable there is a
 strong mixing with the :math:`d^8` component is always present, which
 dominates the energy of the exciton.
 
-.. GENERATED FROM PYTHON SOURCE LINES 241-247
+.. GENERATED FROM PYTHON SOURCE LINES 231-237
 
 Charge transfer excitons
 ------------------------------------------------------------------------------
@@ -356,19 +346,20 @@ Coulomb interactions. This, however, tends to produce
 ground state and exciton configurations that correspond to those of distinct
 atomic models. Let's look at the :math:`e_L` dependence in this case.
 
-.. GENERATED FROM PYTHON SOURCE LINES 247-274
+.. GENERATED FROM PYTHON SOURCE LINES 237-265
 
 .. code-block:: default
 
     U = 10
     JH = 2
     t = .5
+    eL = 7
 
     eLs = np.linspace(0, 20, 30)
 
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
-    for ax, ind in zip(axs.ravel(), [0, 5]):
+    for ax, ind in zip(axs.ravel(), [0, 3]):
         ds = np.array([diagonalize(U, JH, t, eL, n=6)
                        for eL in eLs])
 
@@ -379,8 +370,8 @@ atomic models. Let's look at the :math:`e_L` dependence in this case.
         ax.set_ylabel("Number of electrons")
         ax.legend()
 
-    axs[0].axvline(x=7, linestyle=':', color='k')
-    axs[1].axvline(x=7, linestyle=':', color='k')
+    axs[0].axvline(x=eL, linestyle=':', color='k')
+    axs[1].axvline(x=eL, linestyle=':', color='k')
 
     axs[0].set_title("Location of ground state holes")
     axs[1].set_title("Location of exciton holes")
@@ -399,30 +390,26 @@ atomic models. Let's look at the :math:`e_L` dependence in this case.
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 275-279
+.. GENERATED FROM PYTHON SOURCE LINES 266-270
 
 Around :math:`e_L = 7` the plot shows that the excition is primairly a
 :math:`d^2 \rightarrow d^1` transition or a
 :math:`d^8 \rightarrow d^{9}\underline{L}` transition in electron language.
 Let's examine the energy and quantum numbers.
 
-.. GENERATED FROM PYTHON SOURCE LINES 279-294
+.. GENERATED FROM PYTHON SOURCE LINES 270-281
 
 .. code-block:: default
 
-    U = 10
-    JH = 2
-    t = .5
-    eL = 10
 
     e, d0, d1, d2, S_squared_exp, S_z_exp = diagonalize(U, JH, t, eL, n=6)
 
     print("Ground state\nE\t<S(S+1)\tSz>")
-    for i in range(4):
+    for i in range(3):
         print(f"{e[i]:.2f}\t{S_squared_exp[i]:.2f}\t{S_z_exp[i]:.2f}")
 
     print("\nExcited state\nE\t<S(S+1)\tSz>")
-    for i in range(4, 6):
+    for i in range(3, 6):
         print(f"{e[i]:.2f}\t{S_squared_exp[i]:.2f}\t{S_z_exp[i]:.2f}")
 
 
@@ -436,25 +423,24 @@ Let's examine the energy and quantum numbers.
     Ground state
     E       <S(S+1) Sz>
     0.00    2.00    -1.00
-    0.00    2.00    0.00
+    0.00    2.00    -0.00
     0.00    2.00    1.00
-    0.00    0.00    0.00
 
     Excited state
     E       <S(S+1) Sz>
-    3.39    0.00    0.00
-    3.39    0.00    0.00
+    2.74    0.00    0.00
+    2.74    0.00    0.00
+    2.99    0.00    0.00
 
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 295-298
+.. GENERATED FROM PYTHON SOURCE LINES 282-284
 
-We once again see the same quantum numbers, but now the exciton energy is
-dominated by :math:`e_L` with some energy saving from the
-Hund's interaction.
+We once again see the same quantum numbers, despite the differences in mixing
+in the ground state and exciton.
 
-.. GENERATED FROM PYTHON SOURCE LINES 301-304
+.. GENERATED FROM PYTHON SOURCE LINES 287-290
 
 .. rubric:: Footnotes
 
@@ -463,7 +449,7 @@ Hund's interaction.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  1.485 seconds)
+   **Total running time of the script:** ( 0 minutes  1.367 seconds)
 
 
 .. _sphx_glr_download_auto_examples_example_7_Hunds_interactions.py:
