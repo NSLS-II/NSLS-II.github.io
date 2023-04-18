@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Running the optimizer with Himmelblau’s function &mdash; bloptools 0.post137+gdf07474 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/copybutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/nbsphinx-code-cells.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Optimize the vertical KB mirror at the TES beamline in Shadow3" href="tes_shadow-2d.html" />
+    <link rel="prev" title="Notebooks" href="../notebooks.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bloptools
+          </a>
+              <div class="version">
+                0.post137+gdf07474
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../notebooks.html">Notebooks</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Running the optimizer with Himmelblau’s function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tes_shadow-2d.html">Optimize the vertical KB mirror at the TES beamline in Shadow3</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bloptools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../notebooks.html">Notebooks</a></li>
+      <li class="breadcrumb-item active">Running the optimizer with Himmelblau’s function</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/notebooks/himmelblau-2d.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Running-the-optimizer-with-Himmelblau's-function">
+<h1>Running the optimizer with <a class="reference external" href="https://en.wikipedia.org/wiki/Himmelblau%27s_function">Himmelblau’s function</a><a class="headerlink" href="#Running-the-optimizer-with-Himmelblau's-function" title="Permalink to this heading">¶</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">run</span> -i ../../../examples/prepare_bluesky.py
+
+<span class="kn">import</span> <span class="nn">bloptools</span>
+<span class="kn">from</span> <span class="nn">bloptools.experiments.tests</span> <span class="kn">import</span> <span class="n">Himmelblau</span>
+
+<span class="n">himmelblau</span> <span class="o">=</span> <span class="n">Himmelblau</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">boa</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">bo</span><span class="o">.</span><span class="n">BayesianOptimizationAgent</span><span class="p">(</span>
+                                             <span class="n">dofs</span><span class="o">=</span><span class="n">himmelblau</span><span class="o">.</span><span class="n">dofs</span><span class="p">,</span>
+                                             <span class="n">dets</span><span class="o">=</span><span class="p">[],</span>
+                                             <span class="n">bounds</span><span class="o">=</span><span class="n">himmelblau</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span>
+                                             <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
+                                             <span class="n">experiment</span><span class="o">=</span><span class="n">himmelblau</span><span class="p">,</span>
+                                            <span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">init_scheme</span><span class="o">=</span><span class="s1">&#39;quasi-random&#39;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">8</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;quasi-random&#34; ...
+
+
+Transient Scan ID: 1     Time: 2023-04-18 14:35:24
+Persistent Unique Scan ID: &#39;18bb9b10-acbe-4aba-997a-9a00f73f4a70&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:24.7 |      2.291 |     -1.363 |
+|         2 | 14:35:24.7 |      3.541 |     -3.585 |
+|         3 | 14:35:24.7 |     -2.709 |     -4.696 |
+|         4 | 14:35:24.7 |     -3.959 |     -0.252 |
+|         5 | 14:35:24.7 |     -1.459 |      1.970 |
+|         6 | 14:35:24.7 |     -0.209 |      0.859 |
+|         7 | 14:35:24.7 |      1.041 |      3.082 |
+|         8 | 14:35:24.7 |      4.791 |      4.193 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;18bb9b10&#39;] (scan num: 1)
+
+
+
+         x1        x2     fitness
+0  2.290852 -1.362940  -58.753649
+1  3.540852 -3.585162  -92.444066
+2 -2.709148 -4.696273 -222.255445
+3 -3.959148 -0.251828 -138.280117
+4 -1.459148  1.970394  -68.562948
+5 -0.209148  0.859283 -143.819905
+6  1.040852  3.081505  -59.225908
+7  4.790852  4.192616 -496.859505
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;18bb9b10-acbe-4aba-997a-9a00f73f4a70&#39;,)
+</pre></div></div>
+</div>
+<p>We initialized the GP with the “quasi-random” strategy, as it doesn’t require any prior data. We can view the state of the optimizer:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">boa</span><span class="o">.</span><span class="n">plot_state</span><span class="p">(</span><span class="n">gridded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_himmelblau-2d_4_0.png" src="../_images/notebooks_himmelblau-2d_4_0.png" />
+</div>
+</div>
+<p>Let’s learn a bit more, using the “GIBBON” framework to investigate points that are likely to tell us about the optimum. Running two iterations with four points per iteration:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;eGIBBON&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">boa</span><span class="o">.</span><span class="n">plot_state</span><span class="p">(</span><span class="n">gridded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;eGIBBON&#34; ...
+
+
+Transient Scan ID: 2     Time: 2023-04-18 14:35:31
+Persistent Unique Scan ID: &#39;a8a38547-93eb-4279-9916-bdbe8b55f219&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:31.8 |     -4.899 |      4.670 |
+|         2 | 14:35:31.8 |     -4.974 |      4.822 |
+|         3 | 14:35:31.8 |     -4.774 |      4.826 |
+|         4 | 14:35:31.8 |     -4.921 |      4.851 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;a8a38547&#39;] (scan num: 2)
+
+
+
+          x1        x2     fitness
+8  -4.898515  4.670137 -410.314176
+9  -4.974297  4.822029 -471.869581
+10 -4.774265  4.825700 -408.753085
+11 -4.920585  4.851008 -461.109376
+
+
+Transient Scan ID: 3     Time: 2023-04-18 14:35:35
+Persistent Unique Scan ID: &#39;3d20df9e-c3e8-42a9-b777-427c9f24db35&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:35.3 |      4.616 |     -4.916 |
+|         2 | 14:35:35.3 |      4.960 |     -4.883 |
+|         3 | 14:35:35.4 |      4.876 |     -4.726 |
+|         4 | 14:35:35.4 |      4.921 |     -4.669 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;3d20df9e&#39;] (scan num: 3)
+
+
+
+          x1        x2     fitness
+12  4.616144 -4.915526 -503.392160
+13  4.959523 -4.883235 -551.407322
+14  4.875875 -4.725897 -473.217479
+15  4.921311 -4.668618 -461.886392
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_himmelblau-2d_6_1.png" src="../_images/notebooks_himmelblau-2d_6_1.png" />
+</div>
+</div>
+<p>Now let’s try the “EI” strategy to sample where we expect the largest improvement in the fitness:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;eI&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">boa</span><span class="o">.</span><span class="n">plot_state</span><span class="p">(</span><span class="n">gridded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;eI&#34; ...
+
+
+Transient Scan ID: 4     Time: 2023-04-18 14:35:42
+Persistent Unique Scan ID: &#39;a94c0794-9ebb-4f2b-8a4c-ead94a9897cf&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:42.2 |      1.782 |     -2.014 |
+|         2 | 14:35:42.2 |      1.716 |     -1.891 |
+|         3 | 14:35:42.2 |      1.793 |     -1.830 |
+|         4 | 14:35:42.2 |      2.006 |     -1.428 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;a94c0794&#39;] (scan num: 4)
+
+
+
+          x1        x2     fitness
+16  1.782035 -2.013795  -98.140728
+17  1.716259 -1.890652 -101.826426
+18  1.793120 -1.830058  -95.895265
+19  2.006282 -1.428474  -79.336800
+
+
+Transient Scan ID: 5     Time: 2023-04-18 14:35:45
+Persistent Unique Scan ID: &#39;d58b33f5-92a3-4336-9192-6b4b39aaf261&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:45.4 |     -4.842 |     -4.517 |
+|         2 | 14:35:45.4 |     -4.894 |     -4.767 |
+|         3 | 14:35:45.4 |     -4.892 |     -4.945 |
+|         4 | 14:35:45.4 |     -4.999 |     -4.953 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;d58b33f5&#39;] (scan num: 5)
+
+
+
+          x1        x2     fitness
+20 -4.842095 -4.517329 -136.206892
+21 -4.893996 -4.767398 -184.352070
+22 -4.892437 -4.944729 -221.560522
+23 -4.998660 -4.952801 -238.649968
+
+
+Transient Scan ID: 6     Time: 2023-04-18 14:35:48
+Persistent Unique Scan ID: &#39;cab831e2-7c6b-4877-a6c8-414100993d9e&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:48.5 |      0.246 |      4.822 |
+|         2 | 14:35:48.5 |      0.271 |      4.886 |
+|         3 | 14:35:48.5 |      0.446 |      4.966 |
+|         4 | 14:35:48.5 |      0.547 |      4.876 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;cab831e2&#39;] (scan num: 6)
+
+
+
+          x1        x2     fitness
+24  0.245823  4.821642 -309.482858
+25  0.270651  4.886472 -330.547703
+26  0.446300  4.965599 -361.785562
+27  0.547003  4.876482 -334.150377
+
+
+Transient Scan ID: 7     Time: 2023-04-18 14:35:51
+Persistent Unique Scan ID: &#39;94570611-fe03-46fe-b821-9d364431d610&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 14:35:51.7 |      0.092 |      1.324 |
+|         2 | 14:35:51.7 |      3.389 |     -0.880 |
+|         3 | 14:35:51.7 |     -0.475 |     -1.463 |
+|         4 | 14:35:51.7 |     -4.428 |     -0.119 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;94570611&#39;] (scan num: 7)
+
+
+
+          x1        x2     fitness
+28  0.091915  1.323641 -120.053449
+29  3.388590 -0.880171   -8.205027
+30 -0.475140 -1.462540 -178.212973
+31 -4.427573 -0.119442 -202.241172
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_himmelblau-2d_8_1.png" src="../_images/notebooks_himmelblau-2d_8_1.png" />
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../notebooks.html" class="btn btn-neutral float-left" title="Notebooks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tes_shadow-2d.html" class="btn btn-neutral float-right" title="Optimize the vertical KB mirror at the TES beamline in Shadow3" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Brookhaven National Laboratory.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
