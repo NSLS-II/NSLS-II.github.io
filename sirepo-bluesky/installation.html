@@ -1,14 +1,13 @@
 
 
-
 <!DOCTYPE html>
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation instructions &#8212; sirepo-bluesky 0.6.0.post5+gc8b2b29 documentation</title>
+    <title>Installation instructions &#8212; sirepo-bluesky 0.6.0.post26+g557ac2b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/cloud.css" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
@@ -58,7 +57,7 @@
         <li class="right" >
           <a href="index.html" title="sirepo-bluesky Documentation"
              accesskey="P">previous</a> &nbsp; &nbsp;</li>
-    <li><a href="index.html">sirepo-bluesky 0.6.0.post5+gc8b2b29 documentation</a> &#187;</li>
+    <li><a href="index.html">sirepo-bluesky 0.6.0.post26+g557ac2b documentation</a> &#187;</li>
 
         <li class="nav-item nav-item-this"><a href="">Installation instructions</a></li> 
       </ul>
@@ -115,14 +114,15 @@ else
 fi
 
 SIREPO_SRDB_HOST=&quot;${SIREPO_SRDB_HOST:-}&quot;
+SIREPO_SRDB_HOST_RO=&quot;${SIREPO_SRDB_HOST_RO:-}&quot;
 SIREPO_SRDB_GUEST=&quot;${SIREPO_SRDB_GUEST:-}&quot;
 SIREPO_SRDB_ROOT=&quot;${SIREPO_SRDB_ROOT:-&#39;/sirepo&#39;}&quot;
 
 unset cmd _cmd docker_image SIREPO_DOCKER_CONTAINER_ID
 
+year=$(date +&quot;%Y&quot;)
 month=$(date +&quot;%m&quot;)
 day=$(date +&quot;%d&quot;)
-year=$(date +&quot;%Y&quot;)
 
 today=&quot;${HOME}/tmp/data/${year}/${month}/${day}&quot;
 
@@ -133,32 +133,49 @@ else
     mkdir -p &quot;${today}&quot;
 fi
 
-# docker_image=&quot;radiasoft/sirepo:beta&quot;
-docker_image=&quot;radiasoft/sirepo:20220806.215448&quot;
+docker_image_tag=${DOCKER_IMAGE_TAG:-&#39;beta&#39;}  # &#39;20220806.215448&#39; for the older tag
+docker_image=&quot;radiasoft/sirepo:${docker_image_tag}&quot;
 docker_binary=${DOCKER_BINARY:-&quot;docker&quot;}
 
 ${docker_binary} pull ${docker_image}
 
 ${docker_binary} images
 
-in_docker_cmd=&quot;mkdir -v -p ${SIREPO_SRDB_ROOT} &amp;&amp; \
-    if [ ! -f &quot;${SIREPO_SRDB_ROOT}/auth.db&quot; ]; then \
-        cp -Rv /SIREPO_SRDB_ROOT/* ${SIREPO_SRDB_ROOT}/; \
-    else \
-        echo &#39;The directory exists. Nothing to do&#39;; \
-    fi &amp;&amp; \
-    sirepo service http&quot;
+in_docker_cmd=$(cat &lt;&lt;EOF
+mkdir -v -p ${SIREPO_SRDB_ROOT} &amp;&amp; \
+if [ ! -f &quot;${SIREPO_SRDB_ROOT}/auth.db&quot; ]; then \
+    cp -Rv /SIREPO_SRDB_ROOT/* ${SIREPO_SRDB_ROOT}/; \
+else \
+    echo &#39;The directory exists. Nothing to do&#39;; \
+fi &amp;&amp; \
+sed -i -E \&quot;s;export SIREPO_SRDB_ROOT=\&quot;\(.*\)\&quot;;export SIREPO_SRDB_ROOT=\&quot;$SIREPO_SRDB_ROOT\&quot;;g\&quot; ~/.radia-run/start &amp;&amp; \
+cat ~/.radia-run/start &amp;&amp; \
+~/.radia-run/start
+EOF
+)
+
+if [ -z &quot;${SIREPO_SRDB_HOST_RO}&quot; ]; then
+    if [ -d &quot;$PWD/sirepo_bluesky/tests/SIREPO_SRDB_ROOT&quot; ]; then
+        SIREPO_SRDB_HOST_RO=&quot;$PWD/sirepo_bluesky/tests/SIREPO_SRDB_ROOT&quot;
+    else
+        echo &quot;Cannot determine the location of the host SIREPO_SRDB_ROOT dir.&quot;
+        exit 1
+    fi
+fi
+
+echo &quot;SIREPO_SRDB_HOST_RO=${SIREPO_SRDB_HOST_RO}&quot;
+
 cmd_start=&quot;${docker_binary} run ${arg} --init ${remove_container} --name sirepo \
     -e SIREPO_AUTH_METHODS=bluesky:guest \
     -e SIREPO_AUTH_BLUESKY_SECRET=bluesky \
     -e SIREPO_SRDB_ROOT=${SIREPO_SRDB_ROOT} \
     -e SIREPO_COOKIE_IS_SECURE=false \
     -p 8000:8000 \
-    -v $PWD/sirepo_bluesky/tests/SIREPO_SRDB_ROOT:/SIREPO_SRDB_ROOT:ro,z &quot;
+    -v $SIREPO_SRDB_HOST_RO:/SIREPO_SRDB_ROOT:ro,z &quot;
 
 cmd_extra=&quot;&quot;
 if [ ! -z &quot;${SIREPO_SRDB_HOST}&quot; -a ! -z &quot;${SIREPO_SRDB_GUEST}&quot; ]; then
-    cmd_extra=&quot;-v ${SIREPO_SRDB_HOST}:${SIREPO_SRDB_GUEST} &quot;
+    cmd_extra=&quot;-v ${SIREPO_SRDB_HOST}:${SIREPO_SRDB_GUEST}:rw,z &quot;
 fi
 
 cmd_end=&quot;${docker_image} bash -l -c \&quot;${in_docker_cmd}\&quot;&quot;
@@ -377,7 +394,7 @@ follow the instructions at <a class="reference external" href="https://pandoc.or
         <li class="right" >
           <a href="index.html" title="sirepo-bluesky Documentation"
              >previous</a> &nbsp; &nbsp;</li>
-    <li><a href="index.html">sirepo-bluesky 0.6.0.post5+gc8b2b29 documentation</a> &#187;</li>
+    <li><a href="index.html">sirepo-bluesky 0.6.0.post26+g557ac2b documentation</a> &#187;</li>
 
         <li class="nav-item nav-item-this"><a href="">Installation instructions</a></li> 
       </ul>
@@ -386,7 +403,7 @@ follow the instructions at <a class="reference external" href="https://pandoc.or
 
     <div class="footer" role="contentinfo">
         &#169; Copyright 2020, Brookhaven National Laboratory.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 6.1.3.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
     </div>
     <!-- cloud_sptheme 1.4 -->
   </body>
