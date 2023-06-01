@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kernels and hyperparameters &mdash; bloptools 0.2.0.post22+ga558103 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/copybutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/nbsphinx-code-cells.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Multi-task optimization of KB mirrors" href="multi-task-sirepo.html" />
+    <link rel="prev" title="Tutorials" href="../tutorials.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bloptools
+          </a>
+              <div class="version">
+                0.2.0.post22+ga558103
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Kernels and hyperparameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multi-task-sirepo.html">Multi-task optimization of KB mirrors</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bloptools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Kernels and hyperparameters</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/introduction.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Kernels-and-hyperparameters">
+<h1>Kernels and hyperparameters<a class="headerlink" href="#Kernels-and-hyperparameters" title="Permalink to this heading">¶</a></h1>
+<p>This tutorial is an introduction to the syntax used by the optimizer, as well as the principles of Bayesian optimization in general.</p>
+<p>We’ll start by minimizing Booth’s function, which looks like this:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="kn">import</span> <span class="nn">bloptools</span>
+
+<span class="n">x1</span> <span class="o">=</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+<span class="n">X1</span><span class="p">,</span> <span class="n">X2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">experiments</span><span class="o">.</span><span class="n">tests</span><span class="o">.</span><span class="n">himmelblau</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">),</span> <span class="n">norm</span><span class="o">=</span><span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">LogNorm</span><span class="p">(),</span> <span class="n">shading</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;x1&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;x2&quot;</span><span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;x2&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_2_1.png" src="../_images/tutorials_introduction_2_1.png" />
+</div>
+</div>
+<p>There are several things that our agent will need. The first ingredient is some degrees of freedom (these are always <code class="docutils literal notranslate"><span class="pre">ophyd</span></code> devices) which the agent will move around to different inputs within each DOF’s bounds (the second ingredient). We define these here:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">bloptools</span>
+
+<span class="n">dofs</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">experiments</span><span class="o">.</span><span class="n">tests</span><span class="o">.</span><span class="n">get_dummy_dofs</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">bounds</span> <span class="o">=</span> <span class="p">[(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">)]</span>
+</pre></div>
+</div>
+</div>
+<p>The agent automatically samples at different inputs, but we often need some post-processing after data collection. In this case, we need to give the agent a way to compute Himmelblau’s function. We accomplish this with a digestion function:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">digestion</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">uid</span><span class="p">):</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">table</span><span class="p">()</span>
+    <span class="n">products</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;himmelblau&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+
+        <span class="n">products</span><span class="p">[</span><span class="s2">&quot;himmelblau&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bloptools</span><span class="o">.</span><span class="n">experiments</span><span class="o">.</span><span class="n">tests</span><span class="o">.</span><span class="n">himmelblau</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">x1</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">x2</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">products</span>
+</pre></div>
+</div>
+</div>
+<p>The next ingredient is a task, which gives the agent something to do. We want it to minimize Himmelblau’s function, so we make a task that will try to minimize the output of the digestion function called “himmelblau”. We also include a transform function, which will make it easier to regress over the outputs of the function.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bloptools.tasks</span> <span class="kn">import</span> <span class="n">Task</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;himmelblau&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="mf">1e-2</span> <span class="o">*</span> <span class="n">x</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<p>Combining all of these with a databroker instance, we can make an agent:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">run</span> -i ../../../examples/prepare_bluesky.py # prepare the bluesky environment
+
+<span class="n">boa</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">bayesian</span><span class="o">.</span><span class="n">Agent</span><span class="p">(</span>
+                                <span class="n">dofs</span><span class="o">=</span><span class="n">dofs</span><span class="p">,</span> <span class="c1"># things which we move around</span>
+                                <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span> <span class="c1"># where we&#39;re allowed to move them</span>
+                                <span class="n">tasks</span><span class="o">=</span><span class="n">task</span><span class="p">,</span> <span class="c1"># tasks for the optimizer</span>
+                                <span class="n">digestion</span><span class="o">=</span><span class="n">digestion</span><span class="p">,</span> <span class="c1"># how to process the acquisition into task data</span>
+                                <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span> <span class="c1"># a databroker instance</span>
+                                <span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">init_scheme</span><span class="o">=</span><span class="s1">&#39;quasi-random&#39;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">16</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 1     Time: 2023-06-01 19:58:52
+Persistent Unique Scan ID: &#39;62209bd8-17f7-4463-908b-6826595bb321&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:58:53.1 |     -1.327 |      1.133 |
+|         2 | 19:58:53.1 |     -0.572 |     -2.466 |
+|         3 | 19:58:53.1 |      3.017 |     -4.280 |
+|         4 | 19:58:53.1 |      5.721 |     -9.562 |
+|         5 | 19:58:53.1 |      1.529 |     -5.898 |
+|         6 | 19:58:53.1 |     -3.935 |     -7.717 |
+|         7 | 19:58:53.1 |     -8.200 |     -6.498 |
+|         8 | 19:58:53.1 |     -7.342 |     -3.626 |
+|         9 | 19:58:53.1 |     -9.949 |      5.167 |
+|        10 | 19:58:53.1 |     -5.808 |      4.952 |
+|        11 | 19:58:53.1 |     -2.965 |      9.045 |
+|        12 | 19:58:53.1 |      0.331 |      7.075 |
+|        13 | 19:58:53.1 |      7.390 |      8.392 |
+|        14 | 19:58:53.1 |      3.844 |      3.108 |
+|        15 | 19:58:53.1 |      8.406 |      1.732 |
+|        16 | 19:58:53.1 |      9.704 |     -0.557 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;62209bd8&#39;] (scan num: 1)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;62209bd8-17f7-4463-908b-6826595bb321&#39;,)
+</pre></div></div>
+</div>
+<p>We initialized the GP with the “quasi-random” strategy, as it doesn’t require any prior data. We can view the state of the optimizer’s posterior of the tasks over the input parameters:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_12_0.png" src="../_images/tutorials_introduction_12_0.png" />
+</div>
+</div>
+<p>We can also the agent’s posterior about the probability of goodness over the parameters:</p>
+<p>We want to learn a bit more, so we can ask the agent where to sample based off of some strategy. Here we use the “esti” strategy, which maximizes the expected sum of tasks improvement.</p>
+<p>We can ask the agent to “route” them using <code class="docutils literal notranslate"><span class="pre">ortools</span></code>, so that we can sample them more quickly if it requires us to e.g. move motors.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X_to_sample</span> <span class="o">=</span> <span class="n">boa</span><span class="o">.</span><span class="n">ask</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;esti&#39;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">optimize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">route</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">X_to_sample</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="o">*</span><span class="n">X_to_sample</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[&lt;matplotlib.lines.Line2D at 0x7f18a42ce7a0&gt;]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_15_1.png" src="../_images/tutorials_introduction_15_1.png" />
+</div>
+</div>
+<p>Let’s tell the agent to learn a bit more (it will direct itself):</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;esti&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;esti&#34; ...
+
+
+Transient Scan ID: 2     Time: 2023-06-01 19:59:08
+Persistent Unique Scan ID: &#39;71f92dbc-5a9a-4104-8d4d-bc8e9128708e&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:08.6 |      3.289 |     -0.098 |
+|         2 | 19:59:08.6 |      2.101 |     -0.537 |
+|         3 | 19:59:08.6 |      2.454 |      0.310 |
+|         4 | 19:59:08.6 |      1.789 |      0.811 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;71f92dbc&#39;] (scan num: 2)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_17_1.png" src="../_images/tutorials_introduction_17_1.png" />
+</div>
+</div>
+<p>The agent has updated its model of the tasks, including refitting the hyperparameters. Continuing:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;esti&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;esti&#34; ...
+
+
+Transient Scan ID: 3     Time: 2023-06-01 19:59:13
+Persistent Unique Scan ID: &#39;bdc783d6-edb9-4a81-a1ea-9c4c35eba785&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:13.2 |      5.838 |      0.377 |
+|         2 | 19:59:13.2 |      5.286 |     -0.065 |
+|         3 | 19:59:13.2 |      5.969 |     -0.481 |
+|         4 | 19:59:13.2 |     10.000 |     -1.086 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;bdc783d6&#39;] (scan num: 3)
+
+
+
+
+
+Transient Scan ID: 4     Time: 2023-06-01 19:59:16
+Persistent Unique Scan ID: &#39;f25c8750-9c2d-425a-9c05-a9cf3258c08c&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:16.1 |      3.520 |      0.137 |
+|         2 | 19:59:16.1 |      3.324 |      0.282 |
+|         3 | 19:59:16.1 |      3.339 |      0.760 |
+|         4 | 19:59:16.1 |     -3.274 |     -0.300 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;f25c8750&#39;] (scan num: 4)
+
+
+
+
+
+Transient Scan ID: 5     Time: 2023-06-01 19:59:19
+Persistent Unique Scan ID: &#39;9ac07198-f1ef-46b1-bbb4-dfbba8b27a87&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:19.0 |      2.800 |      2.044 |
+|         2 | 19:59:19.0 |      3.230 |      1.259 |
+|         3 | 19:59:19.0 |      3.444 |      0.996 |
+|         4 | 19:59:19.0 |      3.442 |     -1.002 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;9ac07198&#39;] (scan num: 5)
+
+
+
+
+
+Transient Scan ID: 6     Time: 2023-06-01 19:59:22
+Persistent Unique Scan ID: &#39;f92fdcb6-1f4e-44bd-b09e-d09c777c0def&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:22.1 |      3.685 |     -1.692 |
+|         2 | 19:59:22.1 |      2.988 |      1.872 |
+|         3 | 19:59:22.1 |      2.959 |      2.161 |
+|         4 | 19:59:22.1 |     -3.413 |     -0.346 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;f92fdcb6&#39;] (scan num: 6)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_19_1.png" src="../_images/tutorials_introduction_19_1.png" />
+</div>
+</div>
+<p>Eventually, we reach a point of saturation where no more improvement takes place:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;esti&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">n_per_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+<span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+learning with strategy &#34;esti&#34; ...
+
+
+Transient Scan ID: 7     Time: 2023-06-01 19:59:26
+Persistent Unique Scan ID: &#39;4da880e7-c121-4ed3-94a4-ed1977ce8c3c&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:26.7 |      2.722 |      2.546 |
+|         2 | 19:59:26.7 |      3.515 |     -1.401 |
+|         3 | 19:59:26.7 |      3.710 |     -1.354 |
+|         4 | 19:59:26.7 |      3.901 |     -2.022 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;4da880e7&#39;] (scan num: 7)
+
+
+
+
+
+Transient Scan ID: 8     Time: 2023-06-01 19:59:30
+Persistent Unique Scan ID: &#39;0eae673f-ddc9-4288-9706-4dbb43bc254b&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:30.9 |      3.545 |     -1.884 |
+|         2 | 19:59:30.9 |      2.962 |      2.018 |
+|         3 | 19:59:30.9 |      2.220 |      2.194 |
+|         4 | 19:59:30.9 |     -3.346 |     -0.372 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;0eae673f&#39;] (scan num: 8)
+
+
+
+
+
+Transient Scan ID: 9     Time: 2023-06-01 19:59:34
+Persistent Unique Scan ID: &#39;c218fe88-3d36-41b8-876a-8585e003dc25&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:34.5 |      2.878 |      1.669 |
+|         2 | 19:59:34.5 |      3.105 |      1.960 |
+|         3 | 19:59:34.5 |      3.570 |     -1.779 |
+|         4 | 19:59:34.5 |      3.664 |     -1.988 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;c218fe88&#39;] (scan num: 9)
+
+
+
+
+
+Transient Scan ID: 10     Time: 2023-06-01 19:59:38
+Persistent Unique Scan ID: &#39;467e0e11-6737-4381-abdc-195a8c7b1d28&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:59:38.0 |      3.599 |     -1.860 |
+|         2 | 19:59:38.0 |      3.477 |     -1.758 |
+|         3 | 19:59:38.0 |     -3.414 |     -0.384 |
+|         4 | 19:59:38.0 |      0.655 |      2.065 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;467e0e11&#39;] (scan num: 10)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_introduction_21_1.png" src="../_images/tutorials_introduction_21_1.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="multi-task-sirepo.html" class="btn btn-neutral float-right" title="Multi-task optimization of KB mirrors" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Brookhaven National Laboratory.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
