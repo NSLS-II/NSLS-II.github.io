@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feasibility modeling &mdash; bloptools 0.3.0.post12+gcd426f3 documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/plot_directive.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/copybutton.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/nbsphinx-code-cells.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Finding latent dimensions for the toroidal mirror" href="latent-toroid-dimensions.html" />
+    <link rel="prev" title="Hyperparameters" href="hyperparameters.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            bloptools
+          </a>
+              <div class="version">
+                0.3.0.post12+gcd426f3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="introduction.html">Bayesian optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hyperparameters.html">Hyperparameters</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Feasibility modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="latent-toroid-dimensions.html">Finding latent dimensions for the toroidal mirror</a></li>
+<li class="toctree-l2"><a class="reference internal" href="multi-task-sirepo.html">Multi-task optimization of KB mirrors</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../release-history.html">Release History</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../min_versions.html">Minimum Version of Python and NumPy</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">bloptools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Feasibility modeling</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/constrained-himmelblau.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Feasibility-modeling">
+<h1>Feasibility modeling<a class="headerlink" href="#Feasibility-modeling" title="Permalink to this heading">¶</a></h1>
+<p>A more complicated example involves minimizing in two dimensions, where some parts of the parameter space are off-limits. Let’s minimize Himmelblau’s function, subject to the constraint that <span class="math notranslate nohighlight">\(x_1^2 + x_2^2 &lt; 50\)</span></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">from</span> <span class="nn">bloptools</span> <span class="kn">import</span> <span class="n">test_functions</span>
+
+<span class="n">x1</span> <span class="o">=</span> <span class="n">x2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">256</span><span class="p">)</span>
+<span class="n">X1</span><span class="p">,</span> <span class="n">X2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">bloptools.tasks</span> <span class="kn">import</span> <span class="n">Task</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;himmelblau&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">)</span>
+<span class="n">F</span> <span class="o">=</span> <span class="n">test_functions</span><span class="o">.</span><span class="n">himmelblau</span><span class="p">(</span><span class="n">X1</span><span class="p">,</span> <span class="n">X2</span><span class="p">)</span>
+<span class="n">F</span><span class="p">[</span><span class="n">X1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">X2</span><span class="o">**</span><span class="mi">2</span> <span class="o">&gt;</span> <span class="mi">50</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">pcolormesh</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">LogNorm</span><span class="p">(),</span> <span class="n">shading</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s2">&quot;x1&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s2">&quot;x2&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Text(0, 0.5, &#39;x2&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_2_1.png" src="../_images/tutorials_constrained-himmelblau_2_1.png" />
+</div>
+</div>
+<p>where everything outside our constraint is undefined. In our digestion function, we return a <code class="docutils literal notranslate"><span class="pre">NaN</span></code> when we violate the constraint:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">digestion</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">uid</span><span class="p">):</span>
+    <span class="n">products</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="n">uid</span><span class="p">]</span><span class="o">.</span><span class="n">table</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">products</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">x1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">entry</span><span class="o">.</span><span class="n">x2</span><span class="o">**</span><span class="mi">2</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="n">products</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;himmelblau&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_functions</span><span class="o">.</span><span class="n">himmelblau</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">x1</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">x2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">products</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;himmelblau&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">return</span> <span class="n">products</span>
+</pre></div>
+</div>
+</div>
+<p>and create the agent in the usual way:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">run</span> -i ../../../examples/prepare_bluesky.py # prepare the bluesky environment
+
+<span class="kn">import</span> <span class="nn">bloptools</span>
+<span class="kn">from</span> <span class="nn">bloptools.tasks</span> <span class="kn">import</span> <span class="n">Task</span>
+
+<span class="n">dofs</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">devices</span><span class="o">.</span><span class="n">dummy_dofs</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">bounds</span> <span class="o">=</span> <span class="p">[(</span><span class="o">-</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span> <span class="p">(</span><span class="o">-</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)]</span>
+
+<span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;himmelblau&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">)</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="n">bloptools</span><span class="o">.</span><span class="n">bayesian</span><span class="o">.</span><span class="n">Agent</span><span class="p">(</span>
+    <span class="n">active_dofs</span><span class="o">=</span><span class="n">dofs</span><span class="p">,</span>
+    <span class="n">passive_dofs</span><span class="o">=</span><span class="p">[],</span>
+    <span class="n">active_dof_bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="n">task</span><span class="p">],</span>
+    <span class="n">digestion</span><span class="o">=</span><span class="n">digestion</span><span class="p">,</span>
+    <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">RE</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">acqf</span><span class="o">=</span><span class="s2">&quot;qr&quot;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">32</span><span class="p">))</span>
+
+<span class="n">agent</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 1     Time: 2023-07-16 19:48:57
+Persistent Unique Scan ID: &#39;6b14cbda-c2fa-471a-a4b7-332355b0233e&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
++-----------+------------+------------+------------+
+generator list_scan [&#39;6b14cbda&#39;] (scan num: 1)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_6_2.png" src="../_images/tutorials_constrained-himmelblau_6_2.png" />
+</div>
+</div>
+<p>In addition to modeling the fitness of the task, the agent models the probability that an input will be feasible:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">agent</span><span class="o">.</span><span class="n">plot_feasibility</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_8_0.png" src="../_images/tutorials_constrained-himmelblau_8_0.png" />
+</div>
+</div>
+<p>It combines the estimate of the objective and the estimate of the feasibility in deciding where to go:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">agent</span><span class="o">.</span><span class="n">plot_acquisition</span><span class="p">(</span><span class="n">acqf</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="s2">&quot;pi&quot;</span><span class="p">,</span> <span class="s2">&quot;ucb&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_10_0.png" src="../_images/tutorials_constrained-himmelblau_10_0.png" />
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 2     Time: 2023-07-16 19:49:10
+Persistent Unique Scan ID: &#39;47461771-21d9-41af-a49d-369b2e2a1b6e&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:10.1 |      4.867 |     -0.909 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;47461771&#39;] (scan num: 2)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 3     Time: 2023-07-16 19:49:13
+Persistent Unique Scan ID: &#39;8e4a0ec5-1d56-4721-b023-e49109f24272&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:13.6 |      3.978 |      1.756 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;8e4a0ec5&#39;] (scan num: 3)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 4     Time: 2023-07-16 19:49:17
+Persistent Unique Scan ID: &#39;59ee813c-edca-4357-8eab-3b025b860491&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:17.3 |      5.190 |     -1.967 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;59ee813c&#39;] (scan num: 4)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 5     Time: 2023-07-16 19:49:21
+Persistent Unique Scan ID: &#39;0ee9360f-25b4-4c0a-95d9-11a7538b19f8&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:21.1 |      0.934 |     -0.094 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;0ee9360f&#39;] (scan num: 5)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;47461771-21d9-41af-a49d-369b2e2a1b6e&#39;,
+ &#39;8e4a0ec5-1d56-4721-b023-e49109f24272&#39;,
+ &#39;59ee813c-edca-4357-8eab-3b025b860491&#39;,
+ &#39;0ee9360f-25b4-4c0a-95d9-11a7538b19f8&#39;)
+</pre></div></div>
+</div>
+<p>The agent automatically tries to avoid infeasible points, but will end up naturally exploring the boundary of the constraint. Let’s see where the agent is thinking of going:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">agent</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">plot_acquisition</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="s2">&quot;pi&quot;</span><span class="p">,</span> <span class="s2">&quot;ucb&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_13_0.png" src="../_images/tutorials_constrained-himmelblau_13_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_13_1.png" src="../_images/tutorials_constrained-himmelblau_13_1.png" />
+</div>
+</div>
+<p>The agent will naturally explore the whole parameter space</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">16</span><span class="p">))</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 6     Time: 2023-07-16 19:49:27
+Persistent Unique Scan ID: &#39;9a738b93-0780-493a-bc13-984558a6fa7f&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:27.8 |      4.061 |      2.828 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;9a738b93&#39;] (scan num: 6)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 7     Time: 2023-07-16 19:49:31
+Persistent Unique Scan ID: &#39;6660d1ef-82c6-4702-a270-ef45fc67d49c&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:31.4 |      0.177 |      2.894 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;6660d1ef&#39;] (scan num: 7)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 8     Time: 2023-07-16 19:49:35
+Persistent Unique Scan ID: &#39;5f3efaa1-ff09-47e2-99dc-8e3503ed93e9&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:35.0 |      3.154 |      2.305 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;5f3efaa1&#39;] (scan num: 8)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 9     Time: 2023-07-16 19:49:38
+Persistent Unique Scan ID: &#39;78dd9750-8768-4665-ae96-078957ba6c1b&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:38.7 |     -4.650 |      1.038 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;78dd9750&#39;] (scan num: 9)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 10     Time: 2023-07-16 19:49:42
+Persistent Unique Scan ID: &#39;759d08ef-4d85-4d50-9e29-75fad6942831&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:42.1 |      1.007 |     -1.341 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;759d08ef&#39;] (scan num: 10)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 11     Time: 2023-07-16 19:49:45
+Persistent Unique Scan ID: &#39;0ace75c9-e931-411c-a748-e706d20404b4&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:45.5 |     -4.125 |     -2.876 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;0ace75c9&#39;] (scan num: 11)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 12     Time: 2023-07-16 19:49:48
+Persistent Unique Scan ID: &#39;19aba327-b614-4710-b508-47fdad41bb26&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:48.9 |      4.729 |      2.115 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;19aba327&#39;] (scan num: 12)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 13     Time: 2023-07-16 19:49:52
+Persistent Unique Scan ID: &#39;825df222-47cd-474c-9294-bf18b447f525&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:52.2 |      2.895 |      1.807 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;825df222&#39;] (scan num: 13)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 14     Time: 2023-07-16 19:49:56
+Persistent Unique Scan ID: &#39;db0e6184-4758-43d6-9a33-6c91451e1c70&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:56.1 |     -4.503 |     -3.489 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;db0e6184&#39;] (scan num: 14)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 15     Time: 2023-07-16 19:49:59
+Persistent Unique Scan ID: &#39;6308091b-d055-4350-98c8-c7368580c34f&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:49:59.8 |     -5.361 |     -2.790 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;6308091b&#39;] (scan num: 15)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 16     Time: 2023-07-16 19:50:03
+Persistent Unique Scan ID: &#39;a0cbebdf-ad9a-4dd2-b30f-a05f2e54246f&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:03.2 |     -2.028 |      2.704 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;a0cbebdf&#39;] (scan num: 16)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 17     Time: 2023-07-16 19:50:06
+Persistent Unique Scan ID: &#39;a005ab30-2667-4059-926b-126576495a66&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:06.6 |      3.090 |      0.158 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;a005ab30&#39;] (scan num: 17)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 18     Time: 2023-07-16 19:50:09
+Persistent Unique Scan ID: &#39;b1a18f1d-0d06-493e-8f52-227d9faadd1a&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:10.0 |     -3.216 |     -2.594 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;b1a18f1d&#39;] (scan num: 18)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 19     Time: 2023-07-16 19:50:13
+Persistent Unique Scan ID: &#39;8f7bfa15-d957-474b-a563-722be01abe36&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:13.4 |     -3.736 |     -3.374 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;8f7bfa15&#39;] (scan num: 19)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 20     Time: 2023-07-16 19:50:16
+Persistent Unique Scan ID: &#39;ddedcfa7-0072-4557-9de8-ccfc30d3d162&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:16.7 |     -2.500 |      3.403 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;ddedcfa7&#39;] (scan num: 20)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+
+Transient Scan ID: 21     Time: 2023-07-16 19:50:20
+Persistent Unique Scan ID: &#39;ca5cab2e-f6a9-4b18-b5d5-3c64f90e84bb&#39;
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+
+|   seq_num |       time |         x1 |         x2 |
++-----------+------------+------------+------------+
+|         1 | 19:50:20.0 |      3.184 |      1.147 |
++-----------+------------+------------+------------+
+generator list_scan [&#39;ca5cab2e&#39;] (scan num: 21)
+
+
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_constrained-himmelblau_15_32.png" src="../_images/tutorials_constrained-himmelblau_15_32.png" />
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hyperparameters.html" class="btn btn-neutral float-left" title="Hyperparameters" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="latent-toroid-dimensions.html" class="btn btn-neutral float-right" title="Finding latent dimensions for the toroidal mirror" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2020, Brookhaven National Laboratory.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

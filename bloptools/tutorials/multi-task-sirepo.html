@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Multi-task optimization of KB mirrors &mdash; bloptools 0.3.0 documentation</title>
+  <title>Multi-task optimization of KB mirrors &mdash; bloptools 0.3.0.post12+gcd426f3 documentation</title>
       <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
       <link rel="stylesheet" href="../_static/plot_directive.css" type="text/css" />
@@ -26,7 +26,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Release History" href="../release-history.html" />
-    <link rel="prev" title="Kernels and hyperparameters" href="introduction.html" /> 
+    <link rel="prev" title="Finding latent dimensions for the toroidal mirror" href="latent-toroid-dimensions.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -41,7 +41,7 @@
             bloptools
           </a>
               <div class="version">
-                0.3.0
+                0.3.0.post12+gcd426f3
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -55,7 +55,10 @@
 <li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../tutorials.html">Tutorials</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="introduction.html">Kernels and hyperparameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html">Bayesian optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hyperparameters.html">Hyperparameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="constrained-himmelblau.html">Feasibility modeling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="latent-toroid-dimensions.html">Finding latent dimensions for the toroidal mirror</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Multi-task optimization of KB mirrors</a></li>
 </ul>
 </li>
@@ -101,9 +104,6 @@
 
 <span class="n">kb_dofs</span> <span class="o">=</span> <span class="p">[</span><span class="n">kbv</span><span class="o">.</span><span class="n">x_rot</span><span class="p">,</span> <span class="n">kbh</span><span class="o">.</span><span class="n">x_rot</span><span class="p">]</span>
 <span class="n">kb_bounds</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.10</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="o">+</span><span class="mf">0.10</span><span class="p">]])</span>
-
-<span class="k">for</span> <span class="n">dof</span> <span class="ow">in</span> <span class="n">kb_dofs</span><span class="p">:</span>
-    <span class="n">dof</span><span class="o">.</span><span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;hinted&quot;</span>
 </pre></div>
 </div>
 </div>
@@ -111,59 +111,24 @@
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span><span class="kn">from</span> <span class="nn">bloptools.bayesian</span> <span class="kn">import</span> <span class="n">Agent</span>
-<span class="kn">from</span> <span class="nn">bloptools.experiments.sirepo.tes</span> <span class="kn">import</span> <span class="n">digestion</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bloptools.bayesian</span> <span class="kn">import</span> <span class="n">Agent</span>
+<span class="kn">from</span> <span class="nn">bloptools.experiments.sirepo.tes</span> <span class="kn">import</span> <span class="n">w9_digestion</span>
 <span class="kn">from</span> <span class="nn">bloptools.tasks</span> <span class="kn">import</span> <span class="n">Task</span>
 
 <span class="n">beam_flux_task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;flux&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;max&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
 <span class="n">beam_width_task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;x_width&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
 <span class="n">beam_height_task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;y_width&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;min&quot;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
 
-<span class="n">boa</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
-       <span class="n">dofs</span><span class="o">=</span><span class="n">kb_dofs</span><span class="p">,</span>
-       <span class="n">bounds</span><span class="o">=</span><span class="n">kb_bounds</span><span class="p">,</span>
-       <span class="n">detectors</span><span class="o">=</span><span class="p">[</span><span class="n">w9</span><span class="p">],</span>
-       <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="n">beam_flux_task</span><span class="p">,</span> <span class="n">beam_width_task</span><span class="p">,</span> <span class="n">beam_height_task</span><span class="p">],</span>
-       <span class="n">digestion</span><span class="o">=</span><span class="n">digestion</span><span class="p">,</span>
-       <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span>
+    <span class="n">active_dofs</span><span class="o">=</span><span class="n">kb_dofs</span><span class="p">,</span>
+    <span class="n">active_dof_bounds</span><span class="o">=</span><span class="n">kb_bounds</span><span class="p">,</span>
+    <span class="n">detectors</span><span class="o">=</span><span class="p">[</span><span class="n">w9</span><span class="p">],</span>
+    <span class="n">tasks</span><span class="o">=</span><span class="p">[</span><span class="n">beam_flux_task</span><span class="p">,</span> <span class="n">beam_width_task</span><span class="p">,</span> <span class="n">beam_height_task</span><span class="p">],</span>
+    <span class="n">digestion</span><span class="o">=</span><span class="n">w9_digestion</span><span class="p">,</span>
+    <span class="n">db</span><span class="o">=</span><span class="n">db</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">init_scheme</span><span class="o">=</span><span class="s1">&#39;quasi-random&#39;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">16</span><span class="p">))</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-(&#39;14fa8e41-ea80-4e44-b2f3-d6a49e2162f0&#39;,)
-</pre></div></div>
-</div>
-<p>For each task, we plot the sampled data and the model’s posterior with respect to two inputs to the KB mirrors. We can see that each tasks responds very differently to different motors, which is very useful to the optimizer.</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area docutils container">
-<img alt="../_images/tutorials_multi-task-sirepo_4_0.png" src="../_images/tutorials_multi-task-sirepo_4_0.png" />
-</div>
-</div>
-<p>Let’s optimize:</p>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">boa</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="s1">&#39;esti&#39;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
-<span class="n">boa</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+<span class="n">RE</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="n">acqf</span><span class="o">=</span><span class="s2">&quot;qr&quot;</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">16</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -172,14 +137,133 @@
 </div>
 <div class="output_area docutils container">
 <div class="highlight"><pre>
-learning with strategy &#34;esti&#34; ...
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+------------+
+|   seq_num |       time |  kbv_x_rot |  kbh_x_rot |    w9_mean |
++-----------+------------+------------+------------+------------+
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
+ failed to format row
++-----------+------------+------------+------------+------------+
+generator list_scan [&#39;f987d26f&#39;] (scan num: 1)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+(&#39;f987d26f-dec3-455a-95db-88eb26dfb0df&#39;,)
+</pre></div></div>
+</div>
+<p>For each task, we plot the sampled data and the model’s posterior with respect to two inputs to the KB mirrors. We can see that each tasks responds very differently to different motors, which is very useful to the optimizer.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">agent</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">plot_acquisition</span><span class="p">(</span><span class="n">strategy</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="s2">&quot;pi&quot;</span><span class="p">,</span> <span class="s2">&quot;ucb&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multi-task-sirepo_4_0.png" src="../_images/tutorials_multi-task-sirepo_4_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_multi-task-sirepo_4_1.png" src="../_images/tutorials_multi-task-sirepo_4_1.png" />
+</div>
+</div>
+<p>We should find our optimum (or something close to it) on the very next iteration:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">RE</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">acqf</span><span class="o">=</span><span class="s2">&quot;ei&quot;</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="n">agent</span><span class="o">.</span><span class="n">plot_tasks</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+------------+
+|   seq_num |       time |  kbv_x_rot |  kbh_x_rot |    w9_mean |
++-----------+------------+------------+------------+------------+
+|         1 | 19:56:36.0 |     -0.004 |     -0.006 |      8.154 |
++-----------+------------+------------+------------+------------+
+generator list_scan [&#39;7dd4eb99&#39;] (scan num: 2)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+New stream: &#39;primary&#39;
++-----------+------------+------------+------------+------------+
+|   seq_num |       time |  kbv_x_rot |  kbh_x_rot |    w9_mean |
++-----------+------------+------------+------------+------------+
+|         1 | 19:56:48.3 |     -0.004 |      0.002 |      7.931 |
++-----------+------------+------------+------------+------------+
+generator list_scan [&#39;1371e3be&#39;] (scan num: 3)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/usr/share/miniconda3/envs/bloptools-py3.10/lib/python3.10/site-packages/botorch/models/utils/assorted.py:201: InputDataWarning: Input data is not standardized. Please consider scaling the input to zero mean and unit variance.
+  warnings.warn(msg, InputDataWarning)
 </pre></div></div>
 </div>
 <div class="nboutput nblast docutils container">
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="../_images/tutorials_multi-task-sirepo_6_1.png" src="../_images/tutorials_multi-task-sirepo_6_1.png" />
+<img alt="../_images/tutorials_multi-task-sirepo_6_4.png" src="../_images/tutorials_multi-task-sirepo_6_4.png" />
 </div>
 </div>
 <p>The agent has learned that certain dimensions affect different tasks differently!</p>
@@ -189,7 +273,7 @@ learning with strategy &#34;esti&#34; ...
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="introduction.html" class="btn btn-neutral float-left" title="Kernels and hyperparameters" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="latent-toroid-dimensions.html" class="btn btn-neutral float-left" title="Finding latent dimensions for the toroidal mirror" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="../release-history.html" class="btn btn-neutral float-right" title="Release History" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
