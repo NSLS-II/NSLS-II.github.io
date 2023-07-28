@@ -1,27 +1,29 @@
 {
  "cells": [
   {
+   "attachments": {},
    "cell_type": "markdown",
    "metadata": {},
    "source": [
+    "# Shadow Simulations\n",
     "\n",
-    "# Run Sirepo/Shadow simulations with Bluesky\n",
-    "\n",
-    "This section is based on the **basic** example.\n",
+    "This section is based on the **TES** beamline example.\n",
     "\n",
     "**Hint**: See the [List of predefined simulations in Sirepo](../simulations.rst) for examples of identifiers for different beamlines."
    ]
   },
   {
+   "attachments": {},
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "## Run \"Beamline\" Shadow simulations\n",
+    "## Run \"Beamline\" Shadow3 simulations\n",
     "\n",
-    "In this example, we run a single Shadow simulation and collect the resulting averaged intensity and corresponding 2D intensity distribution from the \"Watchpoint\" report on the \"Beamline\" page of Sirepo/Shadow app."
+    "This example repeats the first simulation in \"Optical Elements as Ophyd Objects\", but instead uses Shadow3 to run the simulation. "
    ]
   },
   {
+   "attachments": {},
    "cell_type": "markdown",
    "metadata": {},
    "source": [
@@ -36,34 +38,64 @@
    "source": [
     "%run -i ../../../examples/prepare_det_env.py\n",
     "\n",
-    "from sirepo_bluesky.shadow_detector import SirepoShadowDetector\n",
+    "from sirepo_bluesky.sirepo_bluesky import SirepoBluesky\n",
+    "from sirepo_bluesky.sirepo_ophyd import BeamStatisticsReport, create_classes\n",
     "\n",
-    "shadow_det = SirepoShadowDetector(\n",
-    "    name=\"shadow_det\",\n",
-    "    sim_id=\"00000001\",\n",
-    "    sim_report_type=\"default_report\",\n",
-    "    sirepo_server=\"http://localhost:8000\",\n",
-    "    root_dir=\"/tmp/sirepo-bluesky-data\",\n",
-    ")\n",
+    "connection = SirepoBluesky(\"http://localhost:8000\")\n",
     "\n",
-    "shadow_det.select_optic(\"Aperture\")\n",
-    "shadow_det.create_parameter(\"horizontalSize\")\n",
-    "shadow_det.create_parameter(\"verticalSize\")\n",
-    "shadow_det.read_attrs = [\"image\", \"mean\"]\n",
-    "shadow_det.configuration_attrs = [\"horizontal_extent\", \"vertical_extent\", \"shape\"]\n",
+    "data, schema = connection.auth(\"shadow\", sim_id=\"00000002\")\n",
+    "classes, objects = create_classes(connection=connection)\n",
+    "globals().update(**objects)\n",
     "\n",
-    "shadow_det.active_parameters[\"Aperture_horizontalSize\"].set(1.0)\n",
-    "shadow_det.active_parameters[\"Aperture_verticalSize\"].set(1.0)\n",
-    "shadow_det.duration.kind = \"hinted\"\n",
+    "print(f\"Number of points before change: {data['models']['simulation']['npoint']}\")\n",
+    "data[\"models\"][\"simulation\"][\"npoint\"] = 1000000\n",
+    "print(f\"Number of points after change: {data['models']['simulation']['npoint']}\")\n",
+    "aperture.horizontalSize.kind = \"hinted\"\n",
+    "w9.duration.kind = \"hinted\"\n",
     "\n",
-    "uid, = RE(bp.count([shadow_det]))"
+    "(uid,) = RE(bp.scan([w9], aperture.horizontalSize, 0, 2, 6))\n",
+    "\n",
+    "hdr = db[uid]\n",
+    "tbl = hdr.table(fill=True)\n",
+    "print(tbl)\n",
+    "\n",
+    "w9_image = np.array(list(hdr.data(\"w9_image\")))"
    ]
   },
   {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from mpl_toolkits.axes_grid1 import ImageGrid\n",
+    "\n",
+    "print(f\"Data shape: {w9_image.shape}\")\n",
+    "num_frames = w9_image.shape[0]\n",
+    "ncols = 2\n",
+    "nrows = int(np.ceil(num_frames / ncols))\n",
+    "\n",
+    "fig = plt.figure()\n",
+    "grid = ImageGrid(\n",
+    "    fig,\n",
+    "    (1, 2, ncols, nrows),\n",
+    "    nrows_ncols=(nrows, ncols),\n",
+    "    axes_pad=0.5,\n",
+    "    aspect=False,\n",
+    ")\n",
+    "\n",
+    "for ax, im in zip(grid, w9_image[:, ...]):\n",
+    "    ax.imshow(im, aspect=\"auto\")"
+   ]
+  },
+  {
+   "attachments": {},
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "We can access the data as the last item in the database (`db[-1]`) or directly via the returned `uid`, which when plotted as an image will look like:"
+    "## Run \"Beam Statistics\" Sirepo/Shadow app simulations\n",
+    "\n",
+    "In this example, we scan the toroidal mirror's radius and collect the results of the \"Beam Statistics\" report on the \"Beamline\" page of Sirepo/Shadow app. At the end of the execution, we provide the timing report for these simulations."
    ]
   },
   {
@@ -72,8 +104,30 @@
    "metadata": {},
    "outputs": [],
    "source": [
+    "%run -i ../../../examples/prepare_det_env.py\n",
+    "\n",
+    "from sirepo_bluesky.sirepo_bluesky import SirepoBluesky\n",
+    "from sirepo_bluesky.sirepo_ophyd import BeamStatisticsReport, create_classes\n",
+    "\n",
+    "connection = SirepoBluesky(\"http://localhost:8000\")\n",
+    "\n",
+    "data, schema = connection.auth(\"shadow\", sim_id=\"00000002\")\n",
+    "\n",
+    "classes, objects = create_classes(connection=connection)\n",
+    "globals().update(**objects)\n",
+    "\n",
+    "bsr = BeamStatisticsReport(name=\"bsr\", connection=connection)\n",
+    "\n",
+    "toroid.r_maj.kind = \"hinted\"\n",
+    "bsr.duration.kind = \"hinted\"\n",
+    "\n",
+    "scan_range = (10_000, 50_000, 21)\n",
+    "\n",
+    "(uid,) = RE(bp.scan([bsr], toroid.r_maj, *scan_range))\n",
+    "\n",
     "hdr = db[uid]\n",
-    "imgs = np.array(list(hdr.data(f'{shadow_det.name}_image')))"
+    "tbl = hdr.table()\n",
+    "print(tbl)"
    ]
   },
   {
@@ -82,10 +136,41 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "cfg = hdr.config_data(shadow_det.name)[\"primary\"][0]\n",
-    "hor_ext = cfg[f\"{shadow_det.name}_horizontal_extent\"]\n",
-    "vert_ext = cfg[f\"{shadow_det.name}_vertical_extent\"]\n",
-    "plt.imshow(imgs[0], aspect=\"equal\", extent=(*hor_ext, *vert_ext))"
+    "import json\n",
+    "import matplotlib.pyplot as plt\n",
+    "\n",
+    "for idx in range(1, tbl[\"toroid_r_maj\"].size + 1):\n",
+    "    d = json.loads(tbl[\"bsr_report\"][idx])\n",
+    "    plt.figure(figsize=(16, 4))\n",
+    "    plt.plot(d[\"s\"], d[\"sigmax\"], label=\"Horizonal RMS Beam Size [m]\")\n",
+    "    plt.plot(d[\"s\"], d[\"sigmaz\"], label=\"Vertical RMS Beam Size [m]\")\n",
+    "    plt.xlabel(\"Distance Along Beamline [m]\")\n",
+    "    plt.legend()\n",
+    "    plt.title(f\"toroid_r_maj = {tbl['toroid_r_maj'][idx]:.0f}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "data = np.array(tbl[\"time\"].diff(), dtype=float)[1:] / 1e9\n",
+    "\n",
+    "fig = plt.figure()\n",
+    "ax = fig.add_subplot()\n",
+    "ax.plot(np.linspace(*scan_range)[1:], data, label=\"Duration of simulations\")\n",
+    "ax.set_ylabel(\"Duration of simulations [s]\")\n",
+    "ax.set_xlabel(\"Torus Major Radius [m]\")\n",
+    "ax.axhline(data.mean(), color=\"k\", label=\"Averaged duration\")\n",
+    "ax.legend()\n",
+    "title = (\n",
+    "    f\"Shadow TES simulation\\n\"\n",
+    "    f\"RE(bp.scan([bsr], toroid.r_maj, \"\n",
+    "    f\"{', '.join([str(x) for x in scan_range])}))\"\n",
+    ")\n",
+    "ax.set_title(title)\n",
+    "plt.show()"
    ]
   }
  ],
@@ -105,7 +190,7 @@
    "name": "python",
    "nbconvert_exporter": "python",
    "pygments_lexer": "ipython3",
-   "version": "3.9.7"
+   "version": "3.10.11"
   }
  },
  "nbformat": 4,
