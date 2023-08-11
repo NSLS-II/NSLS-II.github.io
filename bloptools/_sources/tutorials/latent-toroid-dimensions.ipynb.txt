@@ -21,10 +21,7 @@
    "outputs": [],
    "source": [
     "%run -i ../../../examples/prepare_bluesky.py\n",
-    "%run -i ../../../examples/prepare_tes_shadow.py\n",
-    "\n",
-    "toroid_dofs = np.array([toroid.x_rot, toroid.offz])\n",
-    "toroid_bounds = np.array([[-1e-3, 1e-3], [-4e-1, +4e-1]])"
+    "%run -i ../../../examples/prepare_tes_shadow.py"
    ]
   },
   {
@@ -36,22 +33,25 @@
    },
    "outputs": [],
    "source": [
-    "from bloptools.bayesian import Agent\n",
+    "import bloptools\n",
     "from bloptools.experiments.sirepo.tes import w8_digestion\n",
-    "from bloptools.tasks import Task\n",
     "\n",
-    "beam_flux_task = Task(key=\"flux\", kind=\"max\", transform=lambda x: np.log(x))\n",
+    "dofs = [\n",
+    "    {\"device\": toroid.x_rot, \"limits\": (-0.001, 0.001), \"kind\": \"active\"},\n",
+    "    {\"device\": toroid.offz, \"limits\": (-0.5, 0.5), \"kind\": \"active\"},\n",
+    "]\n",
     "\n",
-    "agent = Agent(\n",
-    "    active_dofs=toroid_dofs,\n",
-    "    active_dof_bounds=toroid_bounds,\n",
-    "    detectors=[w8],\n",
-    "    tasks=[beam_flux_task],\n",
+    "tasks = [{\"key\": \"flux\", \"kind\": \"maximize\", \"transform\": \"log\"}]\n",
+    "\n",
+    "agent = bloptools.bayesian.Agent(\n",
+    "    dofs=dofs,\n",
+    "    tasks=tasks,\n",
+    "    dets=[w8],\n",
     "    digestion=w8_digestion,\n",
     "    db=db,\n",
     ")\n",
     "\n",
-    "RE(agent.initialize(acqf=\"qr\", n_init=24))"
+    "RE(agent.initialize(\"qr\", n_init=24))"
    ]
   },
   {
@@ -70,7 +70,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "agent.tasks[0].regressor.covar_module.latent_dimensions"
+    "agent.tasks[0][\"model\"].covar_module.latent_transform"
    ]
   },
   {
@@ -90,7 +90,7 @@
   {
    "cell_type": "code",
    "execution_count": null,
-   "id": "9093dd73",
+   "id": "efd5ab4f",
    "metadata": {},
    "outputs": [],
    "source": []

@@ -8,7 +8,7 @@
    "source": [
     "# Hyperparameters\n",
     "\n",
-    "Consider the test function of two inputs $f(x_1, x_2) = e^{- (x_1/10)^2 - x_2^2}$. We can see that this function varies more quickly in the $x_1$ direction than the $x_2$ direction, especially if we look at the plot:"
+    "Consider the Booth test function (below). This function varies differently in different directions, and these directions are somewhat skewed with respect to the inputs. Our agent will automatically fit the right hyperparameters to account for this."
    ]
   },
   {
@@ -21,13 +21,14 @@
     "import numpy as np\n",
     "import matplotlib as mpl\n",
     "from matplotlib import pyplot as plt\n",
+    "from bloptools import test_functions\n",
     "\n",
     "x1 = x2 = np.linspace(-10, 10, 256)\n",
     "X1, X2 = np.meshgrid(x1, x2)\n",
     "\n",
-    "F = -np.exp(-((X1 / 8) ** 2)) * np.exp(-(X2**2))\n",
+    "F = test_functions.booth(X1, X2)\n",
     "\n",
-    "plt.pcolormesh(x1, x2, F, shading=\"auto\")\n",
+    "plt.pcolormesh(x1, x2, F, norm=mpl.colors.LogNorm(), shading=\"auto\")\n",
     "plt.colorbar()\n",
     "plt.xlabel(\"x1\")\n",
     "plt.ylabel(\"x2\")"
@@ -45,6 +46,22 @@
   {
    "cell_type": "code",
    "execution_count": null,
+   "id": "7e9c949e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def digestion(db, uid):\n",
+    "    products = db[uid].table()\n",
+    "\n",
+    "    for index, entry in products.iterrows():\n",
+    "        products.loc[index, \"booth\"] = test_functions.booth(entry.x1, entry.x2)\n",
+    "\n",
+    "    return products"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
    "id": "071a829f-a390-40dc-9d5b-ae75702e119e",
    "metadata": {
     "tags": []
@@ -53,46 +70,28 @@
    "source": [
     "%run -i ../../../examples/prepare_bluesky.py # prepare the bluesky environment\n",
     "\n",
-    "import bloptools\n",
-    "from bloptools.tasks import Task\n",
+    "from bloptools import devices\n",
+    "from bloptools.bayesian import Agent\n",
     "\n",
-    "dofs = bloptools.devices.dummy_dofs(n=2)\n",
-    "bounds = [(-8, 8), (-8, 8)]\n",
+    "dofs = [\n",
+    "    {\"device\": devices.DOF(name=\"x1\"), \"limits\": (-5, 5), \"kind\": \"active\"},\n",
+    "    {\"device\": devices.DOF(name=\"x2\"), \"limits\": (-5, 5), \"kind\": \"active\"},\n",
+    "]\n",
     "\n",
-    "task = Task(key=\"loss\", kind=\"min\")\n",
+    "tasks = [\n",
+    "    {\"key\": \"booth\", \"kind\": \"minimize\"},\n",
+    "]\n",
     "\n",
-    "\n",
-    "def digestion(db, uid):\n",
-    "    products = db[uid].table()\n",
-    "\n",
-    "    for index, entry in products.iterrows():\n",
-    "        products.loc[index, \"loss\"] = -np.exp(-1e-2 * entry.x1**2) * np.exp(-1e-1 * entry.x2**2)\n",
-    "\n",
-    "    return products\n",
-    "\n",
-    "\n",
-    "agent = bloptools.bayesian.Agent(\n",
-    "    active_dofs=dofs,\n",
-    "    passive_dofs=[],\n",
-    "    active_dof_bounds=bounds,\n",
-    "    tasks=[task],\n",
+    "agent = Agent(\n",
+    "    dofs=dofs,\n",
+    "    tasks=tasks,\n",
     "    digestion=digestion,\n",
     "    db=db,\n",
     ")\n",
     "\n",
-    "RE(agent.initialize(acqf=\"qr\", n_init=16))\n",
+    "RE(agent.initialize(acq_func=\"qr\", n_init=16))\n",
     "\n",
     "agent.plot_tasks()"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "8fba0f0c",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "agent.tasks[0].regressor.covar_module.latent_dimensions"
    ]
   },
   {
@@ -123,7 +122,7 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "RE(agent.learn(\"ei\", n_iter=4))\n",
+    "RE(agent.learn(\"ei\", n_iter=8))\n",
     "agent.plot_tasks()"
    ]
   }
