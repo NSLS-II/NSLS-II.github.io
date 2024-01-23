@@ -2,6 +2,31 @@
  Release History
 =================
 
+2.0.3 (2024-01-22, a.k.a. 2024-1)
+=================================
+
+Fixes and other changes
+-----------------------
+
+* GUI
+
+  * For users, do not show pucks that do not belong to their proposal
+  * Speed up dewar tree refresh
+  * Refresh dewar tree button
+  * Albula now running in a separate instance
+  * No more automatic pre-fill of parameters upon request click - user option to do the pre-fill
+  * Moved unmount cold to the button panel. Added "End Visit" button, only unmounts warm currently
+
+* Server
+
+  * Datapath fix
+  * Fix ISPyB processing population and crystal snapshot creation problems
+  * Remove population of ISPyB database while infrastructure to update user proposal membership for SynchWeb is being developed
+
+* Server and GUI security improvements
+
+  * White-listing functions that can be called on the server to prevent execution of arbitrary code
+
 2.0.2 (2023-09-12, a.k.a. 2023-3)
 =================================
 
