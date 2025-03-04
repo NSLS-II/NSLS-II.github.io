@@ -5,9 +5,9 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Agent" href="agent.html" /><link rel="prev" title="Objectives" href="objectives.html" />
 
-    <!-- Generated with Sphinx 7.4.7 and Furo 2024.08.06 -->
-        <title>Degrees of freedom (DOFs) - blop 0.7.1 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>Degrees of freedom (DOFs) - blop 0.7.3 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
@@ -168,7 +168,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">blop 0.7.1 documentation</div></a>
+      <a href="index.html"><div class="brand">blop 0.7.3 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -192,7 +192,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">blop 0.7.1 documentation</span>
+  <span class="sidebar-brand-text">blop 0.7.3 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -213,7 +213,8 @@
 <li class="toctree-l2"><a class="reference internal" href="tutorials/hyperparameters.html">Hyperparameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/pareto-fronts.html">Multiobjective optimization with Pareto front mapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/passive-dofs.html">Passive degrees of freedom</a></li>
-<li class="toctree-l2"><a class="reference internal" href="tutorials/kb-mirrors.html">Hyperparameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/kb-mirrors.html">KB Mirrors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/xrt-blop-demo.html">XRT Blop Demo</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="release-history.html">Release History</a></li>
@@ -263,14 +264,14 @@
 <section id="continuous-degrees-of-freedom">
 <h2>Continuous degrees of freedom<a class="headerlink" href="#continuous-degrees-of-freedom" title="Link to this heading">¶</a></h2>
 <p>A degree of freedom is a variable that affects our optimization objective. We can define a simple DOF as</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">blop</span> <span class="kn">import</span> <span class="n">DOF</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">blop</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOF</span>
 
 <span class="n">dof</span> <span class="o">=</span> <span class="n">DOF</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;my first DOF&quot;</span><span class="p">,</span> <span class="n">search_domain</span><span class="o">=</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">))</span>
 </pre></div>
 </div>
 <p>This will instantiate a bunch of stuff under the hood, so that our agent knows how to move things and where to search.
 Typically, this will correspond to a real, physical device available in Python. In that case, we can pass the DOF an ophyd device in place of a name</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">blop</span> <span class="kn">import</span> <span class="n">DOF</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">blop</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOF</span>
 
 <span class="n">dof</span> <span class="o">=</span> <span class="n">DOF</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">my_ophyd_device</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;a real piece of hardware&quot;</span><span class="p">,</span> <span class="n">search_domain</span><span class="o">=</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">))</span>
 </pre></div>
@@ -278,7 +279,7 @@ Typically, this will correspond to a real, physical device available in Python. 
 <p>In this case, the agent will control the device as it sees fit, moving it between the search bounds.</p>
 <p>Sometimes, a DOF may be something we can’t directly control (e.g. a changing synchrotron current or a changing sample temperature) but want our agent to be aware of.
 In this case, we can define a read-only DOF as</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">blop</span> <span class="kn">import</span> <span class="n">DOF</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">blop</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOF</span>
 
 <span class="n">dof</span> <span class="o">=</span> <span class="n">DOF</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">a_read_only_ophyd_device</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;a thermometer or something&quot;</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">trust_domain</span><span class="o">=</span><span class="p">(</span><span class="n">lower</span><span class="p">,</span> <span class="n">upper</span><span class="p">))</span>
 </pre></div>
@@ -373,8 +374,8 @@ One kind is a binary degree of freedom, where the input can take one of two valu
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5a057da9"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+</div><script src="_static/documentation_options.js?v=c98573da"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
