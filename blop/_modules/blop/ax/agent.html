@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
-        <title>blop.ax.agent - blop 0.8.0 documentation</title>
+        <title>blop.ax.agent - blop 0.8.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
@@ -169,7 +169,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../index.html"><div class="brand">blop 0.8.0 documentation</div></a>
+      <a href="../../../index.html"><div class="brand">blop 0.8.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -193,7 +193,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
   
   
-  <span class="sidebar-brand-text">blop 0.8.0 documentation</span>
+  <span class="sidebar-brand-text">blop 0.8.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -206,6 +206,8 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../../how-to-guides.html">How-to Guides</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of How-to Guides</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../how-to-guides/custom-generation-strategies.html">Using custom generation strategies</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../how-to-guides/attach-data-to-experiments.html">Attach external data to experiments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to-guides/acquire-baseline.html">Set outcome constraints relative to a baseline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../how-to-guides/set-dof-constraints.html">Set DOF constraints</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../explanation.html">Explanation</a></li>
@@ -259,26 +261,27 @@
         <article role="main" id="furo-main-content">
           <h1>Source code for blop.ax.agent</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Generator</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">Sequence</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Concatenate</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">ParamSpec</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">databroker</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ax</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ax.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">Analysis</span><span class="p">,</span> <span class="n">AnalysisCard</span><span class="p">,</span> <span class="n">ContourPlot</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ax.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TOutcome</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">,</span> <span class="n">TParameterValue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ax.api.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TOutcome</span><span class="p">,</span> <span class="n">TParameterization</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ax.generation_strategy.generation_strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">GenerationStrategy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">list_scan</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.protocols</span><span class="w"> </span><span class="kn">import</span> <span class="n">Movable</span><span class="p">,</span> <span class="n">Readable</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">Msg</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerStep</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.protocols</span><span class="w"> </span><span class="kn">import</span> <span class="n">Readable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bluesky.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">MsgGenerator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">databroker</span><span class="w"> </span><span class="kn">import</span> <span class="n">Broker</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">tiled.client.container</span><span class="w"> </span><span class="kn">import</span> <span class="n">Container</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">..data_access</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabrokerDataAccess</span><span class="p">,</span> <span class="n">TiledDataAccess</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..digestion_function</span><span class="w"> </span><span class="kn">import</span> <span class="n">default_digestion_function</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">..dofs</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOF</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..dofs</span><span class="w"> </span><span class="kn">import</span> <span class="n">DOF</span><span class="p">,</span> <span class="n">DOFConstraint</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">..objectives</span><span class="w"> </span><span class="kn">import</span> <span class="n">Objective</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..plans</span><span class="w"> </span><span class="kn">import</span> <span class="n">acquire</span><span class="p">,</span> <span class="n">read</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">configure_metrics</span><span class="p">,</span> <span class="n">configure_objectives</span><span class="p">,</span> <span class="n">configure_parameters</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -304,6 +307,8 @@
 <span class="sd">        The objectives which the agent will try to optimize.</span>
 <span class="sd">    db : Broker | Container</span>
 <span class="sd">        The databroker or tiled instance to read back data from a Bluesky run.</span>
+<span class="sd">    dof_constraints : Sequence[DOFConstraint], optional</span>
+<span class="sd">        Constraints on DOFs to refine the search space.</span>
 <span class="sd">    digestion : DigestionFunction</span>
 <span class="sd">        The function to produce objective values from a dataframe of acquisition results.</span>
 <span class="sd">    digestion_kwargs : dict</span>
@@ -312,15 +317,17 @@
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">readables</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Readable</span><span class="p">],</span>
-        <span class="n">dofs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">DOF</span><span class="p">],</span>
-        <span class="n">objectives</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Objective</span><span class="p">],</span>
+        <span class="n">readables</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Readable</span><span class="p">],</span>
+        <span class="n">dofs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DOF</span><span class="p">],</span>
+        <span class="n">objectives</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Objective</span><span class="p">],</span>
         <span class="n">db</span><span class="p">:</span> <span class="n">Broker</span> <span class="o">|</span> <span class="n">Container</span><span class="p">,</span>
+        <span class="n">dof_constraints</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">DOFConstraint</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">digestion</span><span class="p">:</span> <span class="n">DigestionFunction</span> <span class="o">=</span> <span class="n">default_digestion_function</span><span class="p">,</span>
         <span class="n">digestion_kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">readables</span> <span class="o">=</span> <span class="n">readables</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dofs</span> <span class="o">=</span> <span class="p">{</span><span class="n">dof</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">dof</span> <span class="k">for</span> <span class="n">dof</span> <span class="ow">in</span> <span class="n">dofs</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dof_constraints</span> <span class="o">=</span> <span class="n">dof_constraints</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">objectives</span> <span class="o">=</span> <span class="p">{</span><span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">obj</span> <span class="k">for</span> <span class="n">obj</span> <span class="ow">in</span> <span class="n">objectives</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">digestion</span> <span class="o">=</span> <span class="n">digestion</span>
@@ -367,7 +374,14 @@
         <span class="n">metrics</span> <span class="o">=</span> <span class="n">configure_metrics</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">configure_experiment</span><span class="p">(</span>
-            <span class="n">parameters</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span> <span class="n">experiment_type</span><span class="o">=</span><span class="n">experiment_type</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="n">owner</span>
+            <span class="n">parameters</span><span class="p">,</span>
+            <span class="n">parameter_constraints</span><span class="o">=</span><span class="p">(</span><span class="n">constraint</span><span class="o">.</span><span class="n">to_ax_constraint</span><span class="p">()</span> <span class="k">for</span> <span class="n">constraint</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof_constraints</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof_constraints</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">,</span>
+            <span class="n">experiment_type</span><span class="o">=</span><span class="n">experiment_type</span><span class="p">,</span>
+            <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">configure_optimization</span><span class="p">(</span><span class="n">objectives</span><span class="p">,</span> <span class="n">objective_constraints</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">configure_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
@@ -377,11 +391,85 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">digestion_kwargs</span><span class="p">[</span><span class="s2">&quot;active_objectives&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">o</span><span class="o">.</span><span class="n">active</span><span class="p">]</span></div>
 
 
+<div class="viewcode-block" id="Agent.acquire_baseline">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.acquire_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">acquire_baseline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">parameterization</span><span class="p">:</span> <span class="n">TParameterization</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">arm_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MsgGenerator</span><span class="p">[</span><span class="kc">None</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Measure a baseline of the objectives.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        parameterization : TParameterization, optional</span>
+<span class="sd">            Move the DOFs to the given parameterization, if provided.</span>
+<span class="sd">        arm_name : str, optional</span>
+<span class="sd">            A name for the arm to distinguish it from other arms.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">parameterization</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parameterization</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">read</span><span class="p">([</span><span class="n">dof</span><span class="o">.</span><span class="n">movable</span> <span class="k">for</span> <span class="n">dof</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+        <span class="n">trial_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">attach_baseline</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">parameterization</span><span class="p">,</span> <span class="n">arm_name</span><span class="o">=</span><span class="n">arm_name</span><span class="p">)</span>
+        <span class="n">trial</span> <span class="o">=</span> <span class="p">{</span><span class="n">trial_index</span><span class="p">:</span> <span class="n">parameterization</span><span class="p">}</span>
+        <span class="n">outcomes</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="n">trial</span><span class="p">,</span> <span class="n">outcomes</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Agent.suggest">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.suggest">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">suggest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns a set of points in the input space, to be evaulated next.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        num_points : int | None, optional</span>
+<span class="sd">            The number of points to suggest. If not provided, will default to 1.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list[dict]</span>
+<span class="sd">            A list of dictionaries, each containing a parameterization of a point to evaluate next.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">num_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">num_points</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">next_trials</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_trials</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">num_points</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">trial_index</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">parameterization</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">trial_index</span><span class="p">,</span> <span class="n">parameterization</span> <span class="ow">in</span> <span class="n">next_trials</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Agent.get_next_trials">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.get_next_trials">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_next_trials</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_trials</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the next trial(s) to run.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        max_trials : int, optional</span>
+<span class="sd">            The maximum number of trials to get. Higher values can lead to more efficient data acquisition,</span>
+<span class="sd">            but slower optimization progress.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict[int, TParameterization]</span>
+<span class="sd">            A dictionary mapping trial indices to their suggested parameterizations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_next_trials</span><span class="p">(</span><span class="n">max_trials</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="Agent.ask">
 <a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.ask">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">ask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get the next trial(s) to run.</span>
+
+<span class="sd">        .. deprecated:: v0.8.1</span>
+<span class="sd">            Use suggest or get_next_trials instead.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -394,12 +482,39 @@
 <span class="sd">        dict[int, TParameterization]</span>
 <span class="sd">            A dictionary mapping trial indices to their suggested parameterizations.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_next_trials</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;ask is deprecated. Use get_next_trials or suggest instead.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_trials</span><span class="p">(</span><span class="n">n</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="Agent.tell">
-<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.tell">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">tell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">],</span> <span class="n">outcomes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TOutcome</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div class="viewcode-block" id="Agent.ingest">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.ingest">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ingest</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Ingest a set of points into the experiment. Either from previously suggested points or from an external source.</span>
+
+<span class="sd">        If points are from an external source, the dictionaries must contain keys for the DOF names.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        points : list[dict]</span>
+<span class="sd">            A list of dictionaries, each containing at least the outcome(s) of a trial</span>
+<span class="sd">            and optionally the associated parameterization</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+            <span class="n">outcomes</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">point</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+            <span class="n">trial_index</span> <span class="o">=</span> <span class="n">point</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">trial_index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">parameters</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">point</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_attach_single_trial</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span> <span class="n">outcomes</span><span class="o">=</span><span class="n">outcomes</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">complete_trial</span><span class="p">(</span><span class="n">trial_index</span><span class="o">=</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">raw_data</span><span class="o">=</span><span class="n">outcomes</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Agent.complete_trials">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.complete_trials">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">complete_trials</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">],</span> <span class="n">outcomes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TOutcome</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Complete trial(s) by providing the outcomes.</span>
 
@@ -417,9 +532,41 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">trial_index</span> <span class="ow">in</span> <span class="n">trials</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">complete_trial</span><span class="p">(</span>
-                <span class="n">trial_index</span><span class="o">=</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">raw_data</span><span class="o">=</span><span class="n">outcomes</span><span class="p">[</span><span class="n">trial_index</span><span class="p">]</span> <span class="k">if</span> <span class="n">outcomes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="n">trial_index</span><span class="o">=</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">raw_data</span><span class="o">=</span><span class="n">outcomes</span><span class="p">[</span><span class="n">trial_index</span><span class="p">]</span> <span class="k">if</span> <span class="n">outcomes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
             <span class="p">)</span></div>
 
+
+<div class="viewcode-block" id="Agent.tell">
+<a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.tell">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">],</span> <span class="n">outcomes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TOutcome</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Complete trial(s) by providing the outcomes.</span>
+
+<span class="sd">        .. deprecated:: v0.8.1</span>
+<span class="sd">            Use ingest or complete_trials instead.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        trials : dict[int, TParameterization]</span>
+<span class="sd">            A dictionary mapping trial indices to their suggested parameterizations.</span>
+<span class="sd">        outcomes : dict[int, TOutcome], optional</span>
+<span class="sd">            A dictionary mapping trial indices to their outcomes. If not provided, the trial will be completed</span>
+<span class="sd">            with no outcomes.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        ax.Client.complete_trial : The Ax method to complete a trial.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;tell is deprecated. Use ingest or complete_trials instead.&quot;</span><span class="p">,</span> <span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">complete_trials</span><span class="p">(</span><span class="n">trials</span><span class="o">=</span><span class="n">trials</span><span class="p">,</span> <span class="n">outcomes</span><span class="o">=</span><span class="n">outcomes</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_attach_single_trial</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">TParameterization</span><span class="p">,</span> <span class="n">outcomes</span><span class="p">:</span> <span class="n">TOutcome</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Attach a single trial to the experiment.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trial_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">attach_trial</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">complete_trial</span><span class="p">(</span><span class="n">trial_index</span><span class="o">=</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">raw_data</span><span class="o">=</span><span class="n">outcomes</span><span class="p">,</span> <span class="n">progression</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Agent.attach_data">
 <a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.attach_data">[docs]</a>
@@ -438,9 +585,8 @@
 <span class="sd">        ax.Client.attach_trial : The Ax method to attach a trial.</span>
 <span class="sd">        ax.Client.complete_trial : The Ax method to complete a trial.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">raw_data</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-            <span class="n">trial_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">attach_trial</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">complete_trial</span><span class="p">(</span><span class="n">trial_index</span><span class="o">=</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">raw_data</span><span class="o">=</span><span class="n">raw_data</span><span class="p">,</span> <span class="n">progression</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span></div>
+        <span class="k">for</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">outcomes</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_attach_single_trial</span><span class="p">(</span><span class="n">parameters</span><span class="o">=</span><span class="n">parameters</span><span class="p">,</span> <span class="n">outcomes</span><span class="o">=</span><span class="n">outcomes</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Agent.learn">
@@ -463,33 +609,16 @@
 <span class="sd">            A generator that yields the outcomes of the trials.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iterations</span><span class="p">):</span>
-            <span class="n">trials</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ask</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+            <span class="n">trials</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_next_trials</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
             <span class="n">data</span> <span class="o">=</span> <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">trials</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="n">trials</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">complete_trials</span><span class="p">(</span><span class="n">trials</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span></div>
 
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">_unpack_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameterizations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TParameterization</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Movable</span> <span class="o">|</span> <span class="n">TParameterValue</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack the parameterizations into Bluesky plan arguments.&quot;&quot;&quot;</span>
-        <span class="n">unpacked_dict</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">parameterization</span> <span class="ow">in</span> <span class="n">parameterizations</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">dof_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">dof_name</span> <span class="ow">in</span> <span class="n">parameterization</span><span class="p">:</span>
-                    <span class="n">unpacked_dict</span><span class="p">[</span><span class="n">dof_name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">parameterization</span><span class="p">[</span><span class="n">dof_name</span><span class="p">])</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Parameter </span><span class="si">{</span><span class="n">dof_name</span><span class="si">}</span><span class="s2"> not found in parameterization. Parameterization: </span><span class="si">{</span><span class="n">parameterization</span><span class="si">}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
-
-        <span class="n">unpacked_list</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="k">for</span> <span class="n">dof_name</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">unpacked_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">unpacked_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dofs</span><span class="p">[</span><span class="n">dof_name</span><span class="p">]</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-            <span class="n">unpacked_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">unpacked_list</span>
 
 <div class="viewcode-block" id="Agent.acquire">
 <a class="viewcode-back" href="../../../reference/agent.html#blop.ax.Agent.acquire">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Generator</span><span class="p">[</span><span class="n">Msg</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TOutcome</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">acquire</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TParameterization</span><span class="p">],</span> <span class="n">per_step</span><span class="p">:</span> <span class="n">PerStep</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MsgGenerator</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TOutcome</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Acquire data given a set of trials. Deploys the trials in a single Bluesky run and</span>
 <span class="sd">        returns the outcomes of the trials computed by the digestion function.</span>
@@ -501,16 +630,14 @@
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
-<span class="sd">        Generator[Msg, str, dict[int, TOutcome] | None]</span>
-<span class="sd">            A generator that yields the outcomes of the trials.</span>
+<span class="sd">        MsgGenerator[dict[int, TOutcome]]</span>
+<span class="sd">            A message generator that yields the outcomes of the trials.</span>
 
 <span class="sd">        See Also</span>
 <span class="sd">        --------</span>
-<span class="sd">        bluesky.plans.list_scan : The Bluesky plan to acquire data.</span>
-<span class="sd">        bluesky.utils.Msg : The Bluesky message type.</span>
+<span class="sd">        blop.plans.acquire : The Bluesky plan to acquire data.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">plan_args</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_unpack_parameters</span><span class="p">(</span><span class="n">trials</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-        <span class="n">uid</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">list_scan</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">readables</span><span class="p">,</span> <span class="o">*</span><span class="n">plan_args</span><span class="p">,</span> <span class="n">md</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ax_trial_indices&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">trials</span><span class="o">.</span><span class="n">keys</span><span class="p">())})</span>
+        <span class="n">uid</span> <span class="o">=</span> <span class="k">yield from</span> <span class="n">acquire</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">readables</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dofs</span><span class="p">,</span> <span class="n">trials</span><span class="p">,</span> <span class="n">per_step</span><span class="o">=</span><span class="n">per_step</span><span class="p">)</span>
         <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_access</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">uid</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">{</span><span class="n">trial_index</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">digestion</span><span class="p">(</span><span class="n">trial_index</span><span class="p">,</span> <span class="n">results</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">digestion_kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">trial_index</span> <span class="ow">in</span> <span class="n">trials</span><span class="o">.</span><span class="n">keys</span><span class="p">()}</span></div>
 
@@ -709,7 +836,7 @@
       
     </aside>
   </div>
-</div><script src="../../../_static/documentation_options.js?v=486e5634"></script>
+</div><script src="../../../_static/documentation_options.js?v=ec16d22d"></script>
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
